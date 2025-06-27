@@ -1,0 +1,35 @@
+name: Configuration Settings
+
+# This workflow consumes the settings.yaml file and creates
+# the variables and secrets required for the migration workflows.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bootstrap-pat:
+        description: 'Personal Access Token for bootstrapping the repository'
+        required: true
+
+jobs:
+  configure_repo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout migrations-via-actions Repo
+        uses: actions/checkout@v4
+
+      - name: npm install
+        id: npm-install
+        run: |
+          npm install fs js-yaml
+
+      - name: Load settings
+        id: load-settings
+        uses: actions/github-script@v7.0.1
+        with:
+          github-token: ${{ inputs.bootstrap-pat }}
+          script: |
+            const fs = require('fs')
+            const yaml = require('js-yaml')
+            const script = require('${{ github.workspace }}/.github/scripts/settings.js')
+            return await script({github,context,core,process,fs,yaml})
