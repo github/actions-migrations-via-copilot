@@ -95,6 +95,7 @@ graph TB
 
 - **`.github/settings/config.yaml`**: Central configuration for GitHub App, organizations, and migration settings
 - **`.github/prompts/*.prompt.md`**: System-specific migration instructions for the Coding Agent
+- **`.github/prompts/*.analysis.prompt.md`**: Analysis prompts for ad-hoc developer use to collect data about existing CI/CD pipelines (not automated, used for migration planning and prompt customization)
 - **`.github/copilot-instructions.md`**: Development guidelines and coding standards
 
 #### Workflow Components
@@ -262,17 +263,25 @@ gh_migration_type:
   description: 'Migration tracking property'
   other_values:
     - 'Azure DevOps'
-    - 'Jenkins'
+    - 'Bamboo'
+    - 'Bitbucket'
     - 'CircleCI'
+    - 'Drone CI'
+    - 'GitHub Actions'
     - 'GitLab'
-    # Add other CI/CD systems as needed
+    - 'Jenkins'
+    - 'Travis CI'
 
 # Migration Prompt Mapping
 migration_type_prompts:
   'Azure DevOps': 'azure-devops.prompt.md'
-  'Jenkins': 'jenkins.prompt.md'
+  'Bamboo': 'bamboo.prompt.md'
+  'Bitbucket': 'bitbucket.prompt.md'
   'CircleCI': 'circleci.prompt.md'
+  'Drone CI': 'droneci.prompt.md'
   'GitLab': 'gitlab.prompt.md'
+  'Jenkins': 'jenkins.prompt.md'
+  'Travis CI': 'travisci.prompt.md'
 
 # Target Organizations
 organizations:
@@ -322,6 +331,46 @@ Migration from [System] to GitHub Actions for this repository.
 - [System-specific conversion rules]
 - [Build tool mappings]
 - [Environment configurations]
+```
+
+### Analysis Prompt Template
+
+Analysis prompts are for **ad-hoc developer use only** - they are not part of the automated migration workflow and are not referenced in `config.yaml`. Create analysis prompts in `.github/prompts/` to manually collect pipeline data before migration planning:
+
+```markdown
+# [CI/CD System] Analysis Prompt
+
+## Purpose
+
+Analyze existing [System] pipelines to collect data for migration planning and prompt customization.
+
+## Analysis Requirements
+
+### 1. Pipeline Discovery
+
+- Identify all pipeline files and configurations
+- Document build triggers and schedules
+- Map environment-specific settings
+
+### 2. Dependency Analysis
+
+- Catalog build tools and versions
+- Identify external service integrations
+- Document secret and variable usage
+
+### 3. Migration Planning
+
+- Assess complexity and migration effort
+- Identify potential conversion challenges
+- Recommend migration approach and timeline
+
+## Output Format
+
+Please provide a structured analysis that includes:
+
+- Pipeline inventory and complexity assessment
+- Dependency mapping and version requirements
+- Recommended migration strategy and considerations
 ```
 
 ### Single-System Migration Configuration
