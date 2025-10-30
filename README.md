@@ -22,39 +22,51 @@ This project provides enterprise-grade GitHub Custom Agents that specialize in c
 - **GitHub Enterprise Cloud** with GitHub Copilot Business or Enterprise
 - **Enterprise Owner** permissions
 - Access to create and manage custom agents
+- A `.github-private` repository in your enterprise organization
 
-### Deployment Options
+### Deployment to .github-private Repository
 
-This repository can be deployed in two ways:
+The migration agents must be deployed to a `.github-private` repository in your enterprise organization. The agent files should be placed in an `agents/` folder at the root of the `.github-private` repository.
 
-#### Option 1: Deploy as .github-private Repository (Recommended)
+#### Deploy to .github-private Repository
 
-1. **Create the .github-private repository** in your chosen enterprise organization:
+1. **Create or locate your .github-private repository** in your enterprise organization:
    ```bash
-   # Use the official template to create .github-private repository
+   # If creating new, use the official template:
    # Navigate to: https://github.com/docs/custom-agents-template
    # Click "Use this template" → Create a new repository
    # Name: .github-private (exactly)
    # Visibility: Private
    ```
 
-2. **Copy agent files** from this repository to your new `.github-private` repository:
+2. **Copy agent files** from this repository to your `.github-private` repository:
    ```bash
    # Clone this repository
    git clone https://github.com/github/actions-migrations-via-copilot.git
    cd actions-migrations-via-copilot
 
-   # Copy agent files to your .github-private repository
-   cp -r .github/agents/* /path/to/your/.github-private/agents/
+   # Copy agent files to the agents/ folder at the root of your .github-private repository
+   # Note: agents/ folder should be at repository root, NOT in .github/agents/
+   cp -r agents/* /path/to/your/.github-private/agents/
    ```
 
-#### Option 2: Copy Agents to Existing .github-private Repository
+3. **Verify correct structure** in your `.github-private` repository:
+   ```
+   .github-private/
+   ├── agents/
+   │   ├── azure-devops-migrator.md
+   │   ├── bamboo-migrator.md
+   │   ├── bitbucket-migrator.md
+   │   ├── circleci-migrator.md
+   │   ├── droneci-migrator.md
+   │   ├── gitlab-migrator.md
+   │   ├── jenkins-migrator.md
+   │   ├── reusable-workflow-builder.md
+   │   └── travisci-migrator.md
+   └── other files...
+   ```
 
-If you already have a `.github-private` repository in your enterprise:
-
-1. **Copy the agent files** from `.github/agents/` to your existing `.github-private/agents/` directory
-2. **Commit and push** the new agent definitions
-3. **Configure enterprise settings** as described below
+4. **Commit and push** the agent definitions to your `.github-private` repository
 
 ### Enterprise Configuration
 
