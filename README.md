@@ -85,16 +85,58 @@ For detailed setup instructions, see the [official documentation](https://docs.g
 
 ## Available Migration Agents
 
-| Agent                     | Description                                                                     | Source Systems                                |
-| ------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
-| **Jenkins Migrator**      | Converts Jenkins declarative and scripted pipelines, including shared libraries | Jenkinsfile, scripted pipelines, YAML configs |
-| **Azure DevOps Migrator** | Migrates Azure Pipelines YAML with template expansion                           | azure-pipelines.yml, template files           |
-| **CircleCI Migrator**     | Converts CircleCI workflows and jobs                                            | .circleci/config.yml                          |
-| **GitLab Migrator**       | Transforms GitLab CI/CD pipelines                                               | .gitlab-ci.yml, pipeline configs              |
-| **Travis CI Migrator**    | Migrates Travis CI build configurations                                         | .travis.yml                                   |
-| **Bamboo Migrator**       | Converts Bamboo build plans and deployments                                     | Bamboo YAML specs, build configs              |
-| **Bitbucket Migrator**    | Transforms Bitbucket Pipelines                                                  | bitbucket-pipelines.yml                       |
-| **Drone CI Migrator**     | Converts Drone CI pipeline configurations                                       | .drone.yml                                    |
+| Agent                         | Description                                                                     | Source Systems                                |
+| ----------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
+| **Jenkins Migrator**          | Converts Jenkins declarative and scripted pipelines, including shared libraries | Jenkinsfile, scripted pipelines, YAML configs |
+| **Azure DevOps Migrator**     | Migrates Azure Pipelines YAML with template expansion                           | azure-pipelines.yml, template files           |
+| **CircleCI Migrator**         | Converts CircleCI workflows and jobs                                            | .circleci/config.yml                          |
+| **GitLab Migrator**           | Transforms GitLab CI/CD pipelines                                               | .gitlab-ci.yml, pipeline configs              |
+| **Travis CI Migrator**        | Migrates Travis CI build configurations                                         | .travis.yml                                   |
+| **Bamboo Migrator**           | Converts Bamboo build plans and deployments                                     | Bamboo YAML specs, build configs              |
+| **Bitbucket Migrator**        | Transforms Bitbucket Pipelines                                                  | bitbucket-pipelines.yml                       |
+| **Drone CI Migrator**         | Converts Drone CI pipeline configurations                                       | .drone.yml                                    |
+| **Reusable Workflow Builder** | Scans GitHub organizations for CI/CD patterns and generates reusable workflows  | GitHub Actions workflows across organizations |
+
+### Special Setup: Reusable Workflow Builder Agent
+
+The **Reusable Workflow Builder** agent has unique setup requirements as it analyzes CI/CD patterns across GitHub organizations and generates standardized reusable workflows.
+
+#### Prerequisites
+
+1. **Dedicated Repository for Reusable Workflows**:
+   - Create a repository to host the generated reusable workflows
+   - This repository will receive the agent's output (reusable workflows in `.github/workflows/` and usage examples in `docs/`)
+   - Tasks for the Reusable Workflow Builder agent must be assigned from this repository
+
+2. **GitHub Personal Access Token (PAT)**:
+   - Create a GitHub PAT with `repo` scope (read access to all repositories in the target organizations)
+   - The PAT must have access to all repositories you want to analyze
+   - For organization analysis, ensure the PAT has appropriate organization permissions
+
+3. **Copilot Environment Secret**:
+   - Create a secret in the GitHub Copilot environment named `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN`
+   - Set the value to your GitHub PAT from step 2
+   - This allows the agent to access repositories across the specified organizations
+
+#### Usage Requirements
+
+When invoking the Reusable Workflow Builder agent, you **must** provide:
+
+- **Organization Names**: Specify which GitHub organization(s) to scan for CI/CD patterns
+- **Repository Context**: Assign the task from your dedicated reusable workflows repository
+
+**Example Invocation**:
+```
+Please analyze the following GitHub organizations for CI/CD patterns: my-org, my-other-org
+
+Generate reusable workflows based on common patterns found across these organizations.
+```
+
+The agent will:
+1. Scan the specified organizations for GitHub Actions workflows
+2. Analyze common CI/CD patterns across repositories
+3. Generate reusable workflows in `.github/workflows/` directory
+4. Create usage examples in `docs/` directory for each reusable workflow
 
 ## How to Use
 
