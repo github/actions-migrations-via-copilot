@@ -112,13 +112,37 @@ Before completing, verify:
 
 ### **Phase 3: Generation**
 1. Create reusable workflows in `.github/workflows/reusable-*.yml`
-2. Generate usage documentation in `docs/<workflow-name>-usage.md`
-3. Validate all workflows with actionlint
+2. **IMMEDIATELY** after creating each workflow, generate its corresponding usage documentation in `docs/<workflow-name>-usage.md`
+3. Base documentation on your analysis reasoning and pattern identification process
+4. Validate all workflows with actionlint
 
 ### **🔒 MCP Tool Requirements**
 - **ALWAYS USE**: `mcp_github_*` tools for external repository access
 - **NEVER USE**: Workspace tools (`read_file`, `grep_search`) for remote repos
 - **ORGANIZATION SCOPE**: Strictly limit to user-specified organizations only
+
+## 📚 **Documentation Generation Workflow**
+
+### **CRITICAL REQUIREMENT: Immediate Documentation**
+After creating each reusable workflow, you MUST immediately generate its usage documentation. This is not optional.
+
+### **Documentation Creation Process**
+1. **Review Your Created Workflow**: Examine the workflow you just generated
+2. **Reference Your Analysis**: Use your pattern identification reasoning and frequency data
+3. **Create Usage File**: Generate `docs/<workflow-name>-usage.md` with:
+   - Pattern analysis summary (why this pattern was selected)
+   - Frequency and source CI/CD system data
+   - Migration benefits and before/after comparisons
+   - Practical usage examples with real parameter values
+   - Complete parameter and output reference
+4. **No Scripts Required**: Generate documentation through reasoning, not automation
+
+### **Documentation Quality Standards**
+- **Analysis-Based**: Content derived from your pattern recognition process
+- **Migration-Focused**: Show how this replaces patterns from other CI/CD systems
+- **Practical Examples**: Include realistic usage scenarios developers can copy-paste
+- **Complete Reference**: Document all inputs, outputs, and configuration options
+- **Best Practices**: Include security considerations and performance tips
 
 ### Multi-Platform Pattern Recognition Workflow
 1. **Repository Enumeration**: List all repos in target organizations
@@ -172,48 +196,112 @@ Patterns become reusable workflows when they have:
 - **Low Variation** (standardizable)
 - **Clear Parameters** (configurable inputs)
 
-## 📝 **Usage Documentation Template**
+## 📝 **Usage Documentation Requirements**
 
-Each reusable workflow gets a corresponding usage file in `docs/<workflow-name>-usage.md`:
+### **MANDATORY DOCUMENTATION GENERATION**
+After creating each reusable workflow, you MUST immediately create its corresponding usage documentation file in `docs/<workflow-name>-usage.md`. This documentation is NOT optional and must be generated based on:
 
-**Example Content Structure:**
+1. **Your pattern analysis reasoning** - Why this pattern was selected for reusability
+2. **Frequency data** - How many repositories/CI systems used this pattern
+3. **Translation logic** - How you converted the pattern from other CI/CD systems to GitHub Actions
+4. **Practical usage scenarios** - Real-world examples of how developers should use this workflow
+
+### **Required Documentation Template**
+Each `docs/<workflow-name>-usage.md` file must contain:
+
 ````markdown
-# Reusable Node Build Usage Examples
+# Reusable [Workflow Name] Usage Guide
 
-## Basic Usage
+## Pattern Analysis Summary
+- **Frequency**: Found in X repositories across Y organizations
+- **Source CI/CD Systems**: [List systems where pattern was found: GitHub Actions, GitLab CI, Jenkins, etc.]
+- **Complexity Reduction**: [Explain how this reusable workflow simplifies what was previously X steps]
+
+## Migration Benefits
+- **From GitLab CI**: [If applicable, show before/after comparison]
+- **From Jenkins**: [If applicable, show before/after comparison]
+- **From Azure DevOps**: [If applicable, show before/after comparison]
+- **Standardization**: [Explain consistency improvements]
+
+## Basic Usage Example
 ```yaml
-name: Build Application
+name: Example Workflow
 on: [push, pull_request]
 
 jobs:
-  build:
-    uses: ./.github/workflows/reusable-node-build.yml
+  job-name:
+    uses: ./.github/workflows/reusable-[name].yml
     with:
-      node-version: '18'
+      # Required parameters
+      param1: 'value1'
+      # Optional parameters with defaults
+      param2: 'custom-value'
 ```
 
-## Advanced Usage
+## Advanced Usage Example
 ```yaml
-name: Production Build
+name: Production Workflow
 on:
   push:
     branches: [main]
 
 jobs:
-  build:
-    uses: ./.github/workflows/reusable-node-build.yml
+  job-name:
+    uses: ./.github/workflows/reusable-[name].yml
     with:
-      node-version: '20'
-      build-command: 'npm run build:prod'
+      # Advanced configuration
+      param1: 'production-value'
+      param2: 'advanced-setting'
     secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      SECRET_NAME: ${{ secrets.SECRET_NAME }}
 ```
 
-## Parameter Reference
-- **node-version**: Node.js version (default: '18')
-- **build-command**: Custom build command (default: 'npm run build')
-- **NPM_TOKEN**: Required secret for private packages
+## Input Parameters Reference
+| Parameter | Description   | Required | Default     | Example    |
+| --------- | ------------- | -------- | ----------- | ---------- |
+| param1    | [Description] | Yes      | -           | `'value'`  |
+| param2    | [Description] | No       | `'default'` | `'custom'` |
+
+## Output Reference
+| Output  | Description   | Type   |
+| ------- | ------------- | ------ |
+| output1 | [Description] | string |
+
+## Migration Examples
+### From GitLab CI
+**Before (.gitlab-ci.yml):**
+```yaml
+[Show original GitLab CI configuration]
+```
+
+**After (GitHub Actions):**
+```yaml
+[Show how to use this reusable workflow instead]
+```
+
+### From Jenkins
+**Before (Jenkinsfile):**
+```groovy
+[Show original Jenkins configuration]
+```
+
+**After (GitHub Actions):**
+```yaml
+[Show how to use this reusable workflow instead]
+```
+
+## Best Practices
+- [List specific best practices for using this workflow]
+- [Security considerations]
+- [Performance tips]
 ````
+
+### **Documentation Generation Process**
+1. **Review Created Workflow**: Examine the reusable workflow you just generated
+2. **Recall Analysis Data**: Reference your pattern identification reasoning and frequency data
+3. **Generate Documentation**: Create the usage file based on your analysis, not by running scripts
+4. **Include Migration Examples**: Show before/after comparisons from other CI/CD systems
+5. **Validate Completeness**: Ensure all parameters, outputs, and usage scenarios are documented
 
 ## ⚡ **Key Enforcement Rules**
 
@@ -227,13 +315,21 @@ jobs:
 - **NEVER** use workspace tools for remote GitHub repositories
 - **MULTIPLE SEARCHES** for different CI/CD systems per organization
 
-### **📋 Delivery Requirements**
-- ✅ **ONLY Generate**: `.github/workflows/reusable-*.yml` files (reusable workflows)
-- ✅ **ONLY Document**: `docs/<workflow-name>-usage.md` files (individual usage examples)
+### **📋 Delivery Requirements & Workflow**
+1. **Create Reusable Workflow**: Generate `.github/workflows/reusable-*.yml` file
+2. **IMMEDIATELY Generate Documentation**: Create corresponding `docs/<workflow-name>-usage.md` based on your analysis reasoning
+3. **Document Analysis Process**: Include why the pattern was selected, frequency data, and migration benefits
+4. **Provide Usage Examples**: Show basic and advanced usage scenarios with real parameter values
+5. **Include Migration Comparisons**: Show before/after examples from other CI/CD systems
+
+### **File Creation Rules**
+- ✅ **MANDATORY Generate**: `.github/workflows/reusable-*.yml` files (reusable workflows)
+- ✅ **MANDATORY Document**: `docs/<workflow-name>-usage.md` files (analysis-based usage guides)
+- ✅ **Documentation Source**: Generated from YOUR reasoning and analysis process, not scripts
 - ❌ **ABSOLUTELY NEVER**: WORKFLOWS.md, README.md, scripts, custom actions, caller workflows
 - ❌ **FORBIDDEN FILES**: Any .sh/.bat/.ps1/.py/.js scripts or consolidated documentation
 - ✅ **Validate**: All workflows with actionlint
-- 🚨 **STRICT RULE**: Each reusable workflow gets exactly ONE corresponding usage.md file in docs/
+- 🚨 **STRICT RULE**: Each reusable workflow gets exactly ONE corresponding usage.md file documenting your analysis and usage patterns
 
 ## 🎯 **Success Metrics & Validation**
 
@@ -245,7 +341,9 @@ jobs:
 
 ### **Final Deliverables Checklist**
 - ✅ **Reusable workflows**: `.github/workflows/reusable-*.yml` (workflow_call trigger only)
-- ✅ **Usage docs**: `docs/<workflow-name>-usage.md` (exactly one per workflow)
+- ✅ **MANDATORY Usage docs**: `docs/<workflow-name>-usage.md` (exactly one per workflow, must be generated immediately after each workflow)
+- ✅ **Documentation quality**: Each usage doc must include pattern analysis, migration examples, and practical usage scenarios
+- ✅ **Analysis-based content**: Documentation generated from your reasoning process, not scripts or automation
 - ✅ **Verified actions**: Only from trusted GitHub Marketplace publishers
 - ✅ **Latest versions**: Current stable releases of all actions used
 - ❌ **ZERO scripts**: No .sh, .bat, .ps1, .py, .js files created
