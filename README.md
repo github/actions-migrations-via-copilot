@@ -1,460 +1,293 @@
-# GitHub Actions Migrations via Copilot
+# CI/CD Migration Custom Agents
 
-An automated solution for migrating CI/CD pipelines from various systems (Jenkins, Azure DevOps, CircleCI, etc.) to GitHub Actions at scale using GitHub Coding Agent.
+A collection of specialized GitHub Custom Agents for migrating CI/CD pipelines from various systems (Jenkins, Azure DevOps, CircleCI, etc.) to GitHub Actions. These agents leverage GitHub Copilot's advanced capabilities to provide automated, intelligent, and consistent migration assistance.
+
+## Overview
+
+This project provides enterprise-grade GitHub Custom Agents that specialize in converting existing CI/CD pipeline configurations to GitHub Actions workflows. Each agent is expertly trained to handle the nuances and complexities of specific CI/CD systems, ensuring accurate and comprehensive migrations.
 
 ## Key Features
 
-- **Scalable**: Process multiple repositories simultaneously across organizations
-- **Automated**: Reduce manual effort with AI-powered workflow generation
-- **Consistent**: Standardized migration approach across all repositories
-- **Reviewable**: Human oversight through Pull Request review process
-- **Trackable**: Migration progress documented via issues and PRs
+- **Specialized Agents**: Purpose-built agents for each major CI/CD system
+- **Intelligent Migration**: AI-powered analysis and conversion of existing configurations
+- **Comprehensive Documentation**: Detailed migration reports with validation results
+- **Security Best Practices**: Proper credential migration and security enhancements
+- **Validation & Testing**: Built-in linting and dry-run testing capabilities
+- **Complete Archival**: Organized preservation of original configurations
 
-## Requirements & Important Notes
+## Setup Requirements
 
 ### Prerequisites
 
-- **GitHub Enterprise Cloud** with:
-  - GitHub Hosted Runners (required for Coding Agent)
-  - GitHub Copilot Business or Enterprise
-  - Repository custom properties
-- **Administrative access** to target organizations
+- **GitHub Enterprise Cloud** with GitHub Copilot Business or Enterprise
+- **Enterprise Owner** permissions
+- Access to create and manage custom agents
+- A `.github-private` repository in your enterprise organization
 
-### Cost Considerations
+### Deployment to .github-private Repository
 
-- **GitHub Actions minutes**: Consumes entitlement minutes, then standard charges apply ([billing info](https://docs.github.com/en/billing/managing-billing-for-your-products/about-billing-for-github-actions))
-- **Copilot requests**: Uses premium requests with included allowances ([plan details](https://docs.github.com/en/enterprise-cloud@latest/copilot/about-github-copilot/plans-for-github-copilot#comparing-copilot-plans))
+The migration agents must be deployed to a `.github-private` repository in your enterprise organization. The agent files should be placed in an `agents/` folder at the root of the `.github-private` repository.
 
-### Behavior Notes
+#### Deploy to .github-private Repository
 
-- **Non-deterministic**: Generated workflows may vary between runs due to LLM nature
-- **Variable timing**: Processing time depends on repository complexity and CI/CD system
-- **Testing recommended**: Run pilot migrations to estimate costs and timing
+1. **Create or locate your .github-private repository** in your enterprise organization:
+   ```bash
+   # If creating new, use the official template:
+   # Navigate to: https://github.com/docs/custom-agents-template
+   # Click "Use this template" → Create a new repository
+   # Name: .github-private (exactly)
+   # Visibility: Private
+   ```
 
-## Architecture
+2. **Copy agent files** from this repository to your `.github-private` repository:
+   ```bash
+   # Clone this repository
+   git clone https://github.com/github/actions-migrations-via-copilot.git
+   cd actions-migrations-via-copilot
 
-### System Components
+   # Copy agent files to the agents/ folder at the root of your .github-private repository
+   # Note: agents/ folder should be at repository root, NOT in .github/agents/
+   cp -r agents/* /path/to/your/.github-private/agents/
+   ```
 
-This solution consists of several interconnected components that work together to automate CI/CD pipeline migrations:
+3. **Verify correct structure** in your `.github-private` repository:
+   ```
+   .github-private/
+   ├── agents/
+   │   ├── azure-devops-migrator.md
+   │   ├── bamboo-migrator.md
+   │   ├── bitbucket-migrator.md
+   │   ├── circleci-migrator.md
+   │   ├── droneci-migrator.md
+   │   ├── gitlab-migrator.md
+   │   ├── jenkins-migrator.md
+   │   ├── reusable-workflow-builder.md
+   │   └── travisci-migrator.md
+   └── other files...
+   ```
 
-```mermaid
-graph TB
-    subgraph "Configuration Layer"
-        Config[config.yaml]
-        Prompts[Migration Prompts]
-        Instructions[Copilot Instructions]
-    end
+4. **Commit and push** the agent definitions to your `.github-private` repository
 
-    subgraph "Execution Layer"
-        SettingsWF[Settings Workflow]
-        SubmitWF[Submit Repositories Workflow]
-        SettingsScript[settings.js]
-        SubmitScript[submit-repositories.js]
-    end
+### Enterprise Configuration
 
-    subgraph "GitHub Platform"
-        App[GitHub App]
-        CustomProps[Custom Properties]
-        Variables[Repository Variables]
-        Secrets[Repository Secrets]
-    end
+1. **Navigate to Enterprise AI Controls**:
+   - Click your profile picture → Enterprise → AI controls
 
-    subgraph "Target Repositories"
-        Repos[Organization Repositories]
-        Issues[Migration Issues]
-        Agent[GitHub Coding Agent]
-        PRs[Generated Pull Requests]
-    end
+2. **Configure Custom Agents**:
+   - In "Custom agents" section, select your organization containing `.github-private`
+   - Click "Create ruleset" to protect agent files (recommended)
 
-    Config --> SettingsWF
-    Prompts --> SubmitWF
-    Instructions --> Agent
+3. **Verify Setup**:
+   - Agents should appear at [https://github.com/copilot/agents](https://github.com/copilot/agents)
+   - Test with a simple migration request using the agents interface
 
-    SettingsWF --> SettingsScript
-    SubmitWF --> SubmitScript
+For detailed setup instructions, see the [official documentation](https://docs.github.com/en/copilot/how-tos/administer-copilot/manage-for-enterprise/manage-agents/prepare-for-custom-agents).
 
-    SettingsScript --> App
-    SettingsScript --> CustomProps
-    SettingsScript --> Variables
+## Available Migration Agents
 
-    SubmitScript --> App
-    SubmitScript --> Repos
-    SubmitScript --> Issues
+| Agent                         | Description                                                                     | Source Systems                                |
+| ----------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
+| **Jenkins Migrator**          | Converts Jenkins declarative and scripted pipelines, including shared libraries | Jenkinsfile, scripted pipelines, YAML configs |
+| **Azure DevOps Migrator**     | Migrates Azure Pipelines YAML with template expansion                           | azure-pipelines.yml, template files           |
+| **CircleCI Migrator**         | Converts CircleCI workflows and jobs                                            | .circleci/config.yml                          |
+| **GitLab Migrator**           | Transforms GitLab CI/CD pipelines                                               | .gitlab-ci.yml, pipeline configs              |
+| **Travis CI Migrator**        | Migrates Travis CI build configurations                                         | .travis.yml                                   |
+| **Bamboo Migrator**           | Converts Bamboo build plans and deployments                                     | Bamboo YAML specs, build configs              |
+| **Bitbucket Migrator**        | Transforms Bitbucket Pipelines                                                  | bitbucket-pipelines.yml                       |
+| **Drone CI Migrator**         | Converts Drone CI pipeline configurations                                       | .drone.yml                                    |
+| **Reusable Workflow Builder** | Scans GitHub organizations for CI/CD patterns and generates reusable workflows  | GitHub Actions workflows across organizations |
 
-    Issues --> Agent
-    Agent --> PRs
+### Special Setup: Reusable Workflow Builder Agent
 
-    Variables --> SubmitWF
-    Secrets --> SubmitWF
-    CustomProps --> SubmitScript
+The **Reusable Workflow Builder** agent has unique setup requirements as it analyzes CI/CD patterns across GitHub organizations and generates standardized reusable workflows.
+
+#### Prerequisites
+
+1. **Dedicated Repository for Reusable Workflows**:
+   - Create a repository to host the generated reusable workflows
+   - This repository will receive the agent's output (reusable workflows in `.github/workflows/` and usage examples in `docs/`)
+   - Tasks for the Reusable Workflow Builder agent must be assigned from this repository
+
+2. **GitHub Personal Access Token (PAT)**:
+   - Create a GitHub PAT with `repo` scope (read access to all repositories in the target organizations)
+   - The PAT must have access to all repositories you want to analyze
+   - For organization analysis, ensure the PAT has appropriate organization permissions
+
+3. **Copilot Environment Secret**:
+   - Create a secret in the GitHub Copilot environment named `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN`
+   - Set the value to your GitHub PAT from step 2
+   - This allows the agent to access repositories across the specified organizations
+
+#### Usage Requirements
+
+When invoking the Reusable Workflow Builder agent, you **must** provide:
+
+- **Organization Names**: Specify which GitHub organization(s) to scan for CI/CD patterns
+- **Repository Context**: Assign the task from your dedicated reusable workflows repository
+
+**Example Invocation**:
+```
+Please analyze the following GitHub organizations for CI/CD patterns: my-org, my-other-org
+
+Generate reusable workflows based on common patterns found across these organizations.
 ```
 
-### Key Components
+The agent will:
+1. Scan the specified organizations for GitHub Actions workflows
+2. Analyze common CI/CD patterns across repositories
+3. Generate reusable workflows in `.github/workflows/` directory
+4. Create usage examples in `docs/` directory for each reusable workflow
 
-#### Configuration Files
+## How to Use
 
-- **`.github/settings/config.yaml`**: Central configuration for GitHub App, organizations, and migration settings
-- **`.github/prompts/*.prompt.md`**: System-specific migration instructions for the Coding Agent
-- **`.github/prompts/*.analysis.prompt.md`**: Analysis prompts for ad-hoc developer use to collect data about existing CI/CD pipelines (not automated, used for migration planning and prompt customization)
-- **`.github/copilot-instructions.md`**: Development guidelines and coding standards
+### 1. Access GitHub Copilot Agents
 
-#### Workflow Components
+Navigate to the GitHub Copilot agents interface to invoke migration agents:
 
-- **Settings Workflow**: Bootstrap configuration, creates variables and custom properties
-- **Submit Repositories Workflow**: Main orchestration, processes organizations in parallel
-- **JavaScript Modules**: `settings.js` and `submit-repositories.js` for API operations
+1. **Go to the agents tab** at [https://github.com/copilot/agents](https://github.com/copilot/agents)
+2. **Select your repository and branch** using the dropdown menus (choose the repository containing your CI/CD files)
+3. **Select the appropriate migration agent** from the agent dropdown (e.g., "jenkins-migrator", "azure-devops-migrator")
+4. **Enter your migration request** in the text box:
 
-#### Authentication & Security
+```
+Please migrate our Jenkins pipelines to GitHub Actions.
 
-- **GitHub App**: Provides scoped API access with minimal permissions
-- **Custom Properties**: Track migration status across repositories
-- **Secrets Management**: Secure storage of credentials and tokens
-
-### Migration Flow
-
-1. **Configuration**: Admin updates `config.yaml` with target organizations
-2. **Bootstrap**: Settings workflow creates variables and custom properties
-3. **Tagging**: Repositories tagged with migration types via custom properties
-4. **Execution**: Submit workflow creates issues in repositories needing migration
-5. **Auto-Reset**: System sets migration type to 'None' after issue creation to prevent reprocessing
-6. **Processing**: GitHub Coding Agent generates workflows and creates PRs
-7. **Review**: Repository teams review, test, and merge generated changes
-
-## How It Works
-
-The migration process follows these automated steps:
-
-```mermaid
-sequenceDiagram
-    participant GHA as GitHub Actions
-    participant Org as Organization
-    participant Repo as Repository
-    participant Issue as Migration Issue
-    participant Agent as GitHub Coding Agent
-    participant PR as Pull Request
-    participant Dev as Developers
-
-    GHA->>Org: Query repositories with custom properties
-    Org-->>GHA: Return repository list with migration types
-
-    loop For each repository needing migration
-        GHA->>Issue: Create migration issue with CI/CD context
-        Issue->>Agent: Auto-assign GitHub Coding Agent
-        Agent->>Repo: Analyze existing CI/CD configuration
-        Agent->>PR: Generate GitHub Actions workflows
-        PR->>Dev: Notify for review
-        Dev->>PR: Review, test, and merge
-        Dev->>Issue: Close migration issue
-    end
+We have the following Jenkins files:
+- Jenkinsfile (declarative pipeline)
+- vars/buildApp.groovy (shared library)
+- jenkins/deploy.jenkinsfile (deployment pipeline)
 ```
 
-### Migration Process
+5. **Click "Start task"** or press Enter to begin the migration
 
-1. **Discovery**: Query organizations for repositories with migration custom properties
-2. **Issue Creation**: Create migration issues in target repositories with system-specific prompts
-3. **Auto-Reset**: System automatically sets repository migration type to 'None' after issue creation to prevent duplicate processing
-4. **Agent Processing**: GitHub Coding Agent analyzes existing CI/CD and generates workflows
-5. **Review**: Repository maintainers review and refine generated Pull Requests
-6. **Completion**: Original CI/CD files archived, new workflows activated
+### 2. Agent Analysis
 
-## Quick Start
+The assigned agent will:
+- Analyze your existing CI/CD configuration files
+- Expand any shared libraries or templates inline
+- Map system-specific features to GitHub Actions equivalents
+- Generate complete, runnable workflows
 
-### 1. Setup Repository
+### 3. Migration Output
 
-```bash
-# Clone the template repository
-git clone https://github.com/github/actions-migrations-via-copilot.git
-cd actions-migrations-via-copilot
+Each agent provides:
+- **GitHub Actions workflows** in `.github/workflows/`
+- **Archived originals** in `.github/ci-archive/`
+- **Complete migration report** with validation results
+- **Security and performance improvements**
 
-# Push to your target GitHub Enterprise
-git remote set-url origin https://github.com/YOUR-ENTERPRISE-ORG/actions-migrations-via-copilot.git
-git push -u origin main
-```
+### 4. Validation & Testing
 
-**Note**: All configuration and execution should be done in your target GitHub Enterprise environment where the migrations will occur.
+All migrations include:
+- YAML syntax validation with actionlint
+- Dry-run testing with act
+- Security best practices review
+- Performance optimization recommendations
 
-### 2. Create GitHub App
+## Agent Capabilities
 
-In your target GitHub Enterprise, create a GitHub App with these permissions:
+### Universal Features (All Agents)
 
-- **Repository**: Actions, Contents, Issues, Pull requests, Custom properties (Read/Write)
-- **Organization**: Custom properties, Members (Read/Write + Read)
-
-### 3. Configure Settings
-
-1. In your target Enterprise repository, update `.github/settings/config.yaml`:
-
-```yaml
-gh_app_id: 'YOUR_APP_ID'
-organizations:
-  - 'your-org-1'
-  - 'your-org-2'
-batch_size: 50
-```
-
-2. Add repository secrets in your target Enterprise repository:
-
-   - `GH_APP_PEM`: GitHub App private key
-   - `ISSUE_SUBMIT_TOKEN`: Personal Access Token
-
-3. Run the Configuration Settings workflow in your target Enterprise repository with bootstrap PAT
-
-### 4. Tag Repositories
-
-Set `GH_MIGRATION_TYPE` custom property on target repositories in your Enterprise:
-
-- **Manual**: Repository Settings → Custom properties
-- **Bulk**: Create a script to set repository properties via API
-- **Auto-assign**: Set `default_value` in config.yaml to a specific migration type (e.g., 'Jenkins') to automatically migrate all repositories with the same approach
-
-**Note**: After a migration issue is created, the system automatically resets the repository's migration type to 'None' to prevent duplicate processing on subsequent workflow runs.
+- **Source File Analysis**: Deep understanding of CI/CD configuration syntax
+- **Intelligent Conversion**: Context-aware mapping to GitHub Actions
+- **Security Enhancement**: Proper secrets and credential management
+- **Performance Optimization**: Caching, parallelization, and efficiency improvements
+- **Complete Documentation**: Comprehensive migration reports with validation
+- **File Archival**: Organized preservation of original configurations
 
-### 5. Execute Migration
+### Specialized Features by Agent
 
-Run the "Submit Repositories" workflow in your target Enterprise repository manually or enable scheduling
+#### Jenkins Migrator
+- Declarative and scripted pipeline support
+- Shared library expansion and inline conversion
+- Complex Groovy script handling
+- Multi-branch pipeline conversion
+- Jenkins plugin to GitHub Actions mapping
 
-## Architecture Overview
+#### Azure DevOps Migrator
+- Template system expansion
+- Variable group migration
+- Deployment job conversion
+- Task library to Actions mapping
+- Azure-specific service integration
 
-```mermaid
-graph TB
-    subgraph "Configuration"
-        Config[config.yaml]
-        Prompts[System-specific Prompts]
-    end
+#### CircleCI Migrator
+- Orb expansion and inline conversion
+- Workflow and job dependency mapping
+- Executor to runner conversion
+- Cache and artifact handling
 
-    subgraph "Execution"
-        Settings[Settings Workflow]
-        Submit[Submit Workflow]
-    end
+#### GitLab Migrator
+- Include template expansion
+- Service dependency conversion
+- GitLab-specific variable handling
+- Pages and deployment job migration
 
-    subgraph "GitHub Platform"
-        App[GitHub App]
-        Props[Custom Properties]
-        Vars[Variables/Secrets]
-    end
+## Migration Best Practices
 
-    subgraph "Target Repositories"
-        Repos[Tagged Repositories]
-        Issues[Migration Issues]
-        Agent[Coding Agent]
-        PRs[Generated PRs]
-    end
+### Before Migration
 
-    Config --> Settings
-    Settings --> Props & Vars
-    Submit --> App
-    App --> Repos
-    Repos --> Issues
-    Issues --> Agent
-    Agent --> PRs
-```
+1. **Backup Existing Configurations**: Ensure you have backups of all CI/CD files
+2. **Document Dependencies**: List external tools, services, and integrations
+3. **Review Secrets**: Catalog credentials and environment variables
+4. **Plan Testing**: Prepare test scenarios for validation
 
-## Configuration Reference
+### During Migration
 
-### Configuration File Structure (`.github/settings/config.yaml`)
+1. **Review Agent Output**: Carefully examine generated workflows
+2. **Test Incrementally**: Validate workflows in feature branches
+3. **Verify Security**: Ensure proper secret and credential handling
+4. **Check Dependencies**: Confirm all external dependencies are addressed
 
-```yaml
-# GitHub App Configuration
-gh_app_id: 'YOUR_APP_ID'
+### After Migration
 
-# Custom Property Configuration
-gh_migration_type:
-  default_value: 'None' # Can be set to specific type (e.g., 'Jenkins') for single-system migrations
-  description: 'Migration tracking property'
-  other_values:
-    - 'Azure DevOps'
-    - 'Bamboo'
-    - 'Bitbucket'
-    - 'CircleCI'
-    - 'Drone CI'
-    - 'GitHub Actions'
-    - 'GitLab'
-    - 'Jenkins'
-    - 'Travis CI'
+1. **Monitor Performance**: Compare build times and resource usage
+2. **Update Documentation**: Reflect new GitHub Actions workflows
+3. **Train Team**: Educate developers on GitHub Actions workflows
+4. **Archive Legacy**: Safely retire old CI/CD infrastructure
 
-# Migration Prompt Mapping
-migration_type_prompts:
-  'Azure DevOps': 'azure-devops.prompt.md'
-  'Bamboo': 'bamboo.prompt.md'
-  'Bitbucket': 'bitbucket.prompt.md'
-  'CircleCI': 'circleci.prompt.md'
-  'Drone CI': 'droneci.prompt.md'
-  'GitLab': 'gitlab.prompt.md'
-  'Jenkins': 'jenkins.prompt.md'
-  'Travis CI': 'travisci.prompt.md'
+## Security Considerations
 
-# Target Organizations
-organizations:
-  - 'organization-1'
-  - 'organization-2'
+### Credential Migration
 
-# Processing Configuration
-batch_size: 50 # Recommended starting value
-```
+All agents automatically:
+- Convert CI/CD system credentials to GitHub Secrets
+- Implement least-privilege access patterns
+- Use secure credential reference patterns
+- Separate sensitive and non-sensitive configuration
 
-### Required Secrets & Variables
+### Security Enhancements
 
-| Type     | Name                 | Description            | Example                              |
-| -------- | -------------------- | ---------------------- | ------------------------------------ |
-| Secret   | `GH_APP_PEM`         | GitHub App private key | `-----BEGIN RSA PRIVATE KEY-----...` |
-| Secret   | `ISSUE_SUBMIT_TOKEN` | PAT for issue creation | `ghp_xxxxxxxxxxxxxxxxxxxx`           |
-| Variable | `GH_APP_ID`          | GitHub App identifier  | `1561891`                            |
-| Variable | `ORGANIZATIONS`      | JSON array of orgs     | `["org1", "org2"]`                   |
-
-### Prompt File Template
-
-Create system-specific prompts in `.github/prompts/`:
-
-```markdown
-# [CI/CD System] Migration Prompt
-
-## Context
-
-Migration from [System] to GitHub Actions for this repository.
-
-## Requirements
-
-### 1. Conversion Standards
-
-- Convert [system-specific] syntax to GitHub Actions
-- Preserve logical flow and dependencies
-- Map environment variables and secrets
-
-### 2. File Organization
-
-- Place workflows in `.github/workflows/`
-- Archive original files to `.archive/`
-- Create migration documentation
-
-### 3. System-Specific Mappings
-
-- [System-specific conversion rules]
-- [Build tool mappings]
-- [Environment configurations]
-```
-
-### Analysis Prompt Template
-
-Analysis prompts are for **ad-hoc developer use only** - they are not part of the automated migration workflow and are not referenced in `config.yaml`. Create analysis prompts in `.github/prompts/` to manually collect pipeline data before migration planning:
-
-```markdown
-# [CI/CD System] Analysis Prompt
-
-## Purpose
-
-Analyze existing [System] pipelines to collect data for migration planning and prompt customization.
-
-## Analysis Requirements
-
-### 1. Pipeline Discovery
-
-- Identify all pipeline files and configurations
-- Document build triggers and schedules
-- Map environment-specific settings
-
-### 2. Dependency Analysis
-
-- Catalog build tools and versions
-- Identify external service integrations
-- Document secret and variable usage
-
-### 3. Migration Planning
-
-- Assess complexity and migration effort
-- Identify potential conversion challenges
-- Recommend migration approach and timeline
-
-## Output Format
-
-Please provide a structured analysis that includes:
-
-- Pipeline inventory and complexity assessment
-- Dependency mapping and version requirements
-- Recommended migration strategy and considerations
-```
-
-### Single-System Migration Configuration
-
-For organizations migrating from a single CI/CD system (e.g., all repositories use Jenkins), you can simplify the process by setting the `default_value` to your migration type:
-
-```yaml
-gh_migration_type:
-  default_value: 'Jenkins' # Instead of 'None'
-  description: 'Migration tracking property'
-  other_values:
-    - 'Jenkins'
-    - 'None' # Keep for repositories that shouldn't be migrated
-```
-
-**Benefits**:
-
-- Eliminates need for manual repository tagging
-- All repositories automatically get the specified migration type
-- Reduces setup time for single-system environments
-- Repositories can still be set to 'None' to exclude them from migration
-- System automatically resets migration type to 'None' after processing to prevent duplicate migrations
-
-**Use Cases**:
-
-- Company-wide Jenkins to GitHub Actions migration
-- Single CI/CD system consolidation projects
-- Pilot migrations with homogeneous environments
-
-## Troubleshooting & FAQ
+Migrations include:
+- Updated action versions with latest security patches
+- Proper permissions and scoping
+- Security scanning integration recommendations
+- Environment protection rule suggestions
+
+## Support & Troubleshooting
 
 ### Common Issues
 
-| Issue                          | Solution                                                |
-| ------------------------------ | ------------------------------------------------------- |
-| Custom properties not created  | Verify org has Enterprise Cloud and admin permissions   |
-| Copilot not assigned to issues | Check `ISSUE_SUBMIT_TOKEN` scope and Copilot enablement |
-| Workflow timeouts              | Reduce `batch_size` and add timeout configurations      |
-| Permission errors              | Verify GitHub App permissions and installation          |
+| Issue                | Solution                                                               |
+| -------------------- | ---------------------------------------------------------------------- |
+| Agent not available  | Verify `.github-private` repository setup and enterprise configuration |
+| Migration fails      | Ensure all source CI/CD files are provided and accessible              |
+| Validation errors    | Review generated workflows for syntax issues                           |
+| Missing dependencies | Check that all required tools and services are available               |
 
-### Performance Tips
+### Getting Help
 
-- **Start small**: Begin with `batch_size: 25-50`
-- **Monitor usage**: Track GitHub Actions minutes and Copilot requests
-- **Parallel processing**: Workflow uses matrix strategy for organizations
-- **Rate limiting**: Built-in API rate limit handling
-- **Single-system migrations**: Set `default_value` to your CI/CD system type to skip manual repository tagging
-- **Automatic reset**: System prevents duplicate processing by resetting migration type to 'None' after issue creation
-
-### Migration Timing
-
-| Repository Type               | Typical Duration |
-| ----------------------------- | ---------------- |
-| Simple (basic CI/CD)          | 5-15 minutes     |
-| Complex (multiple pipelines)  | 15-45 minutes    |
-| Enterprise (extensive config) | 30-90 minutes    |
-
-_Note: Timing varies due to non-deterministic LLM behavior_
-
-## Deployment Scenarios
-
-### For GitHub Customers
-
-```bash
-# Clone the template and push to your GitHub Enterprise
-git clone https://github.com/github/actions-migrations-via-copilot.git
-cd actions-migrations-via-copilot
-git remote set-url origin https://github.com/YOUR-ENTERPRISE-ORG/actions-migrations-via-copilot.git
-git push -u origin main
-# Configure and execute in your target Enterprise environment
-```
-
-### For GitHub Service Engineers
-
-```bash
-# Fork to your development organization for feature work
-# Submit PRs back to main repository
-```
+1. **Review Migration Reports**: Check the generated `MIGRATION-README.md` for details
+2. **Validate Workflows**: Use actionlint and act for local testing
+3. **Consult Documentation**: Reference system-specific migration guides
+4. **Enterprise Support**: Contact your GitHub Enterprise support team
 
 ## Contributing
 
-Contributions welcome! Please:
+We welcome contributions to improve the migration agents:
 
-1. Open an issue for feature requests or bugs
-2. Submit PRs with clear descriptions
-3. Follow the coding guidelines in `.github/copilot-instructions.md`
-4. Test changes with sample repositories
+1. **Report Issues**: Submit bug reports or feature requests
+2. **Improve Agents**: Enhance agent capabilities and coverage
+3. **Add Systems**: Create agents for additional CI/CD systems
+4. **Update Documentation**: Keep guides and examples current
+
