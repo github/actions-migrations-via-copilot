@@ -1,9 +1,3 @@
----
-layout: default
-title: DroneCI Secrets to GitHub Actions
-description: A migration guide for handling secrets from DroneCI to GitHub Actions
----
-
 # Migrating Secrets from DroneCI to GitHub Actions
 
 When migrating CI/CD pipelines from DroneCI to GitHub Actions, handling secrets securely is a critical aspect. This guide outlines the best practices and steps to effectively migrate secrets.

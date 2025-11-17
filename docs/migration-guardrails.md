@@ -1,9 +1,3 @@
----
-layout: default
-title: Migration Guardrails
-description: Guidelines, limitations, and security standards for CI/CD migrations
----
-
 # Migration Guardrails
 
 This document defines what migration agents DO and DON'T do, along with security standards and enforcement rules that apply to all CI/CD migrations.

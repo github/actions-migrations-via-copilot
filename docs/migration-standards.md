@@ -1,9 +1,3 @@
----
-layout: default
-title: Migration Standards & Deliverables
-description: Required deliverables and standards for all CI/CD migrations
----
-
 # Migration Standards & Deliverables
 
 This document defines the mandatory deliverables, archival protocols, and completion standards for all CI/CD migrations to GitHub Actions.

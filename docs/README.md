@@ -1,9 +1,3 @@
----
-layout: default
-title: CI/CD Migration Knowledge Base
-description: Comprehensive examples and patterns for migrating CI/CD pipelines to GitHub Actions
----
-
 # CI/CD Migration Knowledge Base
 
 Welcome to the comprehensive knowledge base for migrating CI/CD pipelines from various systems to GitHub Actions. This resource provides real-world examples, patterns, and best practices to help you successfully migrate your pipelines.

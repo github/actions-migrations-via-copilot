@@ -1,9 +1,3 @@
----
-layout: default
-title: Migration Workflow
-description: Standard workflow for migrating CI/CD pipelines to GitHub Actions
----
-
 # Migration Workflow
 
 This document outlines the standard 5-phase workflow for migrating CI/CD pipelines from any source system to GitHub Actions. All migration agents follow this consistent process.
