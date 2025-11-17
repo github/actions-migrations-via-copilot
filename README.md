@@ -1,19 +1,83 @@
-# CI/CD Migration Custom Agents
+# CI/CD Migration Custom Agents with RAG Knowledge Base
 
-A collection of specialized GitHub Custom Agents for migrating CI/CD pipelines from various systems (Jenkins, Azure DevOps, CircleCI, etc.) to GitHub Actions. These agents leverage GitHub Copilot's advanced capabilities to provide automated, intelligent, and consistent migration assistance.
+A collection of specialized GitHub Custom Agents for migrating CI/CD pipelines from various systems (Jenkins, Azure DevOps, CircleCI, etc.) to GitHub Actions. These agents leverage GitHub Copilot's advanced capabilities enhanced with RAG (Retrieval-Augmented Generation) to provide automated, intelligent, and consistent migration assistance powered by a comprehensive knowledge base.
 
 ## Overview
 
-This project provides enterprise-grade GitHub Custom Agents that specialize in converting existing CI/CD pipeline configurations to GitHub Actions workflows. Each agent is expertly trained to handle the nuances and complexities of specific CI/CD systems, ensuring accurate and comprehensive migrations.
+This project provides enterprise-grade GitHub Custom Agents that specialize in converting existing CI/CD pipeline configurations to GitHub Actions workflows. Each agent is expertly trained to handle the nuances and complexities of specific CI/CD systems, and is enhanced with access to a comprehensive knowledge base of migration examples, patterns, and best practices.
 
 ## Key Features
 
+- **RAG-Enhanced Agents**: Agents reference a comprehensive knowledge base of proven migration patterns
+- **Knowledge Base**: Extensive library of migration examples, common patterns, and best practices
 - **Specialized Agents**: Purpose-built agents for each major CI/CD system
-- **Intelligent Migration**: AI-powered analysis and conversion of existing configurations
-- **Comprehensive Documentation**: Detailed migration reports with validation results
+- **Intelligent Migration**: AI-powered analysis and conversion referencing proven patterns
+- **Pattern-Based Approach**: Leverage tested migration patterns from the knowledge base
+- **Comprehensive Documentation**: Detailed migration reports with validation results and KB references
 - **Security Best Practices**: Proper credential migration and security enhancements
 - **Validation & Testing**: Built-in linting and dry-run testing capabilities
 - **Complete Archival**: Organized preservation of original configurations
+
+## 📚 Knowledge Base
+
+The RAG knowledge base is deployed to GitHub Pages and provides:
+
+### Migration Examples by System
+- **Jenkins**: Maven builds, Docker builds, multi-stage deployments, shared libraries
+- **CircleCI**: Orb conversions, executor mappings, workflow patterns
+- **Azure DevOps**: Template expansions, task conversions, pipeline patterns
+- And more for each supported CI/CD system
+
+### Common Patterns
+Reusable patterns for standard CI/CD tasks:
+- **Matrix Builds** - Test across multiple configurations
+- **Security Scanning** - Integrate security tools (SAST, DAST, container scanning)
+- **Multi-Environment Deployments** - Deploy to dev, staging, production
+- **Database Migrations** - Handle schema changes safely
+- **Caching Strategies** - Optimize build performance
+- **Monorepo Strategies** - Manage multiple projects
+- **Docker Builds** - Container image management
+- **Artifact Management** - Build output handling
+
+### Reference Materials
+Quick reference guides:
+- **Action Mappings** - Comprehensive plugin/task to GitHub Actions mappings for all systems
+- **Runner Specifications** - Choose the right runners for your workload
+- **Security Best Practices** - Secure your workflows and secrets
+- **Performance Optimization** - Make pipelines faster and more efficient
+
+**Access the Knowledge Base**: https://github.github.io/actions-migrations-via-copilot/
+
+## 🔄 How RAG Enhancement Works
+
+### Traditional Migration
+```
+Source Pipeline → Agent Converts → GitHub Actions Workflow
+```
+
+### RAG-Enhanced Migration
+```
+Source Pipeline
+    ↓
+Agent Analyzes Components
+    ↓
+Agent Searches Knowledge Base for Matching Patterns
+    ↓
+Agent Applies Proven Patterns from KB
+    ↓
+Agent Customizes for Specific Requirements
+    ↓
+Enhanced Workflow + KB References + Documentation
+```
+
+### Benefits of RAG Enhancement
+
+1. **Consistency** - All migrations follow proven, tested patterns
+2. **Quality** - Best practices embedded in every migration
+3. **Learning** - KB references help users understand decisions made
+4. **Maintainability** - Centralized knowledge base easy to update
+5. **Speed** - Agents leverage existing patterns instead of starting from scratch
+6. **Continuous Improvement** - KB grows with new patterns and examples
 
 ## Setup Requirements
 
@@ -173,8 +237,9 @@ The assigned agent will:
 Each agent provides:
 - **GitHub Actions workflows** in `.github/workflows/`
 - **Archived originals** in `.github/ci-archive/`
-- **Complete migration report** with validation results
-- **Security and performance improvements**
+- **Complete migration report** with validation results and knowledge base references
+- **Security and performance improvements** based on KB best practices
+- **Pattern documentation** showing which KB patterns were applied
 
 ### 4. Validation & Testing
 
@@ -188,11 +253,13 @@ All migrations include:
 
 ### Universal Features (All Agents)
 
+- **Knowledge Base Integration**: References proven migration patterns during conversion
 - **Source File Analysis**: Deep understanding of CI/CD configuration syntax
-- **Intelligent Conversion**: Context-aware mapping to GitHub Actions
-- **Security Enhancement**: Proper secrets and credential management
-- **Performance Optimization**: Caching, parallelization, and efficiency improvements
-- **Complete Documentation**: Comprehensive migration reports with validation
+- **Intelligent Conversion**: Context-aware mapping to GitHub Actions using KB patterns
+- **Pattern Matching**: Identifies and applies relevant patterns from knowledge base
+- **Security Enhancement**: Proper secrets and credential management following KB best practices
+- **Performance Optimization**: Caching, parallelization, and efficiency improvements from KB
+- **Complete Documentation**: Comprehensive migration reports with KB references and validation
 - **File Archival**: Organized preservation of original configurations
 
 ### Specialized Features by Agent
@@ -282,12 +349,37 @@ Migrations include:
 3. **Consult Documentation**: Reference system-specific migration guides
 4. **Enterprise Support**: Contact your GitHub Enterprise support team
 
+## 📖 Knowledge Base Maintenance
+
+### Adding Migration Examples
+
+See the [Implementation Guide](docs/reference/implementation-guide.md) for detailed instructions on:
+- Adding new migration examples
+- Creating pattern documentation
+- Updating action mappings
+- Maintaining the knowledge base
+
+### Knowledge Base Structure
+
+```
+docs/
+├── index.md                      # Knowledge base home
+├── jenkins/                      # Jenkins-specific examples
+├── azure-devops/                 # Azure DevOps examples
+├── circleci/                     # CircleCI examples
+├── patterns/                     # Common CI/CD patterns
+└── reference/                    # Quick reference guides
+```
+
 ## Contributing
 
-We welcome contributions to improve the migration agents:
+We welcome contributions to improve the migration agents and knowledge base:
 
 1. **Report Issues**: Submit bug reports or feature requests
 2. **Improve Agents**: Enhance agent capabilities and coverage
 3. **Add Systems**: Create agents for additional CI/CD systems
-4. **Update Documentation**: Keep guides and examples current
+4. **Add Examples**: Contribute migration examples to the knowledge base
+5. **Add Patterns**: Document new CI/CD patterns
+6. **Update Documentation**: Keep guides and examples current
+7. **Update Action Mappings**: Add new tool mappings as they become available
 
