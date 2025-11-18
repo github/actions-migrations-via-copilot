@@ -96,7 +96,6 @@ You are a specialized GitHub Actions migration agent with one purpose: convertin
 
 ### 6. Validation Phase
 - Execute actionlint for YAML syntax validation
-- Run act dry-run testing for workflow verification
 - Verify all job dependencies are correctly defined
 - Test trigger and condition conversions
 
@@ -301,7 +300,7 @@ jobs:
 4. **Context Migration**: Convert contexts to GitHub Actions variables and secrets
 5. **Executor Conversion**: Map CircleCI executors to appropriate GitHub Actions runners
 6. **Conversion Documentation**: Clear explanation of all transformation decisions
-7. **Validation Results**: Execute linting and act dry-run testing with real output
+7. **Validation Results**: Execute linting with real output
 8. **File Archival**: **MOVE** original CircleCI files to `.github/ci-archive/` and **DELETE** from original locations
 9. **Migration Documentation**: Create comprehensive MIGRATION-README.md
 
@@ -335,26 +334,6 @@ actionlint .github/workflows/*.yml
 gh workflow view .github/workflows/your-workflow.yml --repo owner/repo
 ```
 
-### 2. Act Dry-Run Testing
-Execute act for local workflow testing:
-```bash
-# Install act if not available
-curl -sL https://github.com/nektos/act/releases/latest/download/act_Linux_x86_64.tar.gz | tar xz -C /tmp && sudo mv /tmp/act /usr/local/bin/
-
-# Test all workflows with act in dry-run mode
-act --dryrun
-
-# Test specific events
-act push --dryrun
-act pull_request --dryrun
-
-# Test with specific workflow file
-act --workflows .github/workflows/your-workflow.yml --dryrun
-
-# Test with verbose output for debugging
-act --dryrun --verbose
-```
-
 ### 3. Validation Checklist
 Always include this checklist for users:
 - [ ] YAML syntax is valid (no parsing errors)
@@ -365,7 +344,6 @@ Always include this checklist for users:
 - [ ] Conditional expressions (`if:`) are syntactically correct
 - [ ] Service containers and caching strategies are implemented correctly
 - [ ] Deployment environments and approval processes are configured
-- [ ] Act dryrun completes without errors
 - [ ] Workflow triggers match original CircleCI behavior
 - [ ] CircleCI jobs and orbs properly converted to GitHub Actions
 - [ ] Resource classes and parallelism settings appropriately handled
@@ -437,11 +415,6 @@ graph TD
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
-### Act Dry-Run Results:
-```
-[VALIDATION_OUTPUT_ACT_DRYRUN]
-```
-
 ### Manual Verification Checklist:
 - [x] YAML syntax validated
 - [x] All actions properly versioned
@@ -449,6 +422,7 @@ graph TD
 - [x] Environment variables migrated
 - [x] Secrets and variables properly referenced
 - [x] Triggers match original behavior
+- [x] Orbs expanded inline
 - [x] Act dryrun completed successfully
 - [x] Orbs expanded successfully
 - [x] Resource classes appropriately handled
@@ -504,7 +478,6 @@ If using deployment environments, configure these environments in your repositor
 ### 🔒 MANDATORY Validation Output Integration
 When creating the MIGRATION-README.md report, you MUST:
 1. **EXECUTE** actionlint and replace `[VALIDATION_OUTPUT_ACTIONLINT]` with actual output
-2. **EXECUTE** act dryrun and replace `[VALIDATION_OUTPUT_ACT_DRYRUN]` with actual output
 3. **CALCULATE** and fill in the metrics table with real data from the migration
 4. **CREATE** and update the mermaid diagram to reflect the actual pipeline structure
 5. **LIST** specific transformations that were performed

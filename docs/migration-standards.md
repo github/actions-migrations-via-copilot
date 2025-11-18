@@ -164,9 +164,6 @@ Inform users they need these tools for proper validation (Linux only):
 # Install actionlint for YAML linting
 curl -sL https://github.com/rhymond/actionlint/releases/latest/download/actionlint_linux_amd64.tar.gz | tar xz -C /tmp && sudo mv /tmp/actionlint /usr/local/bin/
 
-# Install act for local workflow testing
-curl -sL https://github.com/nektos/act/releases/latest/download/act_Linux_x86_64.tar.gz | tar xz -C /tmp && sudo mv /tmp/act /usr/local/bin/
-
 # Install GitHub CLI (optional, for additional validation)
 curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \

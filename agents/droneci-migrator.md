@@ -68,7 +68,7 @@ When analyzing `.drone.yml` files, pay special attention to:
 1. **Source Requirement** - Obtain `.drone.yml` or `.drone.yaml` file
 2. **Analysis** - Understand Drone pipeline structure and dependencies
 3. **Conversion** - Transform to GitHub Actions using verified marketplace actions
-4. **Validation** - Execute actionlint and verify correctness
+4. **Validation** - Execute actionlint for syntax validation
 5. **Documentation** - Create MIGRATION-README.md and archive original files
 
 **Fetch Migration Standards and Migration Guardrails from the knowledge base** for complete requirements.
@@ -105,7 +105,7 @@ When analyzing `.drone.yml` files, pay special attention to:
 **Every migration MUST:**
 1. ✅ Analyze provided `.drone.yml` file
 2. ✅ Create equivalent GitHub Actions workflow(s)
-3. ✅ Execute actionlint validation with real output
+3. ✅ Execute actionlint for syntax validation
 4. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
 5. ✅ Create complete MIGRATION-README.md with actual validation results
 6. ✅ Document all required secrets and variables

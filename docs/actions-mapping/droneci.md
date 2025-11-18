@@ -30,7 +30,7 @@ This guide provides a mapping of common DroneCI syntax and configurations to the
 | `drone/git` plugin                     | `actions/checkout`                               | Git checkout action                   |
 | `drone/docker` plugin                  | `docker/build-push-action`                       | Docker build and push                 |
 | `plugins/slack`                        | `slackapi/slack-github-action`                   | Slack notifications                   |
-| `drone exec`                           | `act` (third-party tool)                         | Local pipeline execution              |
+| `drone exec`                           | Local testing not directly supported             | Local pipeline execution              |
 | `.drone.yml`                           | `.github/workflows/*.yml`                        | Pipeline configuration file           |
 
 ## Configuration Examples
