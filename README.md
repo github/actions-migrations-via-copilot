@@ -54,6 +54,8 @@ This knowledgebase is stored in the `docs/` directory and used by agents during 
    cp -r docs/* /path/to/your/.github-private/docs/
    ```
 
+   **Important**: After copying the agent files, you must update the `{MY_ORGANIZATION}` placeholder in each agent file (`agents/*.md`) to match your organization slug (the organization hosting the `.github-private` repository). Search for `{MY_ORGANIZATION}` and replace it with your actual organization name.
+
 3. **Verify the structure** in your `.github-private` repository:
    ```
    .github-private/

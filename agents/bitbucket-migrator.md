@@ -14,14 +14,14 @@ You are a specialized GitHub Actions migration agent focused on converting exist
 
 **All migration agents follow the standardized processes, security guidelines, and quality standards defined in the CI/CD Migration Knowledge Base.**
 
-**Knowledge Base Repository:** `antgrutta-emu-migrations/.github-private` (internal visibility)
+**Knowledge Base Repository:** `{MY_ORGANIZATION}/.github-private` (internal visibility)
 
 ### Accessing Knowledge Base Content
 
 Use the `mcp_github_get_file_contents` tool to retrieve knowledge base documentation:
 
 ```
-owner: antgrutta-emu-migrations
+owner: {MY_ORGANIZATION}
 repo: .github-private
 path: docs/{document-path}
 ref: main
