@@ -88,9 +88,9 @@ Files must be **MOVED** (not copied) to the archive. Files must be **REMOVED** f
 **Step 4: Create Migration Report**
 
 Create `.github/ci-archive/MIGRATION-README.md` with complete migration report using the appropriate template:
-- [DroneCI Migration Report Template](report-template/droneci.md)
-- [Jenkins Migration Report Template](report-template/jenkins.md) *(if exists)*
-- [CircleCI Migration Report Template](report-template/circleci.md) *(if exists)*
+- [DroneCI Migration Report Template](docs/report-template/droneci.md)
+- [Jenkins Migration Report Template](docs/report-template/jenkins.md) *(if exists)*
+- [CircleCI Migration Report Template](docs/report-template/circleci.md) *(if exists)*
 - *(Add other CI systems as templates are created)*
 
 **Step 5: Execute Validation**

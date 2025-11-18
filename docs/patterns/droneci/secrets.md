@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Use secret
         run: echo "Username is ${{ secrets.USERNAME }}"
 ```
@@ -73,9 +73,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Use organization secrets
         run: |
           echo "Docker Username is ${{ secrets.DOCKER_USERNAME }}"
           echo "Docker Password is ${{ secrets.DOCKER_PASSWORD }}"
 ```
+
+---
+
+*For security best practices, migration checklists, and troubleshooting guidance, refer to [Migration Guardrails](docs/migration-guardrails.md) and [Migration Standards](docs/migration-standards.md) in the knowledge base.*

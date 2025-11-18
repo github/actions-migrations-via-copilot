@@ -77,7 +77,7 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 - [ ] Conditional expressions are syntactically correct
 - [ ] Workflow triggers match original behavior
 
-For complete validation requirements and tool setup, see [Workflow Validation Requirements](README.md#workflow-validation-requirements).
+For complete validation requirements and tool setup, see [Workflow Validation Requirements](docs/README.md#workflow-validation-requirements).
 
 ## Phase 5: Documentation Phase (FINAL)
 
@@ -98,7 +98,7 @@ For complete validation requirements and tool setup, see [Workflow Validation Re
 - Document project-specific secrets and variables
 - Capture migration notes, decisions, and considerations
 
-See the [Report Templates](report-template/) for CI-system-specific templates.
+See the [Report Templates](docs/report-template/) for CI-system-specific templates.
 
 ## Workflow Completion
 
