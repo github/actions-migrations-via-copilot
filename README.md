@@ -32,17 +32,20 @@ Organizations migrating to GitHub Actions face common obstacles:
 ```mermaid
 graph TB
     subgraph GHE["GitHub Enterprise Cloud"]
-        subgraph Private[".github-private Repository (Internal)"]
-            Agents["agents/<br/>• Jenkins Migrator<br/>• Azure DevOps Migrator<br/>• CircleCI Migrator<br/>• GitLab Migrator<br/>• Travis CI Migrator<br/>• Bamboo Migrator<br/>• Bitbucket Migrator<br/>• Drone CI Migrator<br/>• Reusable Workflow Builder"]
-            KB["docs/ (Knowledgebase)<br/>• Migration Standards<br/>• Action Mappings<br/>• Security Patterns<br/>• Best Practices<br/>• Validation Rules"]
-            Automation["GitHub Actions<br/>(Automated bulk migrations)"]
-            Agents -."references during<br/>migration".-> KB
-        end
+        Private[".github-private Repository"]
+        Agents["Migration Agents<br/>• Jenkins Migrator<br/>• Azure DevOps Migrator<br/>• CircleCI Migrator<br/>• GitLab Migrator<br/>• Travis CI Migrator<br/>• Bamboo Migrator<br/>• Bitbucket Migrator<br/>• Drone CI Migrator<br/>• Reusable Workflow Builder"]
+        KB["Knowledgebase<br/>• Migration Standards<br/>• Action Mappings<br/>• Security Patterns<br/>• Best Practices<br/>• Validation Rules"]
+        Automation["GitHub Actions Workflows<br/>(Automated bulk migrations)"]
 
-        Reusable["reusable-workflows Repository<br/>(Generated reusable workflows)"]
+        Private -.-> Agents
+        Private -.-> KB
+        Private -.-> Automation
+        Agents -."references"..-> KB
 
         CopilotAgents["GitHub Copilot Agents<br/>(Available to Enterprise Users)"]
-        Private --> CopilotAgents
+        Agents --> CopilotAgents
+
+        Reusable["reusable-workflows Repository<br/>(Generated reusable workflows)"]
         CopilotAgents -.->|"generates workflows"| Reusable
 
         UserRepos["User Repositories<br/>(CI/CD files being migrated)"]
@@ -50,7 +53,7 @@ graph TB
         Automation -->|"invokes agents<br/>across repos"| CopilotAgents
     end
 
-    User["👤 User"] -->|"invokes agent<br/>manually"| CopilotAgents
+    User["👤 User"] -->|"invokes manually"| CopilotAgents
     User -->|"triggers automation"| Automation
 ```
 
