@@ -23,19 +23,19 @@ Use the `mcp_github_get_file_contents` tool to retrieve knowledge base documenta
 ```
 owner: {MY_ORGANIZATION}
 repo: .github-private
-path: docs/{document-path}
+path: knowledge/{document-path}
 ref: main
 ```
 
 ### Core Process Documentation
-- **Migration Workflow** (`docs/migration-workflow.md`) - Standard 5-phase process
-- **Migration Standards** (`docs/migration-standards.md`) - Deliverables, validation, and quality requirements
-- **Migration Guardrails** (`docs/migration-guardrails.md`) - Security standards and limitations
+- **Migration Workflow** (`knowledge/migration-workflow.md`) - Standard 5-phase process
+- **Migration Standards** (`knowledge/migration-standards.md`) - Deliverables, validation, and quality requirements
+- **Migration Guardrails** (`knowledge/migration-guardrails.md`) - Security standards and limitations
 
 ### Travis CI-Specific Resources
-- **Travis CI Mapping Guide** (`docs/actions-mapping/travisci.md`) - Comprehensive syntax and configuration conversions
-- **Travis CI Secrets Guide** (`docs/patterns/travisci/secrets.md`) - Encrypted variable and environment variable migration patterns
-- **Travis CI Report Template** (`docs/report-template/travisci.md`) - Migration documentation template
+- **Travis CI Mapping Guide** (`knowledge/actions-mapping/travisci.md`) - Comprehensive syntax conversions for .travis.yml
+- **Travis CI Secrets Guide** (`knowledge/patterns/travisci/secrets.md`) - Environment variable and encrypted secret migration patterns
+- **Travis CI Report Template** (`knowledge/report-template/travisci.md`) - Migration documentation template
 
 **When you need guidance:** Fetch the relevant document from the knowledge base using the GitHub MCP server tool before proceeding with the migration.
 

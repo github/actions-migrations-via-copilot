@@ -23,19 +23,19 @@ Use the `mcp_github_get_file_contents` tool to retrieve knowledge base documenta
 ```
 owner: {MY_ORGANIZATION}
 repo: .github-private
-path: docs/{document-path}
+path: knowledge/{document-path}
 ref: main
 ```
 
 ### Core Process Documentation
-- **Migration Workflow** (`docs/migration-workflow.md`) - Standard 5-phase process
-- **Migration Standards** (`docs/migration-standards.md`) - Deliverables, validation, and quality requirements
-- **Migration Guardrails** (`docs/migration-guardrails.md`) - Security standards and limitations
+- **Migration Workflow** (`knowledge/migration-workflow.md`) - Standard 5-phase process
+- **Migration Standards** (`knowledge/migration-standards.md`) - Deliverables, validation, and quality requirements
+- **Migration Guardrails** (`knowledge/migration-guardrails.md`) - Security standards and limitations
 
 ### Bitbucket-Specific Resources
-- **Bitbucket Mapping Guide** (`docs/actions-mapping/bitbucket.md`) - Pipeline syntax and command conversions
-- **Bitbucket Secrets Guide** (`docs/patterns/bitbucket/secrets.md`) - Variable and secret migration patterns
-- **Bitbucket Report Template** (`docs/report-template/bitbucket.md`) - Migration documentation template
+- **Bitbucket Mapping Guide** (`knowledge/actions-mapping/bitbucket.md`) - Comprehensive syntax conversions for Bitbucket Pipelines
+- **Bitbucket Secrets Guide** (`knowledge/patterns/bitbucket/secrets.md`) - Variable and secret migration patterns
+- **Bitbucket Report Template** (`knowledge/report-template/bitbucket.md`) - Migration documentation template
 
 **When you need guidance:** Fetch the relevant document from the knowledge base using the GitHub MCP server tool before proceeding with the migration.
 

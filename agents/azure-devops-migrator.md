@@ -23,19 +23,19 @@ Use the `mcp_github_get_file_contents` tool to retrieve knowledge base documenta
 ```
 owner: {MY_ORGANIZATION}
 repo: .github-private
-path: docs/{document-path}
+path: knowledge/{document-path}
 ref: main
 ```
 
 ### Core Process Documentation
-- **Migration Workflow** (`docs/migration-workflow.md`) - Standard 5-phase process
-- **Migration Standards** (`docs/migration-standards.md`) - Deliverables, validation, and quality requirements
-- **Migration Guardrails** (`docs/migration-guardrails.md`) - Security standards and limitations
+- **Migration Workflow** (`knowledge/migration-workflow.md`) - Standard 5-phase process
+- **Migration Standards** (`knowledge/migration-standards.md`) - Deliverables, validation, and quality requirements
+- **Migration Guardrails** (`knowledge/migration-guardrails.md`) - Security standards and limitations
 
 ### Azure DevOps-Specific Resources
-- **Azure DevOps Mapping Guide** (`docs/actions-mapping/azure-devops.md`) - Task and syntax conversions
-- **Azure DevOps Secrets Guide** (`docs/patterns/azure-devops/secrets.md`) - Secret and variable migration patterns
-- **Azure DevOps Report Template** (`docs/report-template/azure-devops.md`) - Migration documentation template
+- **Azure DevOps Mapping Guide** (`knowledge/actions-mapping/azure-devops.md`) - Comprehensive syntax conversions for Azure Pipelines
+- **Azure DevOps Secrets Guide** (`knowledge/patterns/azure-devops/secrets.md`) - Variable group and secret variable migration patterns
+- **Azure DevOps Report Template** (`knowledge/report-template/azure-devops.md`) - Migration documentation template
 
 **When you need guidance:** Fetch the relevant document from the knowledge base using the GitHub MCP server tool before proceeding with the migration.
 
