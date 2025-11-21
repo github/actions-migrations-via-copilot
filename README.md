@@ -146,36 +146,16 @@ Every migration produces:
 
 ### Special Agent: Reusable Workflow Builder
 
-The **Reusable Workflow Builder** is unique—it analyzes CI/CD patterns across your GitHub organization(s) and generates standardized reusable workflows:
+The **Reusable Workflow Builder** is unique—it analyzes CI/CD patterns across your GitHub organization(s) and generates standardized reusable workflows.
 
-```mermaid
-graph LR
-    subgraph Input["📥 Input: Your GitHub Organizations"]
-        O1["Org 1<br/>(50 repos with Actions)"]
-        O2["Org 2<br/>(30 repos with Actions)"]
-        O3["Org 3<br/>(20 repos with Actions)"]
-    end
+**How it works:**
 
-    subgraph Analysis["🔍 Analysis: Pattern Detection"]
-        P1["80% build Node.js apps"]
-        P2["60% deploy to AWS"]
-        P3["70% use Docker"]
-    end
-
-    subgraph Output["📤 Output: Reusable Workflows"]
-        R1[".github/workflows/<br/>build-node.yml"]
-        R2[".github/workflows/<br/>deploy-aws.yml"]
-        R3[".github/workflows/<br/>docker-build-push.yml"]
-        R4["docs/<br/>(usage examples)"]
-    end
-
-    Input --> Analysis
-    Analysis --> Output
-
-    style Input fill:#e1f5ff
-    style Analysis fill:#fff4e1
-    style Output fill:#e8f5e9
-```
+- **Input**: Scans multiple GitHub organizations (e.g., 3 orgs with 100+ repos total)
+- **Analysis**: Detects common patterns across repositories
+  - Build patterns (Node.js, Python, Go, Java)
+  - Deployment patterns (AWS, Azure, Kubernetes)
+  - Common tooling (Docker, security scanning)
+- **Output**: Generates reusable workflows in `.github/workflows/` with usage documentation
 
 This agent reduces duplication, standardizes CI/CD across your enterprise, and captures organizational best practices as reusable workflows.
 
