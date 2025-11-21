@@ -16,47 +16,8 @@ Organizations migrating to GitHub Actions face common obstacles:
 
 ### The Solution
 
-CI/CD Migration Custom Agents solve these problems by:
+**Agent-Powered Migration Benefits:**
 
-```mermaid
-graph LR
-    subgraph Traditional[" TRADITIONAL MIGRATION "]
-        direction TB
-        T1["Manual Analysis<br/><br/>Hours"]
-        T2["Manual Conversion<br/><br/>Days"]
-        T3["Manual Testing<br/><br/>Hours"]
-        T4["Result:<br/>Inconsistent<br/>Error-prone<br/>Slow"]
-
-        T1 --> T2 --> T3 --> T4
-
-        style T1 fill:#fff9e6,stroke:#f0ad4e,stroke-width:2px,color:#000
-        style T2 fill:#fff9e6,stroke:#f0ad4e,stroke-width:2px,color:#000
-        style T3 fill:#fff9e6,stroke:#f0ad4e,stroke-width:2px,color:#000
-        style T4 fill:#ffe6e6,stroke:#d9534f,stroke-width:3px,color:#000
-    end
-
-    subgraph Agent[" AGENT-POWERED MIGRATION "]
-        direction TB
-        A1["AI Analysis<br/><br/>Minutes"]
-        A2["Knowledgebase-Guided<br/>Conversion<br/><br/>Minutes"]
-        A3["Automated Validation<br/><br/>Seconds"]
-        A4["Result:<br/>Consistent<br/>Validated<br/>Fast"]
-
-        A1 --> A2 --> A3 --> A4
-
-        style A1 fill:#e6f3ff,stroke:#5bc0de,stroke-width:2px,color:#000
-        style A2 fill:#e6f3ff,stroke:#5bc0de,stroke-width:2px,color:#000
-        style A3 fill:#e6f3ff,stroke:#5bc0de,stroke-width:2px,color:#000
-        style A4 fill:#e6ffe6,stroke:#5cb85c,stroke-width:3px,color:#000
-    end
-
-    Traditional -.->|vs| Agent
-
-    style Traditional fill:#fafafa,stroke:#999,stroke-width:2px
-    style Agent fill:#fafafa,stroke:#999,stroke-width:2px
-```
-
-**Benefits:**
 - ⚡ **10-100x faster** than manual migration
 - 🎯 **Consistent quality** using documented best practices
 - 🔒 **Security-first** approach to credential migration
