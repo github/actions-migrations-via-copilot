@@ -174,91 +174,6 @@ This agent reduces duplication, standardizes CI/CD across your enterprise, and c
 - **[Operations Guide](docs/operations.md)** - Day-to-day usage playbooks for each agent
 - **[Migration Knowledgebase](knowledge/)** - Standards, patterns, and mappings used by agents
 
-### Example: Jenkins Migration
-
-```
-# 1. Create feature branch
-git checkout -b migrate/jenkins-to-actions
-
-# 2. Invoke Jenkins Migrator at github.com/copilot/agents
-"Please migrate our Jenkins pipeline to GitHub Actions.
-Files: Jenkinsfile, vars/buildApp.groovy"
-
-# 3. Agent generates:
-.github/
-  ├── workflows/
-  │   ├── build.yml          # Converted pipeline
-  │   └── deploy.yml         # Converted deployment
-  └── ci-archive/
-      ├── Jenkinsfile        # Original preserved
-      ├── vars/
-      │   └── buildApp.groovy
-      └── MIGRATION-README.md  # Complete report
-
-# 4. Validate
-actionlint .github/workflows/*.yml
-
-# 5. Test and merge
-git add .github/
-git commit -m "Migrate Jenkins to GitHub Actions"
-git push
-# Create PR, test, and merge
-```
-
-## Key Features
-
-### 🧠 Knowledgebase-Driven
-
-Every agent references a comprehensive knowledgebase during migration:
-- Migration standards and quality requirements
-- CI/CD plugin to GitHub Actions mappings
-- Security patterns for credential handling
-- Validated conversion templates
-
-**Benefit**: Consistent, high-quality migrations that reflect organizational best practices.
-
-### 🎯 Specialized Agents
-
-Purpose-built agents for each major CI/CD system:
-- Deep understanding of source system syntax
-- System-specific conversion patterns
-- Handles templates, libraries, and shared code
-- Inline expansion of external dependencies
-
-**Benefit**: Accurate conversions that preserve original intent and functionality.
-
-### ✅ Automated Validation
-
-Every migration includes validation:
-- **actionlint**: YAML syntax and best practices
-- **act**: Dry-run workflow execution
-- **Security review**: Credential and permission checks
-- **Performance**: Optimization recommendations
-
-**Benefit**: Catch issues before deployment, not after.
-
-### 📊 Complete Documentation
-
-Comprehensive migration reports include:
-- Every conversion decision documented
-- Validation results with actionable fixes
-- Security and performance recommendations
-- References to knowledgebase patterns used
-- Next steps for deployment
-
-**Benefit**: Full audit trail and learning resource for teams.
-
-### 🔒 Security-First
-
-Migrations enhance security posture:
-- Proper GitHub Secrets usage
-- Least-privilege permissions (GITHUB_TOKEN)
-- Updated action versions (latest security patches)
-- Security scanning integration recommendations
-- Credential rotation guidance
-
-**Benefit**: Migrations improve security, not just translate syntax.
-
 ## Project Structure
 
 ```
@@ -313,28 +228,6 @@ Migrations enhance security posture:
 └── README.md                  # This file (project overview)
 ```
 
-**Note**: When deploying to your `.github-private` repository, the `knowledge/` folder contents should be deployed as `docs/` (agents reference `.github-private/docs/` during migrations). See the [Deployment Guide](docs/deployment.md) for details.
-
-## Success Stories
-
-### Typical Migration Results
-
-- **Time Savings**: 10-100x faster than manual migration
-- **Consistency**: 100% of migrations follow standardized process
-- **Quality**: Automated validation catches issues pre-deployment
-- **Security**: Enhanced credential management and permissions
-- **Documentation**: Complete audit trail of every decision
-
-### Migration Metrics
-
-| Metric              | Before (Manual)  | After (Agent)       | Improvement   |
-| ------------------- | ---------------- | ------------------- | ------------- |
-| Time per pipeline   | 4-8 hours        | 15-30 minutes       | 10-20x faster |
-| Validation coverage | Variable (0-50%) | 100%                | Consistent    |
-| Security review     | Manual (hours)   | Automated (seconds) | Built-in      |
-| Documentation       | Incomplete       | Complete            | Always        |
-| Consistency         | Variable         | Standardized        | Uniform       |
-
 ## Support and Resources
 
 - **[Deployment Guide](docs/deployment.md)** - Enterprise setup and configuration
@@ -351,10 +244,6 @@ Contributions to improve agents and knowledgebase are welcome:
 3. **Document patterns** - Share successful migration patterns
 4. **Refine standards** - Improve quality and validation criteria
 5. **Report issues** - Submit bug reports or feature requests
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
 
