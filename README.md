@@ -35,6 +35,7 @@ graph TB
         subgraph Private[".github-private Repository (Internal)"]
             Agents["agents/<br/>• Jenkins Migrator<br/>• Azure DevOps Migrator<br/>• CircleCI Migrator<br/>• GitLab Migrator<br/>• Travis CI Migrator<br/>• Bamboo Migrator<br/>• Bitbucket Migrator<br/>• Drone CI Migrator<br/>• Reusable Workflow Builder"]
             KB["docs/ (Knowledgebase)<br/>• Migration Standards<br/>• Action Mappings<br/>• Security Patterns<br/>• Best Practices<br/>• Validation Rules"]
+            Automation["GitHub Actions<br/>(Automated bulk migrations)"]
             Agents -."references during<br/>migration".-> KB
         end
 
@@ -46,14 +47,11 @@ graph TB
 
         UserRepos["User Repositories<br/>(CI/CD files being migrated)"]
         CopilotAgents -."invoked from".-> UserRepos
+        Automation -->|"invokes agents<br/>across repos"| CopilotAgents
     end
 
-    User["👤 User"] -->|"invokes agent"| CopilotAgents
-
-    style Private fill:#e3f2fd
-    style Reusable fill:#fff3e0
-    style CopilotAgents fill:#f3e5f5
-    style UserRepos fill:#e8f5e9
+    User["👤 User"] -->|"invokes agent<br/>manually"| CopilotAgents
+    User -->|"triggers automation"| Automation
 ```
 
 ### Migration Process
