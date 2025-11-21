@@ -19,20 +19,42 @@ Organizations migrating to GitHub Actions face common obstacles:
 CI/CD Migration Custom Agents solve these problems by:
 
 ```mermaid
-graph TB
-    subgraph Traditional["TRADITIONAL MIGRATION"]
-        T1["Manual Analysis<br/>(Hours)"] --> T2["Manual Conversion<br/>(Days)"]
-        T2 --> T3["Manual Testing<br/>(Hours)"]
-        T3 --> T4["Result: Inconsistent, error-prone, slow"]
-        style T4 fill:#ffcccc
+%%{init: {'theme':'base', 'themeVariables': { 'fontSize':'16px'}}}%%
+graph LR
+    subgraph Traditional["⚠️  TRADITIONAL MIGRATION"]
+        direction TB
+        T1["<b>Manual Analysis</b><br/><br/>⏱️ Hours"]
+        T2["<b>Manual Conversion</b><br/><br/>⏱️ Days"]
+        T3["<b>Manual Testing</b><br/><br/>⏱️ Hours"]
+        T4["<b>❌ Result</b><br/><br/>Inconsistent<br/>Error-prone<br/>Slow"]
+
+        T1 --> T2 --> T3 --> T4
+
+        style T1 fill:#fff9e6,stroke:#f0ad4e,stroke-width:2px,color:#000
+        style T2 fill:#fff9e6,stroke:#f0ad4e,stroke-width:2px,color:#000
+        style T3 fill:#fff9e6,stroke:#f0ad4e,stroke-width:2px,color:#000
+        style T4 fill:#ffe6e6,stroke:#d9534f,stroke-width:3px,color:#000
     end
 
-    subgraph Agent["AGENT-POWERED MIGRATION"]
-        A1["AI Analysis<br/>(Minutes)"] --> A2["Knowledgebase-Guided<br/>Conversion (Minutes)"]
-        A2 --> A3["Automated Validation<br/>(Seconds)"]
-        A3 --> A4["Result: Consistent, validated, fast"]
-        style A4 fill:#ccffcc
+    subgraph Agent["✅  AGENT-POWERED MIGRATION"]
+        direction TB
+        A1["<b>AI Analysis</b><br/><br/>⚡ Minutes"]
+        A2["<b>Knowledgebase-Guided<br/>Conversion</b><br/><br/>⚡ Minutes"]
+        A3["<b>Automated Validation</b><br/><br/>⚡ Seconds"]
+        A4["<b>✓ Result</b><br/><br/>Consistent<br/>Validated<br/>Fast"]
+
+        A1 --> A2 --> A3 --> A4
+
+        style A1 fill:#e6f3ff,stroke:#5bc0de,stroke-width:2px,color:#000
+        style A2 fill:#e6f3ff,stroke:#5bc0de,stroke-width:2px,color:#000
+        style A3 fill:#e6f3ff,stroke:#5bc0de,stroke-width:2px,color:#000
+        style A4 fill:#e6ffe6,stroke:#5cb85c,stroke-width:3px,color:#000
     end
+
+    Traditional -.->|"vs"| Agent
+
+    style Traditional fill:#fafafa,stroke:#999,stroke-width:2px
+    style Agent fill:#fafafa,stroke:#999,stroke-width:2px
 ```
 
 **Benefits:**
