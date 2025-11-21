@@ -369,4 +369,4 @@ jobs:
 7. **Artifact Management**: Use upload/download artifact actions for file sharing
 8. **Caching**: Implement caching for dependencies to improve performance
 9. **Matrix Strategy**: Use matrix builds for multi-platform testing
-10. **Validate Early**: Run actionlint and act for validation before deployment
+10. **Validate Early**: Run actionlint for validation before deployment

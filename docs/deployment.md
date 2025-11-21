@@ -416,7 +416,6 @@ Track agent adoption across your enterprise:
 1. Review `MIGRATION-README.md` for specific validation errors
 2. Check that source CI/CD files are valid and complete
 3. Update knowledgebase with missing action mappings
-4. Test workflows locally using `act` tool
 
 ### Organization Slug Mismatch
 

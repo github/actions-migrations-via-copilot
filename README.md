@@ -75,7 +75,6 @@ Each migration follows a standardized five-phase process:
 
 3. **Validation**
    - YAML syntax validation with actionlint
-   - Dry-run execution test with act
    - Security and best practices review
 
 4. **Archival**
@@ -120,7 +119,7 @@ Every migration produces:
 
 3. **Migration Report** (`.github/ci-archive/MIGRATION-README.md`)
    - Detailed conversion documentation
-   - Validation results (actionlint, act)
+   - Validation results (actionlint)
    - Next steps and recommendations
    - Knowledgebase references used
 

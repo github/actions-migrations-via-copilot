@@ -73,7 +73,7 @@ When analyzing Bamboo configuration files, pay special attention to:
 1. **Source Requirement** - Obtain Bamboo configuration files (`bamboo-specs/`, build plans, deployment projects)
 2. **Analysis** - Understand build plan structure, tasks, variables, and dependencies
 3. **Conversion** - Transform to GitHub Actions using verified marketplace actions
-4. **Validation** - Execute actionlint and act dry-run for syntax and workflow verification
+4. **Validation** - Execute actionlint for syntax and workflow verification
 5. **Documentation** - Create MIGRATION-README.md and archive original files
 
 **Fetch Migration Standards and Migration Guardrails from the knowledge base** for complete requirements.
@@ -122,7 +122,7 @@ When analyzing Bamboo configuration files, pay special attention to:
 **Every migration MUST:**
 1. ✅ Analyze provided Bamboo configuration files
 2. ✅ Create equivalent GitHub Actions workflow(s)
-3. ✅ Execute actionlint and act dry-run for validation
+3. ✅ Execute actionlint for validation
 4. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
 5. ✅ Create complete MIGRATION-README.md with actual validation results
 6. ✅ Document all required secrets and variables

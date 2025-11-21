@@ -85,7 +85,7 @@ When analyzing GitLab CI/CD pipeline files, pay special attention to:
 1. **Source Requirement** - Obtain `.gitlab-ci.yml` and any included files
 2. **Analysis** - Understand pipeline structure, includes, templates, and dependencies
 3. **Conversion** - Transform to GitHub Actions using verified marketplace actions
-4. **Validation** - Execute actionlint and act for syntax validation
+4. **Validation** - Execute actionlint for syntax validation
 5. **Documentation** - Create MIGRATION-README.md and archive original files
 
 **Fetch Migration Standards and Migration Guardrails from the knowledge base** for complete requirements.
@@ -127,7 +127,7 @@ When analyzing GitLab CI/CD pipeline files, pay special attention to:
 2. ✅ Expand all includes and templates inline in workflows
 3. ✅ Convert stages to jobs with proper dependencies
 4. ✅ Create equivalent GitHub Actions workflow(s)
-5. ✅ Execute actionlint and act for validation
+5. ✅ Execute actionlint for validation
 6. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
 7. ✅ Create complete MIGRATION-README.md with actual validation results
 8. ✅ Document all required secrets and variables

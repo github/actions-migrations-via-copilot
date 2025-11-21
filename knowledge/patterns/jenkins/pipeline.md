@@ -869,4 +869,4 @@ jobs:
 7. **Environment Variables**: Use `env:` at workflow, job, or step level as appropriate
 8. **Cleanup**: Use `if: always()` for cleanup steps that should run regardless of success/failure
 9. **Agent Mapping**: Choose appropriate GitHub-hosted or self-hosted runners based on Jenkins agent labels
-10. **Validation**: Test converted workflows with actionlint and act before deployment
+10. **Validation**: Test converted workflows with actionlint before deployment
