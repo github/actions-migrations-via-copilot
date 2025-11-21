@@ -61,27 +61,32 @@ graph TB
 
 Each migration follows a standardized five-phase process:
 
-```mermaid
-graph TD
-    A[1. Analysis] --> B[2. Conversion]
-    B --> C[3. Validation]
-    C --> D[4. Archival]
-    D --> E[5. Documentation]
+1. **Analysis**
+   - Read source files
+   - Parse CI/CD syntax
+   - Expand templates
+   - Resolve dependencies
 
-    A -->|Read source files| A1[Parse CI/CD syntax]
-    A1 -->|Expand templates| A2[Resolve dependencies]
+2. **Conversion**
+   - Reference knowledgebase
+   - Map to GitHub Actions
+   - Apply patterns
+   - Generate workflows
 
-    B -->|Reference KB| B1[Map to Actions]
-    B1 -->|Apply patterns| B2[Generate workflows]
+3. **Validation**
+   - YAML syntax validation with actionlint
+   - Dry-run execution test with act
+   - Security and best practices review
 
-    C -->|actionlint| C1[YAML validation]
-    C1 -->|act dry-run| C2[Execution test]
+4. **Archival**
+   - Preserve history
+   - Archive original files
 
-    D -->|Preserve history| D1[Archive originals]
-
-    E -->|Document changes| E1[Create report]
-    E1 -->|List next steps| E2[Validation results]
-```
+5. **Documentation**
+   - Document changes and decisions
+   - Create migration report
+   - List next steps
+   - Include validation results
 
 ### Knowledgebase-Driven Intelligence
 
