@@ -19,14 +19,13 @@ Organizations migrating to GitHub Actions face common obstacles:
 CI/CD Migration Custom Agents solve these problems by:
 
 ```mermaid
-%%{init: {'theme':'base', 'themeVariables': { 'fontSize':'16px'}}}%%
 graph LR
-    subgraph Traditional["⚠️  TRADITIONAL MIGRATION"]
+    subgraph Traditional[" TRADITIONAL MIGRATION "]
         direction TB
-        T1["<b>Manual Analysis</b><br/><br/>⏱️ Hours"]
-        T2["<b>Manual Conversion</b><br/><br/>⏱️ Days"]
-        T3["<b>Manual Testing</b><br/><br/>⏱️ Hours"]
-        T4["<b>❌ Result</b><br/><br/>Inconsistent<br/>Error-prone<br/>Slow"]
+        T1["Manual Analysis<br/><br/>Hours"]
+        T2["Manual Conversion<br/><br/>Days"]
+        T3["Manual Testing<br/><br/>Hours"]
+        T4["Result:<br/>Inconsistent<br/>Error-prone<br/>Slow"]
 
         T1 --> T2 --> T3 --> T4
 
@@ -36,12 +35,12 @@ graph LR
         style T4 fill:#ffe6e6,stroke:#d9534f,stroke-width:3px,color:#000
     end
 
-    subgraph Agent["✅  AGENT-POWERED MIGRATION"]
+    subgraph Agent[" AGENT-POWERED MIGRATION "]
         direction TB
-        A1["<b>AI Analysis</b><br/><br/>⚡ Minutes"]
-        A2["<b>Knowledgebase-Guided<br/>Conversion</b><br/><br/>⚡ Minutes"]
-        A3["<b>Automated Validation</b><br/><br/>⚡ Seconds"]
-        A4["<b>✓ Result</b><br/><br/>Consistent<br/>Validated<br/>Fast"]
+        A1["AI Analysis<br/><br/>Minutes"]
+        A2["Knowledgebase-Guided<br/>Conversion<br/><br/>Minutes"]
+        A3["Automated Validation<br/><br/>Seconds"]
+        A4["Result:<br/>Consistent<br/>Validated<br/>Fast"]
 
         A1 --> A2 --> A3 --> A4
 
@@ -51,7 +50,7 @@ graph LR
         style A4 fill:#e6ffe6,stroke:#5cb85c,stroke-width:3px,color:#000
     end
 
-    Traditional -.->|"vs"| Agent
+    Traditional -.->|vs| Agent
 
     style Traditional fill:#fafafa,stroke:#999,stroke-width:2px
     style Agent fill:#fafafa,stroke:#999,stroke-width:2px
