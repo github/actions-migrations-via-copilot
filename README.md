@@ -33,32 +33,27 @@ Organizations migrating to GitHub Actions face common obstacles:
 graph TB
     subgraph GHE["GitHub Enterprise Cloud"]
         subgraph Private[".github-private Repository (Internal)"]
-            Agents["agents/<br/>• Jenkins<br/>• Azure DevOps<br/>• CircleCI<br/>• GitLab<br/>• Travis CI<br/>• Bamboo<br/>• Bitbucket<br/>• Drone CI<br/>• Reusable Workflow Builder"]
+            Agents["agents/<br/>• Jenkins Migrator<br/>• Azure DevOps Migrator<br/>• CircleCI Migrator<br/>• GitLab Migrator<br/>• Travis CI Migrator<br/>• Bamboo Migrator<br/>• Bitbucket Migrator<br/>• Drone CI Migrator<br/>• Reusable Workflow Builder"]
             KB["docs/ (Knowledgebase)<br/>• Migration Standards<br/>• Action Mappings<br/>• Security Patterns<br/>• Best Practices<br/>• Validation Rules"]
             Agents -."references during<br/>migration".-> KB
         end
 
+        Reusable["reusable-workflows Repository<br/>(Generated reusable workflows)"]
+
         CopilotAgents["GitHub Copilot Agents<br/>(Available to Enterprise Users)"]
         Private --> CopilotAgents
+        CopilotAgents -.->|"generates workflows"| Reusable
 
-        UserRepos["User Repositories<br/>(Where CI/CD files are migrated)"]
+        UserRepos["User Repositories<br/>(CI/CD files being migrated)"]
         CopilotAgents -."invoked from".-> UserRepos
     end
 
     User["👤 User"] -->|"invokes agent"| CopilotAgents
 
-    subgraph Workflow["Migration Workflow"]
-        W1["1. User selects repository<br/>and invokes agent"]
-        W2["2. Agent analyzes<br/>source CI/CD files"]
-        W3["3. Agent references<br/>knowledgebase"]
-        W4["4. Agent generates<br/>GitHub Actions workflows"]
-        W5["5. Agent archives<br/>original files"]
-        W6["6. Agent creates<br/>migration report"]
-
-        W1 --> W2 --> W3 --> W4 --> W5 --> W6
-    end
-
-    CopilotAgents -."executes".-> Workflow
+    style Private fill:#e3f2fd
+    style Reusable fill:#fff3e0
+    style CopilotAgents fill:#f3e5f5
+    style UserRepos fill:#e8f5e9
 ```
 
 ### Migration Process
