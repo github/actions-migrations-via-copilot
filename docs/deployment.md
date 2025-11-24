@@ -42,7 +42,7 @@ The `.github-private` repository serves as the central location for custom agent
 
 2. **Review the directory structure**:
    ```bash
-   tree -L 2
+   tree -L 1
    ```
 
    You should see:
@@ -51,7 +51,6 @@ The `.github-private` repository serves as the central location for custom agent
    ├── agents/          # Agent definition files
    ├── docs/            # Deployment and operations documentation
    ├── knowledge/       # Migration knowledgebase
-   ├── scratch/         # Temporary files (not deployed)
    └── README.md
    ```
 
