@@ -1,7 +1,7 @@
 name: Submit Repositories
 
 # This workflow submits the appropriate issue for each repository
-# in each organization configured in the settings.yaml file.
+# in each organization configured in the settings/config.yaml file.
 
 on:
   workflow_dispatch:

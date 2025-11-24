@@ -1,6 +1,6 @@
 name: Configuration Settings
 
-# This workflow consumes the settings.yaml file and creates
+# This workflow consumes the settings/config.yaml file and creates
 # the variables and secrets required for the migration workflows.
 
 on:
