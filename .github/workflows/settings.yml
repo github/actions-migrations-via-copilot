@@ -5,10 +5,6 @@ name: Configuration Settings
 
 on:
   workflow_dispatch:
-    inputs:
-      bootstrap-pat:
-        description: "Personal Access Token for bootstrapping the repository"
-        required: true
 
 jobs:
   configure_repo:
@@ -37,7 +33,7 @@ jobs:
         id: setup-custom-properties
         uses: actions/github-script@v7.0.1
         with:
-          github-token: ${{ inputs.bootstrap-pat }}
+          github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
           script: |
             const config = '${{ steps.load-settings.outputs.config }}'
             const script = require('${{ github.workspace }}/.github/scripts/setup-custom-properties.js')
@@ -47,7 +43,7 @@ jobs:
         id: setup-repo-variables
         uses: actions/github-script@v7.0.1
         with:
-          github-token: ${{ inputs.bootstrap-pat }}
+          github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
           script: |
             const config = '${{ steps.load-settings.outputs.config }}'
             const script = require('${{ github.workspace }}/.github/scripts/create-repo-vars.js')
@@ -59,7 +55,7 @@ jobs:
         env:
           SECRET_VALUE: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
         with:
-          github-token: ${{ inputs.bootstrap-pat }}
+          github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
           script: |
             const config = '${{ steps.load-settings.outputs.config }}'
             const script = require('${{ github.workspace }}/.github/scripts/create-environment-secrets.js')
