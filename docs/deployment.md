@@ -293,16 +293,11 @@ Enable custom agents for your enterprise organization.
 1. **Navigate to Enterprise settings**:
    - Click your profile photo → **Your enterprises**
    - Select your enterprise
-   - Click **Settings** → **Copilot** → **AI controls**
+   - Click **AI controls**
 
 2. **Enable custom agents**:
    - Scroll to **"Custom agents"** section
-   - Click **"Add organization"**
-   - Select the organization containing your `.github-private` repository
-   - Click **"Add"**
-
-3. **Verify agent availability**:
-   - Navigate to [https://github.com/copilot/agents](https://github.com/copilot/agents)
+   - Select the Select organization  dropdown menu, then click the organization that contains your `.github-private` repository.
    - Confirm your migration agents appear in the list:
      - Jenkins to GitHub Actions Migration Agent
      - Azure DevOps Migrator
