@@ -130,7 +130,7 @@ The automation workflows require GitHub App credentials and a Personal Access To
    - **Members**: Read-only (for accessing organization repositories)
 
 5. **Configure "Where can this GitHub App be installed?"**:
-   - Select **"Any account"** (allows installation across multiple organizations)
+   - Select **"This enterprise"** (allows installation by any organization in your enterprise)
 
 6. **Create the app**:
    - Click **"Create GitHub App"**
@@ -162,7 +162,6 @@ The automation workflows require GitHub App credentials and a Personal Access To
    - Token name: `Migration Automation - Issue Submission & MCP Access`
    - Scopes required:
      - `repo` (Full control of private repositories)
-     - `read:org` (Read organization data)
      - `admin:org` (Full control of organization settings - required for settings.yml workflow)
    - Expiration: Set according to your organization's policy
    - Click **"Generate token"** and copy the token value
@@ -248,7 +247,7 @@ The `settings.yml` workflow reads your `config.yaml` file and creates all necess
 
 1. **Navigate to Actions in .github-private repository**:
    - Go to `https://github.com/YOUR-ORG-SLUG/.github-private/actions`
-   - Click on **"Settings"** workflow in the left sidebar
+   - Click on **"Configuration Settings"** workflow in the left sidebar
 
 2. **Run the workflow manually**:
    - Click **"Run workflow"** button (top right)
@@ -258,7 +257,6 @@ The `settings.yml` workflow reads your `config.yaml` file and creates all necess
 3. **Monitor workflow execution**:
    - Click on the running workflow to view logs
    - Verify successful completion (green checkmark)
-   - The workflow uses `ISSUE_SUBMIT_TOKEN` for authentication
 
 4. **Verify repository variables were created**:
    - Navigate to `https://github.com/YOUR-ORG-SLUG/.github-private/settings/variables/actions`
