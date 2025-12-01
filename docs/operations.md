@@ -139,7 +139,7 @@ Each value maps to a specific migration agent (configured in `.github/settings/c
 
 ### Step 1: Set Custom Properties on Repositories
 
-For each repository you want to migrate, set the `GH_MIGRATION_TYPE` custom property:
+Each repository in your organization has been configured with a custom property named `GH_MIGRATION_TYPE` and the value has been set to the `default_value` specified in the configuration file. For each repository that uses different CI/CD system you need to set the `GH_MIGRATION_TYPE` custom property to the appropriate value.
 
 **Using GitHub CLI**:
 ```bash
@@ -176,8 +176,6 @@ done
 
 3. **Click "Run workflow"**:
    - **Branch**: Select `main`
-   - **Organization**: Enter the organization name to scan (or leave blank to use configured default)
-   - **Batch Size**: Enter the number of repositories to process (default: 100)
    - Click **"Run workflow"**
 
 ### Step 3: Monitor Workflow Execution
