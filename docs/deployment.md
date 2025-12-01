@@ -272,19 +272,7 @@ The `settings.yml` workflow reads your `config.yaml` file and creates all necess
 
 #### 5.6 Verify Configuration
 
-1. **Test GitHub App authentication**:
-   - Trigger a test workflow run in `.github-private`
-   - Verify the workflow can authenticate using the `GH_APP_PEM` secret
-   - Check workflow logs for successful authentication
-
-2. **Test PAT access**:
-   - Verify the PAT can access repositories across authorized organizations
-   - Test MCP access to knowledge base files
-   - Confirm issue creation works using the token
-
-3. **Verify repository variables**:
-   - Check that workflows can access the variables created by the settings workflow
-   - Ensure variable values match your `config.yaml` settings
+After completing the configuration steps, verify everything is working correctly by running a test migration. Pick a few repositories from one of your configured organizations to test with. See the [**Operations Guide**](operations.md) for detailed instructions on how to initiate and test the migration tool.
 
 ### Step 6: Configure Enterprise Copilot Settings
 
