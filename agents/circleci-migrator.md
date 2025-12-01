@@ -23,19 +23,19 @@ Use the `mcp_github_get_file_contents` tool to retrieve knowledge base documenta
 ```
 owner: {MY_ORGANIZATION}
 repo: .github-private
-path: docs/{document-path}
+path: knowledge/{document-path}
 ref: main
 ```
 
 ### Core Process Documentation
-- **Migration Workflow** (`docs/migration-workflow.md`) - Standard 5-phase process
-- **Migration Standards** (`docs/migration-standards.md`) - Deliverables, validation, and quality requirements
-- **Migration Guardrails** (`docs/migration-guardrails.md`) - Security standards and limitations
+- **Migration Workflow** (`knowledge/migration-workflow.md`) - Standard 5-phase process
+- **Migration Standards** (`knowledge/migration-standards.md`) - Deliverables, validation, and quality requirements
+- **Migration Guardrails** (`knowledge/migration-guardrails.md`) - Security standards and limitations
 
 ### CircleCI-Specific Resources
-- **CircleCI Mapping Guide** (`docs/actions-mapping/circleci.md`) - Job, orb, and syntax conversions
-- **CircleCI Secrets Guide** (`docs/patterns/circleci/secrets.md`) - Context and secret migration patterns
-- **CircleCI Report Template** (`docs/report-template/circleci.md`) - Migration documentation template
+- **CircleCI Mapping Guide** (`knowledge/actions-mapping/circleci.md`) - Comprehensive syntax conversions for CircleCI config
+- **CircleCI Secrets Guide** (`knowledge/patterns/circleci/secrets.md`) - Context and environment variable migration patterns
+- **CircleCI Report Template** (`knowledge/report-template/circleci.md`) - Migration documentation template
 
 **When you need guidance:** Fetch the relevant document from the knowledge base using the GitHub MCP server tool before proceeding with the migration.
 

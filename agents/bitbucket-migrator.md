@@ -23,19 +23,19 @@ Use the `mcp_github_get_file_contents` tool to retrieve knowledge base documenta
 ```
 owner: {MY_ORGANIZATION}
 repo: .github-private
-path: docs/{document-path}
+path: knowledge/{document-path}
 ref: main
 ```
 
 ### Core Process Documentation
-- **Migration Workflow** (`docs/migration-workflow.md`) - Standard 5-phase process
-- **Migration Standards** (`docs/migration-standards.md`) - Deliverables, validation, and quality requirements
-- **Migration Guardrails** (`docs/migration-guardrails.md`) - Security standards and limitations
+- **Migration Workflow** (`knowledge/migration-workflow.md`) - Standard 5-phase process
+- **Migration Standards** (`knowledge/migration-standards.md`) - Deliverables, validation, and quality requirements
+- **Migration Guardrails** (`knowledge/migration-guardrails.md`) - Security standards and limitations
 
 ### Bitbucket-Specific Resources
-- **Bitbucket Mapping Guide** (`docs/actions-mapping/bitbucket.md`) - Pipeline syntax and command conversions
-- **Bitbucket Secrets Guide** (`docs/patterns/bitbucket/secrets.md`) - Variable and secret migration patterns
-- **Bitbucket Report Template** (`docs/report-template/bitbucket.md`) - Migration documentation template
+- **Bitbucket Mapping Guide** (`knowledge/actions-mapping/bitbucket.md`) - Comprehensive syntax conversions for Bitbucket Pipelines
+- **Bitbucket Secrets Guide** (`knowledge/patterns/bitbucket/secrets.md`) - Variable and secret migration patterns
+- **Bitbucket Report Template** (`knowledge/report-template/bitbucket.md`) - Migration documentation template
 
 **When you need guidance:** Fetch the relevant document from the knowledge base using the GitHub MCP server tool before proceeding with the migration.
 
@@ -82,7 +82,7 @@ When analyzing `bitbucket-pipelines.yml` files, pay special attention to:
 1. **Source Requirement** - Obtain `bitbucket-pipelines.yml` file
 2. **Analysis** - Understand pipeline structure, parallel sections, custom steps, and dependencies
 3. **Conversion** - Transform to GitHub Actions using verified marketplace actions
-4. **Validation** - Execute actionlint and act for syntax validation
+4. **Validation** - Execute actionlint for syntax validation
 5. **Documentation** - Create MIGRATION-README.md and archive original files
 
 **Fetch Migration Standards and Migration Guardrails from the knowledge base** for complete requirements.
@@ -124,7 +124,7 @@ When analyzing `bitbucket-pipelines.yml` files, pay special attention to:
 2. ✅ Expand all custom steps inline in workflows
 3. ✅ Convert parallel sections to separate jobs with proper dependencies
 4. ✅ Create equivalent GitHub Actions workflow(s)
-5. ✅ Execute actionlint and act for validation
+5. ✅ Execute actionlint for validation
 6. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
 7. ✅ Create complete MIGRATION-README.md with actual validation results
 8. ✅ Document all required secrets and variables

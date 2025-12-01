@@ -23,19 +23,19 @@ Use the `mcp_github_get_file_contents` tool to retrieve knowledge base documenta
 ```
 owner: {MY_ORGANIZATION}
 repo: .github-private
-path: docs/{document-path}
+path: knowledge/{document-path}
 ref: main
 ```
 
 ### Core Process Documentation
-- **Migration Workflow** (`docs/migration-workflow.md`) - Standard 5-phase process
-- **Migration Standards** (`docs/migration-standards.md`) - Deliverables, validation, and quality requirements
-- **Migration Guardrails** (`docs/migration-guardrails.md`) - Security standards and limitations
+- **Migration Workflow** (`knowledge/migration-workflow.md`) - Standard 5-phase process
+- **Migration Standards** (`knowledge/migration-standards.md`) - Deliverables, validation, and quality requirements
+- **Migration Guardrails** (`knowledge/migration-guardrails.md`) - Security standards and limitations
 
 ### GitLab-Specific Resources
-- **GitLab Mapping Guide** (`docs/actions-mapping/gitlab.md`) - CI/CD syntax and command conversions
-- **GitLab Secrets Guide** (`docs/patterns/gitlab/secrets.md`) - Variable and secret migration patterns
-- **GitLab Report Template** (`docs/report-template/gitlab.md`) - Migration documentation template
+- **GitLab Mapping Guide** (`knowledge/actions-mapping/gitlab.md`) - Comprehensive syntax conversions for GitLab CI
+- **GitLab Secrets Guide** (`knowledge/patterns/gitlab/secrets.md`) - CI/CD variable and secret migration patterns
+- **GitLab Report Template** (`knowledge/report-template/gitlab.md`) - Migration documentation template
 
 **When you need guidance:** Fetch the relevant document from the knowledge base using the GitHub MCP server tool before proceeding with the migration.
 
@@ -85,7 +85,7 @@ When analyzing GitLab CI/CD pipeline files, pay special attention to:
 1. **Source Requirement** - Obtain `.gitlab-ci.yml` and any included files
 2. **Analysis** - Understand pipeline structure, includes, templates, and dependencies
 3. **Conversion** - Transform to GitHub Actions using verified marketplace actions
-4. **Validation** - Execute actionlint and act for syntax validation
+4. **Validation** - Execute actionlint for syntax validation
 5. **Documentation** - Create MIGRATION-README.md and archive original files
 
 **Fetch Migration Standards and Migration Guardrails from the knowledge base** for complete requirements.
@@ -127,7 +127,7 @@ When analyzing GitLab CI/CD pipeline files, pay special attention to:
 2. ✅ Expand all includes and templates inline in workflows
 3. ✅ Convert stages to jobs with proper dependencies
 4. ✅ Create equivalent GitHub Actions workflow(s)
-5. ✅ Execute actionlint and act for validation
+5. ✅ Execute actionlint for validation
 6. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
 7. ✅ Create complete MIGRATION-README.md with actual validation results
 8. ✅ Document all required secrets and variables

@@ -1,0 +1,50 @@
+# Configuration for GitHub Actions Migrations Workflows
+#
+# The following configuration file is used by the configuration workflow to set up the
+# necessary GitHub Actions Variables for the other migration workflows. This workflows
+# does not create any GitHub Actions Secrets, those will have to be created manually.
+# See the documentation for more information on how to set up the necessary secrets.
+
+## GitHub App Configuration
+## The GitHub App is used to perform operations like scanning repositories, creating custom properties,
+## and cleaning up after the migration.
+gh_app_id: "YOUR_GH_APP_ID"
+
+## Custom Properties Configuration
+## The custom property GH_MIGRATION_TYPE is used to track the type of migration for each repository.
+## A default value must be set for this property, more information can be found in the documentation.
+gh_migration_type:
+  default_value: "None"
+  description: "The type of migration for this repository. This is used to track the migration status."
+  other_values:
+    - "Azure DevOps"
+    - "Bamboo"
+    - "Bitbucket"
+    - "CircleCI"
+    - "DroneCI"
+    - "GitLab"
+    - "Jenkins"
+    - "None"
+    - "Travis CI"
+
+## Migration Type Prompts
+## The following maps the migration type to the prompt that wil be used for the GitHub Coding Agent.
+migration_type_prompts:
+  "Azure DevOps": "azure-devops-migrator.md"
+  "Bamboo": "bamboo-migrator.md"
+  "Bitbucket": "bitbucket-migrator.md"
+  "CircleCI": "circleci-migrator.md"
+  "DroneCI": "droneci-migrator.md"
+  "GitLab": "gitlab-migrator.md"
+  "Jenkins": "jenkins-migrator.md"
+  "Travis CI": "travisci-migrator.md"
+
+## Organizations
+## This property is used to store the list of organizations that the GitHub App has access to.
+organizations:
+  - "MY-ORG-1"
+  - "MY-ORG-2"
+
+## Batch Size
+## The limit for the number of repositories to process per organization in a single workflow run.
+batch_size: 100

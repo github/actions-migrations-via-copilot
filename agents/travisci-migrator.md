@@ -23,19 +23,19 @@ Use the `mcp_github_get_file_contents` tool to retrieve knowledge base documenta
 ```
 owner: {MY_ORGANIZATION}
 repo: .github-private
-path: docs/{document-path}
+path: knowledge/{document-path}
 ref: main
 ```
 
 ### Core Process Documentation
-- **Migration Workflow** (`docs/migration-workflow.md`) - Standard 5-phase process
-- **Migration Standards** (`docs/migration-standards.md`) - Deliverables, validation, and quality requirements
-- **Migration Guardrails** (`docs/migration-guardrails.md`) - Security standards and limitations
+- **Migration Workflow** (`knowledge/migration-workflow.md`) - Standard 5-phase process
+- **Migration Standards** (`knowledge/migration-standards.md`) - Deliverables, validation, and quality requirements
+- **Migration Guardrails** (`knowledge/migration-guardrails.md`) - Security standards and limitations
 
 ### Travis CI-Specific Resources
-- **Travis CI Mapping Guide** (`docs/actions-mapping/travisci.md`) - Comprehensive syntax and configuration conversions
-- **Travis CI Secrets Guide** (`docs/patterns/travisci/secrets.md`) - Encrypted variable and environment variable migration patterns
-- **Travis CI Report Template** (`docs/report-template/travisci.md`) - Migration documentation template
+- **Travis CI Mapping Guide** (`knowledge/actions-mapping/travisci.md`) - Comprehensive syntax conversions for .travis.yml
+- **Travis CI Secrets Guide** (`knowledge/patterns/travisci/secrets.md`) - Environment variable and encrypted secret migration patterns
+- **Travis CI Report Template** (`knowledge/report-template/travisci.md`) - Migration documentation template
 
 **When you need guidance:** Fetch the relevant document from the knowledge base using the GitHub MCP server tool before proceeding with the migration.
 
@@ -73,7 +73,7 @@ When analyzing `.travis.yml` files, pay special attention to:
 1. **Source Requirement** - Obtain `.travis.yml` file and any referenced scripts
 2. **Analysis** - Understand build matrix, lifecycle hooks, services, and deployment providers
 3. **Conversion** - Transform to GitHub Actions using verified marketplace actions
-4. **Validation** - Execute actionlint and act for syntax validation
+4. **Validation** - Execute actionlint for syntax validation
 5. **Documentation** - Create MIGRATION-README.md and archive original files
 
 **Fetch Migration Standards and Migration Guardrails from the knowledge base** for complete requirements.
@@ -112,7 +112,7 @@ When analyzing `.travis.yml` files, pay special attention to:
 1. ✅ Analyze provided `.travis.yml` file
 2. ✅ Convert build matrix to GitHub Actions matrix strategy
 3. ✅ Create equivalent GitHub Actions workflow(s)
-4. ✅ Execute actionlint and act for validation
+4. ✅ Execute actionlint for validation
 5. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
 6. ✅ Create complete MIGRATION-README.md with actual validation results
 7. ✅ Document all required secrets, variables, and service configurations

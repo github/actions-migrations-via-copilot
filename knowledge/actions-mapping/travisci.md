@@ -799,5 +799,5 @@ steps:
 6. **Conditional Execution**: Use `if:` conditions for conditional steps and jobs
 7. **Job Dependencies**: Use `needs:` to define job execution order
 8. **Artifact Sharing**: Use upload/download artifact actions for file sharing
-9. **Validation**: Run actionlint and act for workflow validation
+9. **Validation**: Run actionlint for workflow validation
 10. **Documentation**: Create comprehensive migration reports with actual validation results

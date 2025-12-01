@@ -485,7 +485,7 @@ echo "Building ${config.getFullName()}"
 6. **State Management**: Use artifacts and outputs instead of Groovy variables across stages
 7. **Credential Access**: Use GitHub Secrets instead of Jenkins credential binding
 8. **Context Awareness**: Map Jenkins environment variables to GitHub context expressions
-9. **Validation**: Test converted logic with act before deployment
+9. **Validation**: Test converted logic with actionlint before deployment
 10. **Documentation**: Document complex Groovy conversions in the migration README
 
 ## Troubleshooting Common Conversions

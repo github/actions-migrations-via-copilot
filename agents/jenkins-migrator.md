@@ -23,21 +23,21 @@ Use the `mcp_github_get_file_contents` tool to retrieve knowledge base documenta
 ```
 owner: {MY_ORGANIZATION}
 repo: .github-private
-path: docs/{document-path}
+path: knowledge/{document-path}
 ref: main
 ```
 
 ### Core Process Documentation
-- **Migration Workflow** (`docs/migration-workflow.md`) - Standard 5-phase process
-- **Migration Standards** (`docs/migration-standards.md`) - Deliverables, validation, and quality requirements
-- **Migration Guardrails** (`docs/migration-guardrails.md`) - Security standards and limitations
+- **Migration Workflow** (`knowledge/migration-workflow.md`) - Standard 5-phase process
+- **Migration Standards** (`knowledge/migration-standards.md`) - Deliverables, validation, and quality requirements
+- **Migration Guardrails** (`knowledge/migration-guardrails.md`) - Security standards and limitations
 
 ### Jenkins-Specific Resources
-- **Jenkins Mapping Guide** (`docs/actions-mapping/jenkins.md`) - Comprehensive syntax conversions for declarative and scripted pipelines
-- **Jenkins Pipeline Patterns** (`docs/patterns/jenkins/pipeline.md`) - Declarative and scripted pipeline conversion patterns
-- **Jenkins Groovy Patterns** (`docs/patterns/jenkins/groovy.md`) - Groovy script conversions and shared library expansion
-- **Jenkins Secrets Guide** (`docs/patterns/jenkins/secrets.md`) - Credential binding and secret migration patterns
-- **Jenkins Report Template** (`docs/report-template/jenkins.md`) - Migration documentation template
+- **Jenkins Mapping Guide** (`knowledge/actions-mapping/jenkins.md`) - Comprehensive syntax conversions for declarative and scripted pipelines
+- **Jenkins Pipeline Patterns** (`knowledge/patterns/jenkins/pipeline.md`) - Declarative and scripted pipeline conversion patterns
+- **Jenkins Groovy Patterns** (`knowledge/patterns/jenkins/groovy.md`) - Groovy script conversions and shared library expansion
+- **Jenkins Secrets Guide** (`knowledge/patterns/jenkins/secrets.md`) - Credential binding and secret migration patterns
+- **Jenkins Report Template** (`knowledge/report-template/jenkins.md`) - Migration documentation template
 
 **When you need guidance:** Fetch the relevant document from the knowledge base using the GitHub MCP server tool before proceeding with the migration.
 
@@ -73,7 +73,7 @@ When analyzing Jenkins pipeline files, pay special attention to:
 1. **Source Requirement** - Obtain Jenkinsfiles, pipeline configs, shared library files
 2. **Analysis** - Identify pipeline type, understand structure, shared libraries, and dependencies
 3. **Conversion** - Transform to GitHub Actions using verified marketplace actions, expand shared libraries inline
-4. **Validation** - Execute actionlint and act for syntax validation
+4. **Validation** - Execute actionlint for syntax validation
 5. **Documentation** - Create MIGRATION-README.md and archive original files
 
 **Fetch Migration Standards and Migration Guardrails from the knowledge base** for complete requirements.
@@ -126,7 +126,7 @@ When analyzing Jenkins pipeline files, pay special attention to:
 1. ✅ Analyze provided Jenkins pipeline files (declarative/scripted/YAML)
 2. ✅ Expand all shared library calls inline
 3. ✅ Create equivalent GitHub Actions workflow(s)
-4. ✅ Execute actionlint and act for validation
+4. ✅ Execute actionlint for validation
 5. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
 6. ✅ Create complete MIGRATION-README.md with actual validation results
 7. ✅ Document all required secrets, variables, and credential mappings

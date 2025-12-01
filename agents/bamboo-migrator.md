@@ -23,19 +23,19 @@ Use the `mcp_github_get_file_contents` tool to retrieve knowledge base documenta
 ```
 owner: {MY_ORGANIZATION}
 repo: .github-private
-path: docs/{document-path}
+path: knowledge/{document-path}
 ref: main
 ```
 
 ### Core Process Documentation
-- **Migration Workflow** (`docs/migration-workflow.md`) - Standard 5-phase process
-- **Migration Standards** (`docs/migration-standards.md`) - Deliverables, validation, and quality requirements
-- **Migration Guardrails** (`docs/migration-guardrails.md`) - Security standards and limitations
+- **Migration Workflow** (`knowledge/migration-workflow.md`) - Standard 5-phase process
+- **Migration Standards** (`knowledge/migration-standards.md`) - Deliverables, validation, and quality requirements
+- **Migration Guardrails** (`knowledge/migration-guardrails.md`) - Security standards and limitations
 
 ### Bamboo-Specific Resources
-- **Bamboo Mapping Guide** (`docs/actions-mapping/bamboo.md`) - Task and syntax conversions
-- **Bamboo Secrets Guide** (`docs/patterns/bamboo/secrets.md`) - Secret and variable migration patterns
-- **Bamboo Report Template** (`docs/report-template/bamboo.md`) - Migration documentation template
+- **Bamboo Mapping Guide** (`knowledge/actions-mapping/bamboo.md`) - Comprehensive syntax conversions for Bamboo specs
+- **Bamboo Secrets Guide** (`knowledge/patterns/bamboo/secrets.md`) - Variable and credential migration patterns
+- **Bamboo Report Template** (`knowledge/report-template/bamboo.md`) - Migration documentation template
 
 **When you need guidance:** Fetch the relevant document from the knowledge base using the GitHub MCP server tool before proceeding with the migration.
 
@@ -73,7 +73,7 @@ When analyzing Bamboo configuration files, pay special attention to:
 1. **Source Requirement** - Obtain Bamboo configuration files (`bamboo-specs/`, build plans, deployment projects)
 2. **Analysis** - Understand build plan structure, tasks, variables, and dependencies
 3. **Conversion** - Transform to GitHub Actions using verified marketplace actions
-4. **Validation** - Execute actionlint and act dry-run for syntax and workflow verification
+4. **Validation** - Execute actionlint for syntax and workflow verification
 5. **Documentation** - Create MIGRATION-README.md and archive original files
 
 **Fetch Migration Standards and Migration Guardrails from the knowledge base** for complete requirements.
@@ -122,7 +122,7 @@ When analyzing Bamboo configuration files, pay special attention to:
 **Every migration MUST:**
 1. ✅ Analyze provided Bamboo configuration files
 2. ✅ Create equivalent GitHub Actions workflow(s)
-3. ✅ Execute actionlint and act dry-run for validation
+3. ✅ Execute actionlint for validation
 4. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
 5. ✅ Create complete MIGRATION-README.md with actual validation results
 6. ✅ Document all required secrets and variables
