@@ -139,7 +139,7 @@ Each value maps to a specific migration agent (configured in `.github/settings/c
 
 ### Step 1: Set Custom Properties on Repositories
 
-Each repository in your organization has been configured with a custom property named `GH_MIGRATION_TYPE` and the value has been set to the `default_value` specified in the configuration file. For each repository that uses different CI/CD system you need to set the `GH_MIGRATION_TYPE` custom property to the appropriate value.
+Each repository in your organization has been configured with a custom property named `GH_MIGRATION_TYPE`, with the value set to the `default_value` specified in the configuration file. For each repository that uses a different CI/CD system, you need to update the `GH_MIGRATION_TYPE` custom property to the appropriate value.
 
 **Using GitHub CLI**:
 ```bash
