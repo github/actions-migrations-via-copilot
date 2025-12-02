@@ -115,7 +115,7 @@ Use the `submit-repo` workflow to migrate multiple repositories across your orga
 
 ### How It Works
 
-The batch migration system uses **custom properties** to track and control migrations. Becuase there is no API to send a prompt to a custom agent directly, we use issues as prompts for Copilot to process:
+The batch migration system uses **custom properties** to track and control migrations. Because there is no API to send a prompt to a custom agent directly, we use issues as prompts for Copilot to process:
 
 1. **Custom Property**: `GH_MIGRATION_TYPE` is set on each repository to indicate the CI/CD platform type
 2. **Workflow Scan**: The `submit-repo` workflow scans your organization for repositories with the custom property
