@@ -120,7 +120,7 @@ The batch migration system uses **custom properties** to track and control migra
 1. **Custom Property**: `GH_MIGRATION_TYPE` is set on each repository to indicate the CI/CD platform type
 2. **Workflow Scan**: The `submit-repo` workflow scans your organization for repositories with the custom property
 3. **Issue Prompt**: For each repository, the workflow creates a new issue using the appropriate custom migration agent markdown file, based on the custom property value
-4. **Copilot Assignment**: The workflow assigns the issue to Copilot for processing. Copilot uses the issue as it's prompt to perform the migration
+4. **Copilot Assignment**: The workflow assigns the issue to Copilot for processing. Copilot uses the issue as its prompt to perform the migration
 5. **Batch Processing**: Repositories are processed in batches (configurable batch size)
 
 ### Custom Property Values
