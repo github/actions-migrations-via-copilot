@@ -121,6 +121,7 @@ The automation workflows require GitHub App credentials and a Personal Access To
 
 3. **Set Repository permissions**:
    - **Contents**: Read and write
+   - **Custom properties**: Read and write
    - **Issues**: Read and write
    - **Pull requests**: Read and write
    - **Workflows**: Read and write
@@ -128,6 +129,7 @@ The automation workflows require GitHub App credentials and a Personal Access To
 
 4. **Set Organization permissions**:
    - **Members**: Read-only (for accessing organization repositories)
+   - **Custom properties**: Read-only
 
 5. **Configure "Where can this GitHub App be installed?"**:
    - Select **"This enterprise"** (allows installation by any organization in your enterprise)
