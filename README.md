@@ -1,4 +1,4 @@
-# CI/CD Migration Custom Agents
+# GitHub Actions Migration Agents
 
 Enterprise-grade GitHub Custom Agents that automatically migrate CI/CD pipelines from Jenkins, Azure DevOps, CircleCI, GitLab, and other platforms to GitHub Actions—powered by a comprehensive knowledgebase of migration patterns and best practices.
 
