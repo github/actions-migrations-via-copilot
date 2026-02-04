@@ -18,4 +18,3 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
-      - "automation"
