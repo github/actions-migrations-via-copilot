@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/verify-ci-sources.sh",
+        "cwd": ".",
+        "timeoutSec": 10,
+        "comment": "Validate repo has CI source files before migration begins"
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/security-guard.sh",
+        "cwd": ".",
+        "timeoutSec": 10,
+        "comment": "Enforce security policies: block dangerous commands, restrict file edits, require SHA pinning"
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/audit-log.sh",
+        "cwd": ".",
+        "timeoutSec": 5,
+        "comment": "Log all tool usage to JSONL audit trail"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/eval-migration.sh",
+        "cwd": ".",
+        "timeoutSec": 60,
+        "comment": "Run full migration quality scorecard"
+      }
+    ]
+  }
+}
