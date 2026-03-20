@@ -384,23 +384,34 @@ main() {
   check_secrets_documented
   check_version_comments
 
-  # Output report
+  # Build report
   local total=$((PASS + FAIL + WARN))
-  echo ""
-  echo "## Migration Eval Report"
-  echo ""
-  echo "| Check | Result | Details |"
-  echo "|-------|--------|---------|"
-  echo -e "$RESULTS"
-  echo ""
-  echo "**Score: $PASS passed, $FAIL failed, $WARN warnings out of $total checks**"
-  echo ""
+  local REPORT=""
+  REPORT+="## Migration Eval Report\n\n"
+  REPORT+="| Check | Result | Details |\n"
+  REPORT+="|-------|--------|---------|"
+  REPORT+="\n$RESULTS\n"
+  REPORT+="**Score: $PASS passed, $FAIL failed, $WARN warnings out of $total checks**\n\n"
 
   if [[ "$FAIL" -gt 0 ]]; then
-    echo "❌ Migration does not meet standards. Review failed checks above."
+    REPORT+="❌ Migration does not meet standards. Review failed checks above.\n"
+  else
+    REPORT+="✅ Migration meets all required standards.\n"
+  fi
+
+  # Output to stdout (for logs)
+  echo -e "$REPORT"
+
+  # Write to file so it gets committed with the PR
+  local SCORECARD_FILE="$ARCHIVE_DIR/migration-scorecard.md"
+  mkdir -p "$ARCHIVE_DIR"
+  echo -e "$REPORT" > "$SCORECARD_FILE"
+  echo "Scorecard written to $SCORECARD_FILE"
+
+  # Exit with appropriate code
+  if [[ "$FAIL" -gt 0 ]]; then
     exit 1
   else
-    echo "✅ Migration meets all required standards."
     exit 0
   fi
 }
