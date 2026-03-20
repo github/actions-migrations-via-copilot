@@ -75,6 +75,10 @@ if [ "$TOOL_NAME" = "edit" ] || [ "$TOOL_NAME" = "create" ]; then
       knowledge/*) ;; # allowed
       README.md) ;; # allowed
       .gitignore) ;; # allowed
+      .github/actions/*)
+        # Guardrail: DO NOT create custom actions or write action code from scratch
+        deny "Migration agents must not create custom actions. Use verified marketplace actions instead. Blocked: $FILE_PATH"
+        ;;
       *)
         deny "Migration agents may only create/edit files in .github/workflows/, .github/ci-archive/, and documentation files. Blocked: $FILE_PATH"
         ;;
