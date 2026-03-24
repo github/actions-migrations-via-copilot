@@ -520,7 +520,7 @@ When migrating Travis CI encrypted variables and environment variables:
 - [ ] Update workflow files to reference secrets with `${{ secrets.* }}`
 - [ ] Use variables with `${{ vars.* }}` for non-sensitive configuration
 - [ ] Test secret access in non-production environment first
-- [ ] Document all required secrets in MIGRATION-README.md
+- [ ] Document all required secrets in the migration Pull Request
 - [ ] Set up environment protection rules for production deployments
 - [ ] Remove or archive Travis CI encrypted variables after migration
 - [ ] Update team documentation with new secret management process
@@ -609,16 +609,21 @@ jobs:
 ## Troubleshooting
 
 ### Issue: Secret Not Available in Workflow
+
 **Solution**: Verify secret is created at correct scope (repository/organization/environment)
 
 ### Issue: Secret Value Has Special Characters
+
 **Solution**: Use base64 encoding or ensure proper escaping in shell scripts
 
 ### Issue: Need Different Secrets Per Environment
+
 **Solution**: Use GitHub Environments with environment-specific secrets
 
 ### Issue: Secret Appears in Logs
+
 **Solution**: Use `::add-mask::` or avoid echoing variables that contain secrets
 
 ### Issue: Deployment Provider Credentials
+
 **Solution**: Check marketplace for official actions that handle authentication securely

@@ -1,8 +1,8 @@
-## 📄 MIGRATION REPORT TEMPLATE
+# 📄 MIGRATION REPORT TEMPLATE
 
-Create `.github/ci-archive/MIGRATION-README.md` with this complete template:
+Use the following as the Pull Request body:
 
-```markdown
+````markdown
 # 🚀 CircleCI to GitHub Actions Migration Report
 
 ## 📊 Migration Overview
@@ -42,20 +42,23 @@ graph LR
 
 ## 🔧 Key Transformations
 
-### Job Conversions:
+### Job Conversions
+
 - CircleCI executors → GitHub Actions `runs-on:` and `container:`
 - CircleCI orbs → Expanded inline or marketplace actions
 - CircleCI commands → Reusable steps or composite actions
 - CircleCI workflow dependencies → GitHub Actions `needs:`
 
-### Orb and Context Mappings:
+### Orb and Context Mappings
+
 - `circleci/node@x` → `actions/setup-node@v4`
 - `circleci/aws-cli@x` → `aws-actions/configure-aws-credentials@v4`
 - `circleci/docker@x` → `docker/build-push-action@v5`
 - CircleCI contexts → GitHub Secrets and Variables
 - Environment variables → GitHub Variables for non-sensitive, Secrets for sensitive data
 
-### Structural Changes:
+### Structural Changes
+
 - Expanded all orb references inline
 - Converted `requires:` to `needs:` for job dependencies
 - Enhanced security with proper secret and variable management
@@ -64,12 +67,14 @@ graph LR
 
 ## ✅ Validation Results
 
-### Linting Results:
+### Linting Results
+
 ```
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
-### Manual Verification Checklist:
+### Manual Verification Checklist
+
 - [x] YAML syntax validated
 - [x] All actions properly versioned
 - [x] Job dependencies verified
@@ -96,14 +101,16 @@ graph LR
 
 ## 🔗 Variable and Secret Requirements
 
-### Required GitHub Secrets:
+### Required GitHub Secrets
+
 - `AWS_ACCESS_KEY_ID` - AWS access key for deployments (from CircleCI context)
 - `AWS_SECRET_ACCESS_KEY` - AWS secret key for deployments
 - `DOCKER_USER` - Docker Hub username
 - `DOCKER_PASS` - Docker Hub password or access token
 - [List other project-specific secrets migrated from CircleCI]
 
-### Required GitHub Variables:
+### Required GitHub Variables
+
 - `AWS_REGION` - AWS deployment region
 - `BUILD_CONFIGURATION` - Build configuration (release/debug)
 - `API_ENDPOINT` - Application API endpoint
@@ -119,9 +126,9 @@ graph LR
 
 ## 📁 Original CircleCI Files
 
-The original CircleCI configuration files have been moved to [`.github/ci-archive/`](.github/ci-archive/) for reference.
+The original CircleCI configuration files have been moved to `.github/ci-archive/` for reference:
 
-For a complete record of this migration, see [MIGRATION-README.md](.github/ci-archive/MIGRATION-README.md) in the archive folder.
+- `.circleci/config.yml` → [`.github/ci-archive/circleci-config.yml`](.github/ci-archive/circleci-config.yml)
 
 ## 📚 Migration Notes
 
@@ -130,4 +137,5 @@ For a complete record of this migration, see [MIGRATION-README.md](.github/ci-ar
 
 ---
 *Migration completed by GitHub Copilot CircleCI Migration Agent*
-```
+
+````

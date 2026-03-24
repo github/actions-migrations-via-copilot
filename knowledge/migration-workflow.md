@@ -5,11 +5,13 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 ## Phase 1: Source Requirement (FIRST)
 
 **Critical First Step:**
+
 - **ALWAYS** request the existing CI/CD configuration file(s) if not provided
 - **REFUSE** to proceed without actual source configuration files
 - **NEVER** create workflows based on descriptions or assumptions
 
 **What to Look For:**
+
 - Drone CI: `.drone.yml`, `.drone.yaml`
 - Jenkins: `Jenkinsfile`, `*.jenkinsfile`, YAML pipeline configs, shared library files
 - CircleCI: `.circleci/config.yml`
@@ -21,6 +23,7 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 ## Phase 2: Analysis Phase
 
 **Thorough Examination:**
+
 1. Examine provided configuration files thoroughly
 2. Identify pipeline structure, dependencies, and complexity
 3. Note CI-system-specific features being used
@@ -30,6 +33,7 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 7. Map agents/executors/containers to GitHub runners
 
 **Key Analysis Points:**
+
 - Pipeline/workflow orchestration and job dependencies
 - Build tools, plugins, and external integrations
 - Credential bindings, secrets, and environment variables
@@ -40,6 +44,7 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 ## Phase 3: Conversion Phase
 
 **Core Conversion Principles:**
+
 - Convert **ONLY** the functionality present in the source configuration
 - Maintain equivalent behavior and functionality
 - **Use ONLY existing verified GitHub Actions** from verified creators on [GitHub Marketplace](https://github.com/marketplace?type=actions)
@@ -50,6 +55,7 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 - Suggest optimizations while preserving original intent
 
 **Conversion Tasks:**
+
 - Map CI-specific steps to GitHub Actions equivalents
 - Convert triggers and event filters to GitHub Actions `on:` syntax
 - Translate conditional logic to GitHub Actions expressions
@@ -61,6 +67,7 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 ## Phase 4: Validation Phase
 
 **Testing and Verification:**
+
 1. Execute actionlint for YAML syntax validation
 2. Verify all job dependencies are correctly defined
 3. Break down complex pipelines into manageable chunks
@@ -69,6 +76,7 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 6. Validate secrets and variable references
 
 **Validation Checklist:**
+
 - [ ] YAML syntax is valid (no parsing errors)
 - [ ] All required actions are available and using latest stable versions
 - [ ] All actions are from verified creators on GitHub Marketplace
@@ -82,16 +90,18 @@ For complete validation requirements and tool setup, see [Workflow Validation Re
 ## Phase 5: Documentation Phase (FINAL)
 
 **Complete Migration Documentation:**
-1. **MANDATORY**: Create `.github/ci-archive/MIGRATION-README.md`
+
+1. **MANDATORY**: Create a Pull Request using the appropriate report template as the PR body
 2. Include actual validation output, not placeholders
 3. **MOVE** original CI/CD files to `.github/ci-archive/` (DELETE from original locations)
 4. **VERIFY** no original CI/CD files remain in root directory or elsewhere
-5. Complete all sections of the migration report template
+5. Complete all sections of the migration report template in the PR body
 6. Document all secrets and variables that need to be configured
 7. Provide next steps for team adoption
 
 **Documentation Standards:**
-- Use the appropriate report template for your CI system
+
+- Use the appropriate report template for your CI system as the PR body
 - Fill all sections with actual migration data (no placeholders)
 - Include real validation output (actionlint results)
 - Create mermaid diagrams reflecting actual pipeline structure
@@ -103,9 +113,10 @@ See the [Report Templates](docs/report-template/) for CI-system-specific templat
 ## Workflow Completion
 
 A migration is **NOT COMPLETE** until:
+
 - All 5 phases have been executed in order
 - Validation has been performed with real output
-- MIGRATION-README.md has been created with complete data
+- A Pull Request has been created with the completed migration report as the PR body
 - Original CI/CD files have been archived and removed from original locations
 - All deliverables have been provided to the user
 

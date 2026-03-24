@@ -14,6 +14,7 @@ How to use migration agents to convert CI/CD pipelines to GitHub Actions.
 ### 1. Prepare Repository
 
 Create a feature branch:
+
 ```bash
 git checkout -b migrate/to-actions
 git push -u origin migrate/to-actions
@@ -36,6 +37,7 @@ git push -u origin migrate/to-actions
 4. Provide clear instructions:
 
 **Example:**
+
 ```
 Migrate our Jenkins pipeline to GitHub Actions.
 
@@ -50,13 +52,15 @@ We use Docker, Kubernetes, and AWS plugins.
 ### 3. Review Output
 
 Check generated files:
+
 - **Workflows**: `.github/workflows/*.yml`
 - **Archive**: `.github/ci-archive/` (original files preserved)
-- **Report**: `.github/ci-archive/MIGRATION-README.md` (validation, secrets, next steps)
+- **Report**: Pull Request body (validation, secrets, next steps)
 
 ### 4. Configure Secrets
 
 Add secrets to repository settings:
+
 1. Go to **Settings** → **Secrets and variables** → **Actions**
 2. Add secrets listed in migration report
 
@@ -88,6 +92,7 @@ Set `GH_MIGRATION_TYPE` to: `Jenkins`, `Azure DevOps`, `CircleCI`, `GitLab`, `Tr
 ### Set Custom Properties
 
 **Using GitHub CLI:**
+
 ```bash
 # Single repository
 gh api --method PUT \
@@ -113,6 +118,7 @@ done
 ### Monitor Progress
 
 Check workflow logs to see repositories being processed:
+
 ```
 Found 15 repositories with GH_MIGRATION_TYPE property
 Processing batch 1 of 1 (15 repositories)
@@ -158,16 +164,19 @@ batch_size: 100
 ## Best Practices
 
 **Before migration:**
+
 - Create feature branch
 - Document current CI/CD state
 - List all credentials and dependencies
 
 **During migration:**
+
 - Review agent output thoroughly
 - Read migration report carefully
 - Test in feature branch first
 
 **After migration:**
+
 - Monitor workflow runs for 1-2 weeks
 - Compare performance with old CI
 - Update team documentation
@@ -175,7 +184,7 @@ batch_size: 100
 
 ## Getting Help
 
-- **Migration Reports**: Start with `.github/ci-archive/MIGRATION-README.md`
+- **Migration Reports**: Review the Pull Request created at migration completion
 - **Knowledgebase**: Review `knowledge/` in `.github-private`
 - **Discussions**: [github.com/copilot/agents discussions](https://github.com/github/actions-migrations-via-copilot/discussions)
 - **Issues**: Report problems or request improvements

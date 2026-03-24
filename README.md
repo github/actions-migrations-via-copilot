@@ -5,6 +5,7 @@ Enterprise-grade GitHub Copilot Agents that automatically migrate CI/CD pipeline
 ## Why This Project?
 
 Organizations migrating to GitHub Actions face:
+
 - Inconsistent migrations across teams
 - Loss of domain knowledge during manual conversions
 - Security oversights with credentials
@@ -12,6 +13,7 @@ Organizations migrating to GitHub Actions face:
 - Lack of validation leading to broken workflows
 
 **This project delivers:**
+
 - ⚡ **Faster** than manual migration
 - 🎯 **Consistent quality** using documented best practices
 - ✅ **Built-in validation** with actionlint
@@ -54,7 +56,7 @@ Every migration produces:
 
 1. **`.github/workflows/*.yml`** - Production-ready, validated workflows
 2. **`.github/ci-archive/`** - Original files preserved for reference
-3. **`.github/ci-archive/MIGRATION-README.md`** - Detailed report with:
+3. **Pull Request** - Migration report as the PR body with:
    - Validation results
    - Required secrets
    - Next steps
@@ -107,6 +109,7 @@ We welcome contributions! See our guides:
 - **[Extending Guide](docs/extending.md)** - Add new CI/CD platforms or improve agents
 
 **Ways to contribute:**
+
 - Add support for new CI/CD platforms
 - Improve action mappings and patterns
 - Enhance agent accuracy
@@ -122,4 +125,3 @@ We welcome contributions! See our guides:
 ## Acknowledgments
 
 Built by GitHub Professional Services for enterprise CI/CD migration programs. Contributions from GitHub's field engineering, solutions architecture, and customer success teams.
-

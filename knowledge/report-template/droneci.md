@@ -1,8 +1,8 @@
-## 📄 MIGRATION REPORT TEMPLATE
+# 📄 MIGRATION REPORT TEMPLATE
 
-Create `.github/ci-archive/MIGRATION-README.md` with this complete template:
+Use the following as the Pull Request body:
 
-```markdown
+````markdown
 # 🚀 Drone CI to GitHub Actions Migration Report
 
 ## 📊 Migration Overview
@@ -36,19 +36,22 @@ graph LR
 
 ## 🔧 Key Transformations
 
-### Step Conversions:
+### Step Conversions
+
 - `docker` steps → `docker/build-push-action@v5`
 - `slack` notification steps → `8398a7/action-slack@v3`
 - Custom command steps → `run` steps
 - Multi-command steps → combined job steps
 
-### Environment Variable and Secret Mappings:
+### Environment Variable and Secret Mappings
+
 - Drone CI secrets → GitHub Secrets for sensitive data
 - Drone CI environment variables → GitHub Variables for non-sensitive configuration
 - Environment-specific configuration → Repository or organization variables/secrets
 - Build metadata → GitHub context variables (`github.run_number`, etc.)
 
-### Structural Changes:
+### Structural Changes
+
 - Combined sequential steps into single jobs where appropriate
 - Improved caching with GitHub Actions cache
 - Enhanced security with proper secret and variable management
@@ -56,12 +59,14 @@ graph LR
 
 ## ✅ Validation Results
 
-### Linting Results:
+### Linting Results
+
 ```
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
-### Manual Verification Checklist:
+### Manual Verification Checklist
+
 - [x] YAML syntax validated
 - [x] All actions properly versioned
 - [x] Job dependencies verified
@@ -88,13 +93,15 @@ graph LR
 
 ## 🔗 Variable and Secret Requirements
 
-### Required GitHub Secrets:
+### Required GitHub Secrets
+
 - `API_SECRET` - Application API secret key (from Drone CI secrets)
 - `DATABASE_PASSWORD` - Database connection password
 - `DEPLOYMENT_TOKEN` - Deployment service token
 - [List other project-specific secrets migrated from Drone CI]
 
-### Required GitHub Variables:
+### Required GitHub Variables
+
 - `API_ENDPOINT` - Application API endpoint URL
 - `BUILD_CONFIGURATION` - Build configuration (release/debug)
 - `TARGET_ENVIRONMENT` - Deployment target environment
@@ -110,9 +117,9 @@ graph LR
 
 ## 📁 Original Drone CI Files
 
-The original Drone CI configuration files have been moved to [`.github/ci-archive/`](.github/ci-archive/) for reference.
+The original Drone CI configuration files have been moved to `.github/ci-archive/` for reference:
 
-For a complete record of this migration, see [MIGRATION-README.md](.github/ci-archive/MIGRATION-README.md) in the archive folder.
+- `.drone.yml` → [`.github/ci-archive/.drone.yml`](.github/ci-archive/.drone.yml)
 
 ## 📚 Migration Notes
 
@@ -121,4 +128,5 @@ For a complete record of this migration, see [MIGRATION-README.md](.github/ci-ar
 
 ---
 *Migration completed by GitHub Copilot Drone CI Migration Agent*
-```
+
+````

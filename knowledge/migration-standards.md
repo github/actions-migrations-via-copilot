@@ -7,30 +7,35 @@ This document defines the mandatory deliverables, archival protocols, and comple
 Every migration must produce the following deliverables:
 
 ### 1. Complete Workflows
+
 - Runnable GitHub Actions workflow files (`.github/workflows/*.yml`)
 - Workflows that replicate source functionality accurately
 - Proper job dependencies and execution order
 - Appropriate triggers matching original behavior
 
 ### 2. Secret and Variable Migration
+
 - Convert source CI secrets to GitHub Secrets
 - Convert environment variables to GitHub Variables
 - Document all required secrets and variables
 - Provide clear configuration instructions
 
 ### 3. Conversion Explanations
+
 - Clear documentation of migration decisions
 - Explanation of behavioral changes (if any)
 - Notes on platform differences and workarounds
 - Comments in workflow files explaining conversion choices
 
 ### 4. Validation Results
+
 - Execute linting (actionlint) with real output
 - Include validation results in migration report
 - Document any warnings or issues found
 - Provide resolution steps for validation failures
 
 ### 5. Security Improvements
+
 - Maintain original functionality while enhancing security
 - Implement least-privilege permissions
 - Use verified marketplace actions only
@@ -38,30 +43,34 @@ Every migration must produce the following deliverables:
 - Separate sensitive credentials using appropriate storage types
 
 ### 6. Performance Optimizations
+
 - Suggest caching strategies for dependencies
 - Recommend parallelization opportunities
 - Optimize job execution order
 - Suggestions that don't alter core behavior
 
 ### 7. File Archival
+
 - **MOVE** original CI/CD files to `.github/ci-archive/`
 - **DELETE** files from original locations (not copy)
 - Preserve original files for reference only
 - Ensure no CI/CD conflicts remain
 
 ### 8. Migration Documentation
-- Create comprehensive MIGRATION-README.md
+
+- Create a Pull Request with the completed migration report as the PR body
 - Fill all template sections with real data
 - No placeholders or incomplete sections
 - Include actual validation output
 
 ## 📋 Archival & Documentation Protocol
 
-⚠️ **MIGRATION IS NOT COMPLETE UNTIL MIGRATION-README.md IS CREATED WITH REAL DATA**
+⚠️ **MIGRATION IS NOT COMPLETE UNTIL A PULL REQUEST IS CREATED WITH THE COMPLETED MIGRATION REPORT AS THE PR BODY**
 
 ### File Archival Process
 
 **Step 1: Create Archive Directory**
+
 ```bash
 mkdir -p .github/ci-archive/
 ```
@@ -71,6 +80,7 @@ mkdir -p .github/ci-archive/
 Files must be **MOVED** (not copied) to the archive. Files must be **REMOVED** from original locations:
 
 **Examples by CI System:**
+
 - Drone CI: `.drone.yml` → `.github/ci-archive/.drone.yml` (DELETE original)
 - Jenkins: `Jenkinsfile` → `.github/ci-archive/Jenkinsfile` (DELETE original)
 - CircleCI: `.circleci/config.yml` → `.github/ci-archive/circleci-config.yml` (DELETE original directory)
@@ -79,15 +89,17 @@ Files must be **MOVED** (not copied) to the archive. Files must be **REMOVED** f
 - Azure Pipelines: `azure-pipelines.yml` → `.github/ci-archive/azure-pipelines.yml` (DELETE original)
 
 **Step 3: Verify Cleanup**
+
 - **VERIFY** no CI/CD files remain in root directory or anywhere else
 - **ENSURE** CI/CD files exist ONLY in `.github/ci-archive/`
 - Check for hidden directories (`.circleci/`, `.github/workflows/` conflicts)
 
 ### Documentation Requirements
 
-**Step 4: Create Migration Report**
+**Step 4: Create Migration Pull Request**
 
-Create `.github/ci-archive/MIGRATION-README.md` with complete migration report using the appropriate template:
+Create a Pull Request with the complete migration report as the PR body, using the appropriate template:
+
 - [DroneCI Migration Report Template](docs/report-template/droneci.md)
 - [Jenkins Migration Report Template](docs/report-template/jenkins.md) *(if exists)*
 - [CircleCI Migration Report Template](docs/report-template/circleci.md) *(if exists)*
@@ -96,6 +108,7 @@ Create `.github/ci-archive/MIGRATION-README.md` with complete migration report u
 **Step 5: Execute Validation**
 
 Execute validation steps and include **real output** in README:
+
 ```bash
 # Run actionlint
 actionlint .github/workflows/*.yml
@@ -107,6 +120,7 @@ actionlint .github/workflows/*.yml > validation-output.txt 2>&1
 **Step 6: Fill Template Sections**
 
 Fill in all metrics, diagrams, and checklists with **actual data**:
+
 - Migration overview metrics (before/after comparison)
 - Conversion diagrams (mermaid charts)
 - Step conversion mappings
@@ -122,7 +136,7 @@ Ensure the report is well-formatted, readable, and comprehensive.
 
 ## 🔒 MANDATORY Validation Output Integration
 
-When creating the MIGRATION-README.md report, you MUST:
+When creating the migration Pull Request, you MUST:
 
 1. **EXECUTE** actionlint and include actual output in the report
 2. **CALCULATE** and fill in the metrics table with real data from the migration
@@ -139,7 +153,9 @@ When creating the MIGRATION-README.md report, you MUST:
 
 ### Linting Results:
 ```
+
 [Paste actual actionlint output here - no placeholders]
+
 ```
 
 ### Manual Verification Checklist:
@@ -160,6 +176,7 @@ When creating the MIGRATION-README.md report, you MUST:
 ### Required Tools
 
 Inform users they need these tools for proper validation (Linux only):
+
 ```bash
 # Install actionlint for YAML linting
 curl -sL https://github.com/rhymond/actionlint/releases/latest/download/actionlint_linux_amd64.tar.gz | tar xz -C /tmp && sudo mv /tmp/actionlint /usr/local/bin/
@@ -175,7 +192,9 @@ sudo apt update && sudo apt install gh
 To ensure the correctness and security of your migrated GitHub Actions workflows:
 
 #### 1. Syntax Linting
+
 Execute actionlint for GitHub Actions YAML validation:
+
 ```bash
 # Using actionlint (recommended)
 actionlint .github/workflows/your-workflow.yml
@@ -194,15 +213,16 @@ Before ending any migration conversation, verify ALL items are complete:
 5. [ ] **Performance Optimization**: Added caching and parallelization improvements
 6. [ ] **File Archival**: MOVED original CI/CD files to `.github/ci-archive/`
 7. [ ] **Original File Cleanup**: VERIFIED no CI/CD files remain in original locations
-8. [ ] **Migration README Creation**: CREATED `.github/ci-archive/MIGRATION-README.md` WITH COMPLETE REPORT
-9. [ ] **Validation Results**: INCLUDED ACTUAL VALIDATION OUTPUT IN README
-10. [ ] **Migration Report**: FILLED ALL SECTIONS OF README TEMPLATE
+8. [ ] **Migration Pull Request**: CREATED PULL REQUEST WITH COMPLETE MIGRATION REPORT AS PR BODY
+9. [ ] **Validation Results**: INCLUDED ACTUAL VALIDATION OUTPUT IN PR BODY
+10. [ ] **Migration Report**: FILLED ALL SECTIONS OF REPORT TEMPLATE IN PR BODY
 
 ⛔ **MIGRATION IS NOT COMPLETE UNTIL ALL 10 ITEMS ARE CHECKED**
 
 ## Quality Standards
 
 ### Documentation Quality
+
 - Clear, concise explanations
 - Accurate technical details
 - Complete coverage of all changes
@@ -210,6 +230,7 @@ Before ending any migration conversation, verify ALL items are complete:
 - No typos or grammatical errors
 
 ### Code Quality
+
 - Valid YAML syntax
 - Proper indentation and formatting
 - Meaningful job and step names
@@ -217,6 +238,7 @@ Before ending any migration conversation, verify ALL items are complete:
 - Follows GitHub Actions best practices
 
 ### Validation Quality
+
 - Real output from validation tools
 - All warnings addressed or documented
 - Known issues clearly explained

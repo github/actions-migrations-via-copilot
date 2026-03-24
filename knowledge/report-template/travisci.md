@@ -1,9 +1,8 @@
-## 📄 MIGRATION REPORT TEMPLATE
+# 📄 MIGRATION REPORT TEMPLATE
 
-Create `.github/ci-archive/MIGRATION-README.md` with this complete template:
+Use the following as the Pull Request body:
 
-```markdown
-
+````markdown
 # 🚀 Travis CI to GitHub Actions Migration Report
 
 ## 📊 Migration Overview
@@ -45,19 +44,22 @@ graph LR
 
 ## 🔧 Key Transformations
 
-### Build Matrix Conversions:
+### Build Matrix Conversions
+
 - Travis CI build matrix → GitHub Actions matrix strategy
 - Language specifications → Setup actions (setup-node, setup-python, etc.)
 - Matrix environment variables → GitHub Actions matrix include/exclude
 - Global environment variables → Workflow-level env
 
-### Service and Infrastructure Mappings:
+### Service and Infrastructure Mappings
+
 - `services: postgresql` → `services.postgres` with health checks
 - `services: redis` → `services.redis` with health checks
 - `addons: apt` packages → `run` steps with apt-get install
 - `addons: chrome` → Browser setup actions
 
-### Deployment and Lifecycle Mappings:
+### Deployment and Lifecycle Mappings
+
 - Travis CI deployment providers → GitHub Actions deployment jobs
 - `before_install` → Pre-setup steps
 - `install` → Dependency installation steps
@@ -65,13 +67,15 @@ graph LR
 - `after_success` → Success condition steps with `if: success()`
 - `after_failure` → Failure condition steps with `if: failure()`
 
-### Environment Variable and Secret Mappings:
+### Environment Variable and Secret Mappings
+
 - Travis CI encrypted variables → GitHub Secrets for sensitive data
 - Travis CI environment variables → GitHub Variables for non-sensitive configuration
 - Environment-specific configuration → Repository or organization variables/secrets
 - Build metadata → GitHub context variables (`github.run_number`, etc.)
 
-### Structural Changes:
+### Structural Changes
+
 - Converted Travis CI build matrix to GitHub Actions matrix strategy
 - Enhanced caching with GitHub Actions cache
 - Enhanced security with proper secret and variable management
@@ -79,12 +83,14 @@ graph LR
 
 ## ✅ Validation Results
 
-### Linting Results:
+### Linting Results
+
 ```
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
-### Manual Verification Checklist:
+### Manual Verification Checklist
+
 - [x] YAML syntax validated
 - [x] All actions properly versioned
 - [x] Matrix strategy properly configured
@@ -117,14 +123,16 @@ graph LR
 
 ## 🔗 Variable and Secret Requirements
 
-### Required GitHub Secrets:
+### Required GitHub Secrets
+
 - `HEROKU_API_KEY` - Heroku deployment API key (from Travis CI encrypted variables)
 - `NPM_TOKEN` - NPM publishing token
 - `CODECOV_TOKEN` - Code coverage reporting token
 - `SLACK_WEBHOOK_URL` - Slack notification webhook
 - [List other project-specific secrets migrated from Travis CI encrypted variables]
 
-### Required GitHub Variables:
+### Required GitHub Variables
+
 - `NODE_ENV` - Node.js environment configuration
 - `API_ENDPOINT` - Application API endpoint
 - `BUILD_CONFIGURATION` - Build configuration setting
@@ -144,9 +152,9 @@ graph LR
 
 ## 📁 Original Travis CI Files
 
-The original Travis CI configuration files have been moved to [`.github/ci-archive/`](.github/ci-archive/) for reference.
+The original Travis CI configuration files have been moved to `.github/ci-archive/` for reference:
 
-For a complete record of this migration, see [MIGRATION-README.md](.github/ci-archive/MIGRATION-README.md) in the archive folder.
+- `.travis.yml` → [`.github/ci-archive/.travis.yml`](.github/ci-archive/.travis.yml)
 
 ## 📚 Migration Notes
 
@@ -157,4 +165,5 @@ For a complete record of this migration, see [MIGRATION-README.md](.github/ci-ar
 
 ---
 *Migration completed by GitHub Copilot Travis CI Migration Agent*
-```
+
+````

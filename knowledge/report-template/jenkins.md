@@ -1,9 +1,8 @@
-## 📄 MIGRATION REPORT TEMPLATE
+# 📄 MIGRATION REPORT TEMPLATE
 
-Create `.github/ci-archive/MIGRATION-README.md` with this complete template:
+Use the following as the Pull Request body:
 
-```markdown
-
+````markdown
 # 🚀 Jenkins to GitHub Actions Migration Report
 
 ## 📊 Migration Overview
@@ -43,7 +42,8 @@ graph LR
 
 ## 🔧 Key Transformations
 
-### Stage and Step Conversions:
+### Stage and Step Conversions
+
 - Jenkins stages → GitHub Actions jobs with dependencies
 - Jenkins steps → GitHub Actions steps
 - `checkout scm` → `actions/checkout@v4`
@@ -51,12 +51,14 @@ graph LR
 - Groovy scripts → Shell scripts or marketplace actions
 - Custom pipeline steps → Combined job steps
 
-### Shared Library Expansions:
+### Shared Library Expansions
+
 - Jenkins shared library calls → Expanded inline with marketplace actions
 - Custom library functions → Shell scripts or GitHub Actions equivalents
 - Reusable pipeline components → Reusable workflows or composite actions
 
-### Credential and Environment Mappings:
+### Credential and Environment Mappings
+
 - Jenkins credentials → GitHub Secrets for sensitive data
 - Jenkins environment variables → GitHub Variables for non-sensitive configuration
 - Credential bindings → GitHub Actions secrets references
@@ -64,7 +66,8 @@ graph LR
 - `GIT_COMMIT` → `${{ github.sha }}`
 - `BRANCH_NAME` → `${{ github.ref_name }}`
 
-### Structural Changes:
+### Structural Changes
+
 - Combined sequential stages into single jobs where appropriate
 - Converted parallel stages to concurrent jobs
 - Improved caching with GitHub Actions cache
@@ -73,12 +76,14 @@ graph LR
 
 ## ✅ Validation Results
 
-### Linting Results:
+### Linting Results
+
 ```
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
-### Manual Verification Checklist:
+### Manual Verification Checklist
+
 - [x] YAML syntax validated
 - [x] All actions properly versioned
 - [x] Job dependencies verified
@@ -109,7 +114,8 @@ graph LR
 
 ## 🔗 Variable and Secret Requirements
 
-### Required GitHub Secrets:
+### Required GitHub Secrets
+
 - `DOCKER_USERNAME` - Docker Hub username (from Jenkins credentials)
 - `DOCKER_PASSWORD` - Docker Hub password
 - `AWS_ACCESS_KEY_ID` - AWS deployment credentials
@@ -117,7 +123,8 @@ graph LR
 - `SSH_PRIVATE_KEY` - SSH deployment key
 - [List other project-specific secrets migrated from Jenkins credentials]
 
-### Required GitHub Variables:
+### Required GitHub Variables
+
 - `BUILD_CONFIGURATION` - Build configuration setting
 - `DEPLOYMENT_ENVIRONMENT` - Target deployment environment
 - `ARTIFACT_VERSION` - Artifact versioning scheme
@@ -135,9 +142,10 @@ graph LR
 
 ## 📁 Original Jenkins Files
 
-The original Jenkins pipeline files have been moved to [`.github/ci-archive/`](.github/ci-archive/) for reference.
+The original Jenkins pipeline files have been moved to `.github/ci-archive/` for reference:
 
-For a complete record of this migration, see [MIGRATION-README.md](.github/ci-archive/MIGRATION-README.md) in the archive folder.
+- `Jenkinsfile` → [`.github/ci-archive/Jenkinsfile`](.github/ci-archive/Jenkinsfile)
+- Shared libraries → [`.github/ci-archive/vars/`](.github/ci-archive/vars/)
 
 ## 📚 Migration Notes
 
@@ -147,4 +155,5 @@ For a complete record of this migration, see [MIGRATION-README.md](.github/ci-ar
 
 ---
 *Migration completed by GitHub Copilot Jenkins Migration Agent*
-```
+
+````
