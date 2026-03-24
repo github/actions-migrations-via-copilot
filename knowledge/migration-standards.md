@@ -69,17 +69,17 @@ Every migration must produce the following deliverables:
 
 ### File Archival Process
 
-**Step 1: Create Archive Directory**
+#### Step 1: Create Archive Directory
 
 ```bash
 mkdir -p .github/ci-archive/
 ```
 
-**Step 2: Move Original CI/CD Files**
+#### Step 2: Move Original CI/CD Files
 
 Files must be **MOVED** (not copied) to the archive. Files must be **REMOVED** from original locations:
 
-**Examples by CI System:**
+##### Examples by CI System
 
 - Drone CI: `.drone.yml` → `.github/ci-archive/.drone.yml` (DELETE original)
 - Jenkins: `Jenkinsfile` → `.github/ci-archive/Jenkinsfile` (DELETE original)
@@ -88,7 +88,7 @@ Files must be **MOVED** (not copied) to the archive. Files must be **REMOVED** f
 - Travis CI: `.travis.yml` → `.github/ci-archive/.travis.yml` (DELETE original)
 - Azure Pipelines: `azure-pipelines.yml` → `.github/ci-archive/azure-pipelines.yml` (DELETE original)
 
-**Step 3: Verify Cleanup**
+#### Step 3: Verify Cleanup
 
 - **VERIFY** no CI/CD files remain in root directory or anywhere else
 - **ENSURE** CI/CD files exist ONLY in `.github/ci-archive/`
@@ -96,18 +96,22 @@ Files must be **MOVED** (not copied) to the archive. Files must be **REMOVED** f
 
 ### Documentation Requirements
 
-**Step 4: Create Migration Pull Request**
+#### Step 4: Create Migration Pull Request
 
 Create a Pull Request with the complete migration report as the PR body, using the appropriate template:
 
-- [DroneCI Migration Report Template](docs/report-template/droneci.md)
-- [Jenkins Migration Report Template](docs/report-template/jenkins.md) *(if exists)*
-- [CircleCI Migration Report Template](docs/report-template/circleci.md) *(if exists)*
-- *(Add other CI systems as templates are created)*
+- [Azure DevOps Migration Report Template](knowledge/report-template/azure-devops.md)
+- [Bamboo Migration Report Template](knowledge/report-template/bamboo.md)
+- [Bitbucket Migration Report Template](knowledge/report-template/bitbucket.md)
+- [CircleCI Migration Report Template](knowledge/report-template/circleci.md)
+- [Drone CI Migration Report Template](knowledge/report-template/droneci.md)
+- [GitLab Migration Report Template](knowledge/report-template/gitlab.md)
+- [Jenkins Migration Report Template](knowledge/report-template/jenkins.md)
+- [Travis CI Migration Report Template](knowledge/report-template/travisci.md)
 
-**Step 5: Execute Validation**
+#### Step 5: Execute Validation
 
-Execute validation steps and include **real output** in README:
+Execute validation steps and include **real output** in the PR body:
 
 ```bash
 # Run actionlint
@@ -117,7 +121,7 @@ actionlint .github/workflows/*.yml
 actionlint .github/workflows/*.yml > validation-output.txt 2>&1
 ```
 
-**Step 6: Fill Template Sections**
+#### Step 6: Fill Template Sections
 
 Fill in all metrics, diagrams, and checklists with **actual data**:
 
@@ -130,7 +134,7 @@ Fill in all metrics, diagrams, and checklists with **actual data**:
 - Performance enhancements
 - Next steps
 
-**Step 7: Use Clear Formatting**
+#### Step 7: Use Clear Formatting
 
 Ensure the report is well-formatted, readable, and comprehensive.
 
@@ -148,24 +152,24 @@ When creating the migration Pull Request, you MUST:
 
 ### Validation Output Format
 
-```markdown
+````markdown
 ## ✅ Validation Results
 
-### Linting Results:
-```
+### Linting Results
 
+```
 [Paste actual actionlint output here - no placeholders]
-
 ```
 
-### Manual Verification Checklist:
+### Manual Verification Checklist
+
 - [x] YAML syntax validated
 - [x] All actions properly versioned
 - [x] Job dependencies verified
 - [x] Environment variables migrated
 - [x] Secrets and variables properly referenced
 - [x] Triggers match original behavior
-```
+````
 
 ⛔ **NO PLACEHOLDERS ALLOWED**: All validation output must be real execution results
 ⛔ **NO INCOMPLETE REPORTS**: Every section must be filled with actual data
@@ -200,7 +204,7 @@ Execute actionlint for GitHub Actions YAML validation:
 actionlint .github/workflows/your-workflow.yml
 ```
 
-**Any syntax errors must be resolved before proceeding.**
+> ⚠️ Any syntax errors must be resolved before proceeding.
 
 ## 📋 Migration Completion Checklist
 
