@@ -71,7 +71,7 @@ When analyzing `.circleci/config.yml` files, pay special attention to:
 1. **Source Requirement** - Obtain `.circleci/config.yml` file
 2. **Analysis** - Understand workflow structure, orbs, contexts, and dependencies
 3. **Conversion** - Transform to GitHub Actions using verified marketplace actions
-4. **Validation** - Execute actionlint for syntax validation
+4. **Validation** - Execute actionlint and CodeQL Actions scanning for syntax and security validation
 5. **Documentation** - Create MIGRATION-README.md and archive original files
 
 **Fetch Migration Standards and Migration Guardrails from the knowledge base** for complete requirements.
@@ -112,7 +112,7 @@ When analyzing `.circleci/config.yml` files, pay special attention to:
 1. ✅ Analyze provided `.circleci/config.yml` file
 2. ✅ Expand all orbs inline in workflows
 3. ✅ Create equivalent GitHub Actions workflow(s)
-4. ✅ Execute actionlint for syntax validation
+4. ✅ Execute actionlint and CodeQL Actions scanning for syntax and security validation
 5. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
 6. ✅ Create complete MIGRATION-README.md with actual validation results
 7. ✅ Document all required secrets and variables

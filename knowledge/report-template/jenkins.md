@@ -78,8 +78,14 @@ graph LR
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
+### CodeQL Actions Scan Results:
+```
+[VALIDATION_OUTPUT_CODEQL_ACTIONS]
+```
+
 ### Manual Verification Checklist:
 - [x] YAML syntax validated
+- [x] CodeQL Actions scan passes with no high/critical findings
 - [x] All actions properly versioned
 - [x] Job dependencies verified
 - [x] Environment variables migrated
@@ -128,10 +134,11 @@ graph LR
 1. **Configure secrets and variables** in GitHub repository settings
 2. **Set up environments** with appropriate protection rules for deployments
 3. **Configure branch protection rules** to match Jenkins requirements
-4. **Test the workflow** by pushing to a feature branch
-5. **Monitor execution** for any runtime issues
-6. **Update team documentation** with new workflow information
-7. **Train team members** on GitHub Actions workflow process
+4. **Enable CodeQL Actions scanning** in the repository to continuously scan workflow files for security vulnerabilities (Settings → Code security → CodeQL analysis → Enable Actions language)
+5. **Test the workflow** by pushing to a feature branch
+6. **Monitor execution** for any runtime issues
+7. **Update team documentation** with new workflow information
+8. **Train team members** on GitHub Actions workflow process
 
 ## 📁 Original Jenkins Files
 

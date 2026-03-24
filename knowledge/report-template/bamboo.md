@@ -74,8 +74,14 @@ graph TD
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
+### CodeQL Actions Scan Results:
+```
+[VALIDATION_OUTPUT_CODEQL_ACTIONS]
+```
+
 ### Manual Verification Checklist:
 - [x] YAML syntax validated
+- [x] CodeQL Actions scan passes with no high/critical findings
 - [x] All actions properly versioned with latest stable versions
 - [x] Job dependencies verified
 - [x] Environment variables migrated
@@ -126,11 +132,12 @@ graph TD
 2. **Set up environments** with appropriate protection rules
 3. **Install any required tools** that replaced Bamboo tasks
 4. **Configure notification integrations** to replace HipChat/email notifications
-5. **Test the workflows** by pushing to a feature branch
-6. **Monitor execution** for any runtime issues
-7. **Update deployment scripts** to work with new tooling
-8. **Update team documentation** with new workflow information
-9. **Train team members** on GitHub Actions workflow process
+5. **Enable CodeQL Actions scanning** in the repository to continuously scan workflow files for security vulnerabilities (Settings → Code security → CodeQL analysis → Enable Actions language)
+6. **Test the workflows** by pushing to a feature branch
+7. **Monitor execution** for any runtime issues
+8. **Update deployment scripts** to work with new tooling
+9. **Update team documentation** with new workflow information
+10. **Train team members** on GitHub Actions workflow process
 
 ## 📁 Original Bamboo Files
 

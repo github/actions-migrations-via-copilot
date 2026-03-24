@@ -26,7 +26,8 @@ Every migration must produce the following deliverables:
 
 ### 4. Validation Results
 - Execute linting (actionlint) with real output
-- Include validation results in migration report
+- Execute CodeQL scanning with `--language=actions` for workflow security analysis
+- Include both actionlint and CodeQL validation results in migration report
 - Document any warnings or issues found
 - Provide resolution steps for validation failures
 
@@ -100,8 +101,15 @@ Execute validation steps and include **real output** in README:
 # Run actionlint
 actionlint .github/workflows/*.yml
 
-# Capture output for report
+# Capture actionlint output for report
 actionlint .github/workflows/*.yml > validation-output.txt 2>&1
+
+# Run CodeQL Actions workflow scanning
+codeql database create codeql-actions-db --language=actions --source-root=.
+codeql database analyze codeql-actions-db --format=sarif-latest --output=codeql-actions-results.sarif
+
+# Capture CodeQL summary for report
+codeql database analyze codeql-actions-db --format=csv --output=codeql-actions-results.csv
 ```
 
 **Step 6: Fill Template Sections**
@@ -125,7 +133,8 @@ Ensure the report is well-formatted, readable, and comprehensive.
 When creating the MIGRATION-README.md report, you MUST:
 
 1. **EXECUTE** actionlint and include actual output in the report
-2. **CALCULATE** and fill in the metrics table with real data from the migration
+2. **EXECUTE** CodeQL scanning with `--language=actions` and include results in the report
+3. **CALCULATE** and fill in the metrics table with real data from the migration
 3. **CREATE** and update mermaid diagrams to reflect actual pipeline structure
 4. **LIST** specific step conversions that were performed
 5. **DOCUMENT** any project-specific migration notes
@@ -142,8 +151,14 @@ When creating the MIGRATION-README.md report, you MUST:
 [Paste actual actionlint output here - no placeholders]
 ```
 
+### CodeQL Actions Scan Results:
+```
+[Paste actual CodeQL actions scan output here - no placeholders]
+```
+
 ### Manual Verification Checklist:
 - [x] YAML syntax validated
+- [x] CodeQL Actions scan passes with no high/critical findings
 - [x] All actions properly versioned
 - [x] Job dependencies verified
 - [x] Environment variables migrated
@@ -164,6 +179,11 @@ Inform users they need these tools for proper validation (Linux only):
 # Install actionlint for YAML linting
 curl -sL https://github.com/rhymond/actionlint/releases/latest/download/actionlint_linux_amd64.tar.gz | tar xz -C /tmp && sudo mv /tmp/actionlint /usr/local/bin/
 
+# Install CodeQL CLI for Actions workflow security scanning
+# Download from https://github.com/github/codeql-action/releases
+# Or via GitHub CLI:
+gh extension install github/gh-codeql
+
 # Install GitHub CLI (optional, for additional validation)
 curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
@@ -183,13 +203,25 @@ actionlint .github/workflows/your-workflow.yml
 
 **Any syntax errors must be resolved before proceeding.**
 
+#### 2. CodeQL Actions Workflow Scanning
+Execute CodeQL to scan workflow files for security vulnerabilities (e.g., script injection, excessive permissions):
+```bash
+# Create CodeQL database for Actions workflows
+codeql database create codeql-actions-db --language=actions --source-root=.
+
+# Analyze the database for security issues
+codeql database analyze codeql-actions-db --format=sarif-latest --output=codeql-actions-results.sarif
+```
+
+**Any high or critical CodeQL findings must be resolved before proceeding.**
+
 ## 📋 Migration Completion Checklist
 
 Before ending any migration conversation, verify ALL items are complete:
 
 1. [ ] **Source Analysis**: Analyzed provided CI/CD configuration file(s)
 2. [ ] **Workflow Conversion**: Created equivalent GitHub Actions workflow(s)
-3. [ ] **Validation Execution**: Ran actionlint validation with real output
+3. [ ] **Validation Execution**: Ran actionlint and CodeQL Actions scan with real output
 4. [ ] **Security Review**: Implemented proper GitHub secrets and variables management
 5. [ ] **Performance Optimization**: Added caching and parallelization improvements
 6. [ ] **File Archival**: MOVED original CI/CD files to `.github/ci-archive/`

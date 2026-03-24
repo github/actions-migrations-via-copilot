@@ -62,14 +62,29 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 
 **Testing and Verification:**
 1. Execute actionlint for YAML syntax validation
-2. Verify all job dependencies are correctly defined
-3. Break down complex pipelines into manageable chunks
-4. Explain differences in execution models between platforms
-5. Test trigger and condition conversions
-6. Validate secrets and variable references
+2. Execute CodeQL scanning for Actions workflow security analysis
+3. Verify all job dependencies are correctly defined
+4. Break down complex pipelines into manageable chunks
+5. Explain differences in execution models between platforms
+6. Test trigger and condition conversions
+7. Validate secrets and variable references
+
+**CodeQL Actions Workflow Scanning:**
+CodeQL supports scanning GitHub Actions workflow files using the `actions` language. This detects security vulnerabilities such as script injection (untrusted input in `run:` steps), excessive permissions, and other workflow security issues.
+
+```bash
+# Create CodeQL database for Actions workflows
+codeql database create codeql-actions-db --language=actions --source-root=.
+
+# Analyze the database for security issues
+codeql database analyze codeql-actions-db --format=sarif-latest --output=codeql-actions-results.sarif
+```
+
+**Any CodeQL findings must be reviewed and resolved before proceeding.**
 
 **Validation Checklist:**
 - [ ] YAML syntax is valid (no parsing errors)
+- [ ] CodeQL Actions scan passes with no high/critical findings
 - [ ] All required actions are available and using latest stable versions
 - [ ] All actions are from verified creators on GitHub Marketplace
 - [ ] Job dependencies are correctly defined
@@ -93,7 +108,7 @@ For complete validation requirements and tool setup, see [Workflow Validation Re
 **Documentation Standards:**
 - Use the appropriate report template for your CI system
 - Fill all sections with actual migration data (no placeholders)
-- Include real validation output (actionlint results)
+- Include real validation output (actionlint and CodeQL results)
 - Create mermaid diagrams reflecting actual pipeline structure
 - Document project-specific secrets and variables
 - Capture migration notes, decisions, and considerations

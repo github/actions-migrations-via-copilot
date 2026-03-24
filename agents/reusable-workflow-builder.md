@@ -75,7 +75,7 @@ Before completing, verify:
 ### **Workflow Standards**
 - **Trigger**: Must use `workflow_call` (reusable workflow pattern)
 - **Location**: Save in `.github/workflows/` with `reusable-` prefix
-- **Validation**: All workflows must pass actionlint validation
+- **Validation**: All workflows must pass actionlint and CodeQL Actions scanning validation
 
 ## 🔍 **Multi-Platform CI/CD Analysis**
 
@@ -114,7 +114,7 @@ Before completing, verify:
 1. **Create Reusable Workflows**: Use `create_file` to generate `.github/workflows/reusable-*.yml` files (directories auto-created)
 2. **IMMEDIATELY Generate Documentation**: Use `create_file` to create corresponding `docs/<workflow-name>-usage.md` files (directories auto-created)
 3. **Base Documentation on Analysis**: Include your pattern identification reasoning and frequency data
-4. **Validate All Workflows**: Ensure all workflows pass actionlint validation
+4. **Validate All Workflows**: Ensure all workflows pass actionlint and CodeQL Actions scanning validation
 
 ### **🔒 MCP Tool Requirements**
 - **ALWAYS USE**: `mcp_github_*` tools for external repository access
@@ -335,7 +335,7 @@ jobs:
 - ✅ **Documentation Source**: Generated from YOUR reasoning and analysis process, not scripts
 - ❌ **ABSOLUTELY NEVER**: WORKFLOWS.md, README.md, scripts, custom actions, caller workflows
 - ❌ **FORBIDDEN FILES**: Any .sh/.bat/.ps1/.py/.js scripts or consolidated documentation
-- ✅ **Validate**: All workflows with actionlint
+- ✅ **Validate**: All workflows with actionlint and CodeQL Actions scanning
 - 🚨 **STRICT RULE**: Each reusable workflow gets exactly ONE corresponding usage.md file documenting your analysis and usage patterns
 
 ## 🎯 **Success Metrics & Validation**
@@ -344,7 +344,7 @@ jobs:
 - **Coverage**: Repos analyzed vs total available
 - **Pattern Recognition**: Unique patterns identified across platforms
 - **Standardization**: Consistency improvement potential
-- **Validation**: All workflows pass actionlint + security checks
+- **Validation**: All workflows pass actionlint + CodeQL Actions scanning + security checks
 
 ### **Final Deliverables Checklist**
 - ✅ **Reusable workflows**: `.github/workflows/reusable-*.yml` (workflow_call trigger only)

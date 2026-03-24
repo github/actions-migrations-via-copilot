@@ -18,11 +18,12 @@ This document defines what migration agents DO and DON'T do, along with security
 - ❌ **DO NOT** recommend building bespoke integrations
 
 ### Process Violations
-- ❌ **DO NOT** skip the validation phase
+- ❌ **DO NOT** skip the validation phase (actionlint and CodeQL scanning)
 - ❌ **DO NOT** leave original CI/CD files in their original locations
 - ❌ **DO NOT** provide incomplete migration reports
 - ❌ **DO NOT** use placeholder text in MIGRATION-README.md
 - ❌ **DO NOT** skip the archival process
+- ❌ **DO NOT** skip CodeQL Actions workflow scanning during validation
 
 ## ✅ What Migration Agents DO
 
@@ -43,6 +44,7 @@ This document defines what migration agents DO and DON'T do, along with security
 ### Documentation
 - ✅ **DO** create comprehensive MIGRATION-README.md for every migration
 - ✅ **DO** include real validation output (no placeholders)
+- ✅ **DO** include CodeQL Actions scan results in migration reports
 - ✅ **DO** document all required secrets and variables
 - ✅ **DO** explain conversion decisions and trade-offs
 - ✅ **DO** provide clear next steps for teams
@@ -114,6 +116,13 @@ jobs:
 - **Always** validate all external actions used
 - **Always** search marketplace first before considering alternatives
 
+### CodeQL Workflow Scanning
+- **Always** run CodeQL with `--language=actions` to scan migrated workflow files for security vulnerabilities
+- **Always** resolve high and critical CodeQL findings before completing the migration
+- **Always** include CodeQL scan results in the migration report
+- **Never** skip CodeQL scanning — it detects issues like script injection that actionlint does not catch
+- **Recommend** enabling CodeQL Actions scanning in the target repository for ongoing security analysis
+
 ### Permission Standards
 - **Always** follow the principle of least privilege for permissions
 - **Always** use minimal required permissions for `GITHUB_TOKEN`
@@ -135,6 +144,7 @@ jobs:
 - **IF** you provide workflows without MIGRATION-README.md, you have **NOT** completed the task
 - **IF** you provide templates with placeholders in the README, you have **NOT** completed the task
 - **IF** you skip validation or don't include real output, you have **NOT** completed the task
+- **IF** you skip CodeQL Actions scanning or don't include its results, you have **NOT** completed the task
 
 ### File Management Compliance
 - **IF** you don't move CI/CD files to archive and DELETE originals, you have **NOT** completed the task
@@ -144,7 +154,7 @@ jobs:
 
 ### Documentation Standards
 - **ALWAYS** create MIGRATION-README.md in the archive folder
-- **ALWAYS** include actual validation output (no placeholders)
+- **ALWAYS** include actual validation output — both actionlint and CodeQL results (no placeholders)
 - **ALWAYS** fill all template sections with real data
 - **ALWAYS** document all secrets and variables required
 
@@ -174,12 +184,13 @@ Before completing any migration, verify:
 2. ✅ Workflow accurately replicates source functionality
 3. ✅ Only verified marketplace actions were used
 4. ✅ Latest stable versions of actions are used
-5. ✅ Validation was performed with real output
-6. ✅ Secrets and variables are properly documented
-7. ✅ Original files are archived and removed from original locations
-8. ✅ MIGRATION-README.md is complete with no placeholders
-9. ✅ All security standards are followed
-10. ✅ All enforcement rules are satisfied
+5. ✅ Validation was performed with real output (actionlint and CodeQL)
+6. ✅ CodeQL Actions scan passes with no high/critical findings
+7. ✅ Secrets and variables are properly documented
+8. ✅ Original files are archived and removed from original locations
+9. ✅ MIGRATION-README.md is complete with no placeholders
+10. ✅ All security standards are followed
+11. ✅ All enforcement rules are satisfied
 
 ## 🚨 Critical Reminders
 

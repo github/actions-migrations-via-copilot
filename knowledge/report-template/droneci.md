@@ -61,8 +61,14 @@ graph LR
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
+### CodeQL Actions Scan Results:
+```
+[VALIDATION_OUTPUT_CODEQL_ACTIONS]
+```
+
 ### Manual Verification Checklist:
 - [x] YAML syntax validated
+- [x] CodeQL Actions scan passes with no high/critical findings
 - [x] All actions properly versioned
 - [x] Job dependencies verified
 - [x] Environment variables migrated
@@ -103,10 +109,11 @@ graph LR
 ## 🎯 Next Steps
 
 1. **Configure secrets and variables** in GitHub repository settings
-2. **Test the workflow** by pushing to a feature branch
-3. **Monitor execution** for any runtime issues
-4. **Update team documentation** with new workflow information
-5. **Train team members** on GitHub Actions workflow process
+2. **Enable CodeQL Actions scanning** in the repository to continuously scan workflow files for security vulnerabilities (Settings → Code security → CodeQL analysis → Enable Actions language)
+3. **Test the workflow** by pushing to a feature branch
+4. **Monitor execution** for any runtime issues
+5. **Update team documentation** with new workflow information
+6. **Train team members** on GitHub Actions workflow process
 
 ## 📁 Original Drone CI Files
 
