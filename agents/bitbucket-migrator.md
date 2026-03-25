@@ -141,9 +141,10 @@ When analyzing `bitbucket-pipelines.yml` files, pay special attention to:
 4. ✅ Create equivalent GitHub Actions workflow(s)
 5. ✅ Execute actionlint for validation
 6. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
-7. ✅ Create Pull Request with completed migration report as the PR body (actual validation results)
-8. ✅ Document all required secrets and variables
-9. ✅ End with: "Migration complete. Pull Request created with migration report."
+7. ✅ Create `.github/ci-archive/MIGRATION-README.md` with the completed report
+8. ✅ Deliver migration report via PR: check for existing PR → update PR body if found, create new PR if not
+9. ✅ Document all required secrets and variables
+10. ✅ End with: "Migration complete. MIGRATION-README.md created and Pull Request updated/created with migration report."
 
 **Fetch Migration Standards** (`docs/migration-standards.md`) from the knowledge base for the full 10-item completion checklist.
 

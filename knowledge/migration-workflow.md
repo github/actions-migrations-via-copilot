@@ -91,24 +91,34 @@ For complete validation requirements and tool setup, see [Workflow Validation Re
 
 **Complete Migration Documentation:**
 
-1. **MANDATORY**: Create a Pull Request using the appropriate report template as the PR body
-2. Include actual validation output, not placeholders
-3. **MOVE** original CI/CD files to `.github/ci-archive/` (DELETE from original locations)
-4. **VERIFY** no original CI/CD files remain in root directory or elsewhere
-5. Complete all sections of the migration report template in the PR body
-6. Document all secrets and variables that need to be configured
-7. Provide next steps for team adoption
+1. **MANDATORY**: Create `.github/ci-archive/MIGRATION-README.md` with the completed report
+2. **MANDATORY**: Deliver the migration report via the Pull Request workflow below
+3. Include actual validation output, not placeholders
+4. **MOVE** original CI/CD files to `.github/ci-archive/` (DELETE from original locations)
+5. **VERIFY** no original CI/CD files remain in root directory or elsewhere
+6. Complete all sections of the migration report template
+7. Document all secrets and variables that need to be configured
+8. Provide next steps for team adoption
+
+### Pull Request Workflow
+
+The `MIGRATION-README.md` file is **always created** in `.github/ci-archive/` as a permanent reference. Additionally, deliver the report via Pull Request:
+
+1. **Check for an existing Pull Request** on the current branch using the GitHub MCP tool
+2. **If a PR already exists** → update the PR body with the completed report template
+3. **If no PR exists** → create a new Pull Request using the completed report template as the PR body
+4. **If the PR cannot be created or updated** (e.g., MCP tool unavailable, insufficient permissions, no remote branch) → the `MIGRATION-README.md` file already created in step 1 above serves as the report
 
 **Documentation Standards:**
 
-- Use the appropriate report template for your CI system as the PR body
+- Use the appropriate report template for your CI system
 - Fill all sections with actual migration data (no placeholders)
 - Include real validation output (actionlint results)
 - Create mermaid diagrams reflecting actual pipeline structure
 - Document project-specific secrets and variables
 - Capture migration notes, decisions, and considerations
 
-See the [Report Templates](docs/report-template/) for CI-system-specific templates.
+See the [Report Templates](knowledge/report-template/) for CI-system-specific templates.
 
 ## Workflow Completion
 
@@ -116,7 +126,8 @@ A migration is **NOT COMPLETE** until:
 
 - All 5 phases have been executed in order
 - Validation has been performed with real output
-- A Pull Request has been created with the completed migration report as the PR body
+- `.github/ci-archive/MIGRATION-README.md` has been created with the completed report
+- The migration report has been delivered via PR (created or updated) where possible
 - Original CI/CD files have been archived and removed from original locations
 - All deliverables have been provided to the user
 

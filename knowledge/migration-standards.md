@@ -58,14 +58,16 @@ Every migration must produce the following deliverables:
 
 ### 8. Migration Documentation
 
-- Create a Pull Request with the completed migration report as the PR body
+- Always create `.github/ci-archive/MIGRATION-README.md` with the completed migration report
+- Additionally deliver the report via Pull Request: check for an existing PR on the current branch, update its body if found, or create a new PR if not
+- If the PR cannot be created or updated, the `MIGRATION-README.md` file serves as the sole report
 - Fill all template sections with real data
 - No placeholders or incomplete sections
 - Include actual validation output
 
 ## 📋 Archival & Documentation Protocol
 
-⚠️ **MIGRATION IS NOT COMPLETE UNTIL A PULL REQUEST IS CREATED WITH THE COMPLETED MIGRATION REPORT AS THE PR BODY**
+⚠️ **MIGRATION IS NOT COMPLETE UNTIL `.github/ci-archive/MIGRATION-README.md` IS CREATED AND THE MIGRATION REPORT HAS BEEN DELIVERED VIA PULL REQUEST WHERE POSSIBLE**
 
 ### File Archival Process
 
@@ -96,9 +98,16 @@ Files must be **MOVED** (not copied) to the archive. Files must be **REMOVED** f
 
 ### Documentation Requirements
 
-#### Step 4: Create Migration Pull Request
+#### Step 4: Deliver Migration Report
 
-Create a Pull Request with the complete migration report as the PR body, using the appropriate template:
+**Always** create `.github/ci-archive/MIGRATION-README.md` with the completed report. Additionally, deliver the report via Pull Request:
+
+1. **Check for an existing Pull Request** on the current branch using the GitHub MCP tool
+2. **If a PR already exists** → update the PR body with the completed report template
+3. **If no PR exists** → create a new Pull Request using the completed report template as the PR body
+4. **If the PR cannot be created or updated** (e.g., MCP tool unavailable, insufficient permissions, no remote branch) → the `MIGRATION-README.md` already created above serves as the report
+
+Use the appropriate report template for your CI system:
 
 - [Azure DevOps Migration Report Template](knowledge/report-template/azure-devops.md)
 - [Bamboo Migration Report Template](knowledge/report-template/bamboo.md)

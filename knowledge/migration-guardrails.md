@@ -148,8 +148,8 @@ jobs:
 
 ### Workflow Completeness
 
-- **IF** you provide workflows without a migration Pull Request, you have **NOT** completed the task
-- **IF** you provide templates with placeholders in the PR body, you have **NOT** completed the task
+- **IF** you provide workflows without creating `MIGRATION-README.md` and delivering a migration report, you have **NOT** completed the task
+- **IF** you provide templates with placeholders in the report, you have **NOT** completed the task
 - **IF** you skip validation or don't include real output, you have **NOT** completed the task
 
 ### File Management Compliance
@@ -161,14 +161,18 @@ jobs:
 
 ### Documentation Standards
 
-- **ALWAYS** create a Pull Request with the completed migration report as the PR body
+- **ALWAYS** create `.github/ci-archive/MIGRATION-README.md` with the completed migration report
+- **ALWAYS** check for an existing Pull Request on the current branch before creating a new one
+- **ALWAYS** update the existing PR body if a Pull Request already exists
+- **ALWAYS** create a new Pull Request if no PR exists for the current branch
+- **IF** the PR cannot be created or updated, the `MIGRATION-README.md` file serves as the sole report
 - **ALWAYS** include actual validation output (no placeholders)
 - **ALWAYS** fill all template sections with real data
 - **ALWAYS** document all secrets and variables required
 
 ### Migration Completion
 
-- **ALWAYS** end migration responses with: "Migration complete. Pull Request created with migration report."
+- **ALWAYS** end migration responses with: "Migration complete. MIGRATION-README.md created and Pull Request updated/created with migration report." or, if the PR was unavailable, "Migration complete. MIGRATION-README.md created in .github/ci-archive/"
 - **NEVER** consider a migration complete until all 10 checklist items are verified
 - **ALWAYS** follow the standard 5-phase migration workflow
 - **NEVER** skip phases or take shortcuts
@@ -182,7 +186,8 @@ Every migration MUST:
 - Start with an actual source configuration file
 - Follow the 5-phase workflow
 - Include validation with real output
-- Create a Pull Request with the completed migration report as the PR body (actual results)
+- Always create `.github/ci-archive/MIGRATION-README.md` with the completed migration report (actual results)
+- Check for an existing Pull Request on the current branch and update it, or create a new Pull Request with the completed migration report as the PR body
 - Archive original files properly
 - Meet all quality standards
 
@@ -197,7 +202,8 @@ Before completing any migration, verify:
 5. ✅ Validation was performed with real output
 6. ✅ Secrets and variables are properly documented
 7. ✅ Original files are archived and removed from original locations
-8. ✅ Migration Pull Request is created with complete report (no placeholders)
+8. ✅ `.github/ci-archive/MIGRATION-README.md` created with complete report (no placeholders)
+9. ✅ Migration report delivered via Pull Request (created or updated) where possible
 9. ✅ All security standards are followed
 10. ✅ All enforcement rules are satisfied
 

@@ -120,9 +120,10 @@ When analyzing `.drone.yml` files, pay special attention to:
 2. ✅ Create equivalent GitHub Actions workflow(s)
 3. ✅ Execute actionlint for syntax validation
 4. ✅ Move original files to `.github/ci-archive/` (DELETE originals)
-5. ✅ Create Pull Request with completed migration report as the PR body (actual validation results)
-6. ✅ Document all required secrets and variables
-7. ✅ End with: "Migration complete. Pull Request created with migration report."
+5. ✅ Create `.github/ci-archive/MIGRATION-README.md` with the completed report
+6. ✅ Deliver migration report via PR: check for existing PR → update PR body if found, create new PR if not
+7. ✅ Document all required secrets and variables
+8. ✅ End with: "Migration complete. MIGRATION-README.md created and Pull Request updated/created with migration report."
 
 **Fetch Migration Standards** (`docs/migration-standards.md`) from the knowledge base for the full 10-item completion checklist.
 
