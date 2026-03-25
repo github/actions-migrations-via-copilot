@@ -83,7 +83,7 @@ When analyzing `.drone.yml` files, pay special attention to:
 
 ### Syntax and Command Mappings
 
-**Fetch the DroneCI Mapping Guide** (`docs/actions-mapping/droneci.md`) from the knowledge base for complete mappings:
+**Fetch the DroneCI Mapping Guide** (`knowledge/actions-mapping/droneci.md`) from the knowledge base for complete mappings:
 
 - Pipeline structure: `kind: pipeline` → GitHub Actions workflow
 - Steps: `steps:` → `jobs:` and nested `steps:`
@@ -96,7 +96,7 @@ When analyzing `.drone.yml` files, pay special attention to:
 
 ### Secret and Variable Migration
 
-**Fetch the DroneCI Secrets Guide** (`docs/patterns/droneci/secrets.md`) from the knowledge base for patterns covering:
+**Fetch the DroneCI Secrets Guide** (`knowledge/patterns/droneci/secrets.md`) from the knowledge base for patterns covering:
 
 - Converting `from_secret:` to `${{ secrets.* }}`
 - Migrating environment variables to GitHub Variables
