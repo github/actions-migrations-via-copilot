@@ -1,6 +1,6 @@
 # 📄 MIGRATION REPORT TEMPLATE
 
-Use the following as the Pull Request body:
+Use the following as both the Pull Request body and the contents of `.github/ci-archive/MIGRATION-README.md` (create the file if it does not exist):
 
 ````markdown
 # 🚀 Bamboo to GitHub Actions Migration Report
