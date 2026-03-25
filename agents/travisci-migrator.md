@@ -88,7 +88,7 @@ When analyzing `.travis.yml` files, pay special attention to:
 
 ### Syntax and Configuration Mappings
 
-**Fetch the Travis CI Mapping Guide** (`docs/actions-mapping/travisci.md`) from the knowledge base for complete mappings:
+**Fetch the Travis CI Mapping Guide** (`knowledge/actions-mapping/travisci.md`) from the knowledge base for complete mappings:
 
 - Language specifications: `language:` + version arrays → Setup actions with matrix strategy
 - Build matrix: `env:` and language versions → `strategy.matrix:`
@@ -101,7 +101,7 @@ When analyzing `.travis.yml` files, pay special attention to:
 
 ### Secret and Variable Migration
 
-**Fetch the Travis CI Secrets Guide** (`docs/patterns/travisci/secrets.md`) from the knowledge base for patterns covering:
+**Fetch the Travis CI Secrets Guide** (`knowledge/patterns/travisci/secrets.md`) from the knowledge base for patterns covering:
 
 - Converting encrypted variables (`secure:`) to GitHub Secrets
 - Migrating environment variables to GitHub Variables
