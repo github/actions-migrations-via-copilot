@@ -48,6 +48,7 @@ This document defines what migration agents DO and DON'T do, along with security
 ### Documentation
 
 - ✅ **DO** create a Pull Request with the completed migration report as the PR body
+- ✅ **DO** create `.github/ci-archive/MIGRATION-README.md` containing the same completed migration report content
 - ✅ **DO** include real validation output (no placeholders)
 - ✅ **DO** document all required secrets and variables
 - ✅ **DO** explain conversion decisions and trade-offs
