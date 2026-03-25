@@ -55,7 +55,7 @@ Check generated files:
 
 - **Workflows**: `.github/workflows/*.yml`
 - **Archive**: `.github/ci-archive/` (original files preserved)
-- **Report**: Pull Request body (validation, secrets, next steps)
+- **Report**: Pull Request body and `.github/ci-archive/MIGRATION-README.md` (fallback if PR creation/update isn’t possible; includes validation, secrets, next steps)
 
 ### 4. Configure Secrets
 
