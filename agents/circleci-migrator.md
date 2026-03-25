@@ -86,7 +86,7 @@ When analyzing `.circleci/config.yml` files, pay special attention to:
 
 ### Syntax and Orb Mappings
 
-**Fetch the CircleCI Mapping Guide** (`docs/actions-mapping/circleci.md`) from the knowledge base for complete mappings:
+**Fetch the CircleCI Mapping Guide** (`knowledge/actions-mapping/circleci.md`) from the knowledge base for complete mappings:
 
 - Workflow structure: `workflows:` → GitHub Actions jobs with `on:` and `needs:`
 - Jobs: `jobs:` → `jobs:`
