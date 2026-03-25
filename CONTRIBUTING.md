@@ -100,18 +100,18 @@ Not ready? Open a draft PR to get early feedback.
 
 If you are a maintainer:
 
-1. Create a [tag](https://stackoverflow.com/questions/18216991/create-a-tag-in-a-github-repository) following semantic versioning
-2. Draft a [release](https://help.github.com/en/github/administering-a-repository/managing-releases-in-a-repository) document explaining the changes
-3. Obtain approval from [CODEOWNERS](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners)
+1. Create a [tag](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) following semantic versioning
+2. Draft a [release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) document explaining the changes
+3. Obtain approval from [CODEOWNERS](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
 
 ## Resources
 
-- [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)
-- [Using Pull Requests](https://help.github.com/articles/about-pull-requests/)
-- [GitHub Help](https://help.github.com)
+- [Contributing to a Project](https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project)
+- [Using Pull Requests](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests)
+- [GitHub Support](https://support.github.com)
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [GitHub Copilot Custom Agents](https://docs.github.com/en/copilot)
-- [Workflow Syntax for GitHub Actions](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions)
+- [GitHub Copilot Custom Agents](https://docs.github.com/en/copilot/customizing-copilot/building-custom-extensions-for-github-copilot)
+- [Workflow Syntax for GitHub Actions](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions)
 
 [issues]: https://github.com/github/actions-migrations-via-copilot/issues
 [pulls]: https://github.com/github/actions-migrations-via-copilot/pulls
