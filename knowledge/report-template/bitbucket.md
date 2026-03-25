@@ -1,6 +1,6 @@
 # 📄 MIGRATION REPORT TEMPLATE
 
-Use the following as the Pull Request body:
+Use the following as the Pull Request body and as the contents of `.github/ci-archive/MIGRATION-README.md`:
 
 ````markdown
 # 🚀 Bitbucket Pipelines to GitHub Actions Migration Report
