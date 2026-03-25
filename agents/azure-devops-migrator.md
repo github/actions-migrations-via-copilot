@@ -86,7 +86,7 @@ When analyzing Azure DevOps pipeline files, pay special attention to:
 
 ### Syntax and Task Mappings
 
-**Fetch the Azure DevOps Mapping Guide** (`docs/actions-mapping/azure-devops.md`) from the knowledge base for complete mappings:
+**Fetch the Azure DevOps Mapping Guide** (`knowledge/actions-mapping/azure-devops.md`) from the knowledge base for complete mappings:
 
 - Pipeline structure: `stages:` → GitHub Actions jobs with `needs:`
 - Jobs: `jobs:` → `jobs:`
