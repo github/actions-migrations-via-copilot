@@ -1,8 +1,8 @@
-## 📄 MIGRATION REPORT TEMPLATE
+# 📄 MIGRATION REPORT TEMPLATE
 
-Create `.github/ci-archive/MIGRATION-README.md` with this complete template:
+Use the following content in `.github/ci-archive/MIGRATION-README.md` and as the Pull Request body:
 
-```markdown
+````markdown
 # 🚀 Azure DevOps to GitHub Actions Migration Report
 
 ## 📊 Migration Overview
@@ -42,14 +42,16 @@ graph LR
 
 ## 🔧 Key Transformations
 
-### Stage/Job Conversions:
+### Stage/Job Conversions
+
 - Azure DevOps stages → GitHub Actions jobs with `needs:` dependencies
 - Azure DevOps jobs → GitHub Actions job steps
 - Template expansions → Inline workflow code
 - Pool specifications → `runs-on:` runner selections
 - Azure DevOps tasks → Equivalent GitHub Actions or shell commands
 
-### Task and Variable Mappings:
+### Task and Variable Mappings
+
 - `NodeTool@0` → `actions/setup-node@v4`
 - `DotNetCoreCLI@2` → `actions/setup-dotnet@v4` + `run` commands
 - `PublishBuildArtifacts@1` → `actions/upload-artifact@v4`
@@ -57,7 +59,8 @@ graph LR
 - Variable groups → Environment variables and organization/repository secrets and variables
 - Deployment environments → GitHub Actions environments with protection rules
 
-### Structural Changes:
+### Structural Changes
+
 - Expanded all template references inline
 - Converted `dependsOn:` to `needs:` for job dependencies
 - Enhanced security with proper secret and variable management
@@ -66,12 +69,14 @@ graph LR
 
 ## ✅ Validation Results
 
-### Linting Results:
+### Linting Results
+
 ```
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
-### Manual Verification Checklist:
+### Manual Verification Checklist
+
 - [x] YAML syntax validated
 - [x] All actions properly versioned
 - [x] Job dependencies verified
@@ -98,13 +103,15 @@ graph LR
 
 ## 🔗 Variable and Secret Requirements
 
-### Required GitHub Secrets:
+### Required GitHub Secrets
+
 - `DATABASE_CONNECTION_STRING` - Database connection string (from Azure DevOps variable groups)
 - `API_KEY` - Application API key
 - `DEPLOYMENT_TOKEN` - Deployment service token
 - [List other project-specific secrets migrated from Azure DevOps]
 
-### Required GitHub Variables:
+### Required GitHub Variables
+
 - `BUILD_CONFIGURATION` - Build configuration (Release/Debug)
 - `API_ENDPOINT` - Application API endpoint
 - `TARGET_ENVIRONMENT` - Deployment target environment
@@ -120,9 +127,10 @@ graph LR
 
 ## 📁 Original Azure DevOps Files
 
-The original Azure DevOps pipeline files have been moved to [`.github/ci-archive/`](.github/ci-archive/) for reference.
+The original Azure DevOps pipeline files have been moved to `.github/ci-archive/` for reference:
 
-For a complete record of this migration, see [MIGRATION-README.md](.github/ci-archive/MIGRATION-README.md) in the archive folder.
+- `azure-pipelines.yml` → [`.github/ci-archive/azure-pipelines.yml`](.github/ci-archive/azure-pipelines.yml)
+- Pipeline templates → [`.github/ci-archive/`](.github/ci-archive/) with preserved structure
 
 ## 📚 Migration Notes
 
@@ -131,4 +139,5 @@ For a complete record of this migration, see [MIGRATION-README.md](.github/ci-ar
 
 ---
 *Migration completed by GitHub Copilot Azure DevOps Migration Agent*
-```
+
+````
