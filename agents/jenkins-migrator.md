@@ -88,7 +88,7 @@ When analyzing Jenkins pipeline files, pay special attention to:
 
 ### Syntax and Command Mappings
 
-**Fetch the Jenkins Mapping Guide** (`docs/actions-mapping/jenkins.md`) from the knowledge base for complete mappings:
+**Fetch the Jenkins Mapping Guide** (`knowledge/actions-mapping/jenkins.md`) from the knowledge base for complete mappings:
 
 - Pipeline structures: Declarative (`pipeline {}`) and scripted (`node {}`) to workflows
 - Stages and steps: `stages:` → `jobs:` with nested `steps:`
@@ -100,7 +100,7 @@ When analyzing Jenkins pipeline files, pay special attention to:
 
 ### Pipeline Pattern Conversions
 
-**Fetch the Jenkins Pipeline Patterns guide** (`docs/patterns/jenkins/pipeline.md`) from the knowledge base for detailed patterns:
+**Fetch the Jenkins Pipeline Patterns guide** (`knowledge/patterns/jenkins/pipeline.md`) from the knowledge base for detailed patterns:
 
 - Declarative pipeline conversion patterns
 - Scripted pipeline conversion patterns
