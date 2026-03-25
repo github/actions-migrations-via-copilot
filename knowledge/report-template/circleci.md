@@ -1,6 +1,6 @@
 # 📄 MIGRATION REPORT TEMPLATE
 
-Use the following as the Pull Request body:
+Use the following content both as the Pull Request body and as the contents of `.github/ci-archive/MIGRATION-README.md`:
 
 ````markdown
 # 🚀 CircleCI to GitHub Actions Migration Report
