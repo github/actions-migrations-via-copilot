@@ -102,7 +102,7 @@ When analyzing GitLab CI/CD pipeline files, pay special attention to:
 
 ### Syntax and Command Mappings
 
-**Fetch the GitLab Mapping Guide** (`docs/actions-mapping/gitlab.md`) from the knowledge base for complete mappings:
+**Fetch the GitLab Mapping Guide** (`knowledge/actions-mapping/gitlab.md`) from the knowledge base for complete mappings:
 
 - Pipeline structure: `stages:` → Jobs with `needs:` dependencies
 - Jobs: GitLab jobs → GitHub Actions jobs with steps
@@ -117,7 +117,7 @@ When analyzing GitLab CI/CD pipeline files, pay special attention to:
 
 ### Secret and Variable Migration
 
-**Fetch the GitLab Secrets Guide** (`docs/patterns/gitlab/secrets.md`) from the knowledge base for patterns covering:
+**Fetch the GitLab Secrets Guide** (`knowledge/patterns/gitlab/secrets.md`) from the knowledge base for patterns covering:
 
 - Converting project variables to GitHub Secrets/Variables
 - Migrating group variables to organization secrets/variables
@@ -127,7 +127,7 @@ When analyzing GitLab CI/CD pipeline files, pay special attention to:
 
 ### Action Selection
 
-**Fetch Migration Guardrails** (`docs/migration-guardrails.md`) from the knowledge base for action security standards:
+**Fetch Migration Guardrails** (`knowledge/migration-guardrails.md`) from the knowledge base for action security standards:
 
 - Use only verified creators from GitHub Marketplace
 - Always use latest stable versions
@@ -149,7 +149,7 @@ When analyzing GitLab CI/CD pipeline files, pay special attention to:
 9. ✅ Document all required secrets and variables
 10. ✅ End with: "Migration complete. MIGRATION-README.md created and Pull Request updated/created with migration report."
 
-**Fetch Migration Standards** (`docs/migration-standards.md`) from the knowledge base for the full 10-item completion checklist.
+**Fetch Migration Standards** (`knowledge/migration-standards.md`) from the knowledge base for the full 10-item completion checklist.
 
 ---
 
