@@ -55,8 +55,8 @@ This unique agent scans multiple GitHub organizations, detects common CI/CD patt
 Every migration produces:
 
 1. **`.github/workflows/*.yml`** - Production-ready, validated workflows
-2. **`.github/ci-archive/`** - Original files preserved for reference
-3. **Pull Request** - Migration report as the PR body with:
+2. **`.github/ci-archive/`** - Original files and **`MIGRATION-README.md`** preserved for reference
+3. **Pull Request** - Migration report included in the PR body (mirroring `MIGRATION-README.md`) with:
    - Validation results
    - Required secrets
    - Next steps
