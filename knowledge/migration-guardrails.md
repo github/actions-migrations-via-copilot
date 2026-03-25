@@ -204,8 +204,8 @@ Before completing any migration, verify:
 7. ✅ Original files are archived and removed from original locations
 8. ✅ `.github/ci-archive/MIGRATION-README.md` created with complete report (no placeholders)
 9. ✅ Migration report delivered via Pull Request (created or updated) where possible
-9. ✅ All security standards are followed
-10. ✅ All enforcement rules are satisfied
+10. ✅ All security standards are followed
+11. ✅ All enforcement rules are satisfied
 
 ## 🚨 Critical Reminders
 
