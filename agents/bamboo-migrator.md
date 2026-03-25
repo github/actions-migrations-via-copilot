@@ -88,7 +88,7 @@ When analyzing Bamboo configuration files, pay special attention to:
 
 ### Syntax and Task Mappings
 
-**Fetch the Bamboo Mapping Guide** (`docs/actions-mapping/bamboo.md`) from the knowledge base for complete mappings:
+**Fetch the Bamboo Mapping Guide** (`knowledge/actions-mapping/bamboo.md`) from the knowledge base for complete mappings:
 
 - Build plans: `plan:` → GitHub Actions workflows
 - Stages: `stages:` → GitHub Actions jobs with `needs:`
