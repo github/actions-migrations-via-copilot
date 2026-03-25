@@ -1,6 +1,6 @@
 # 📄 MIGRATION REPORT TEMPLATE
 
-Use the following as the Pull Request body:
+Use the following as the Pull Request body and also save the completed report to `.github/ci-archive/MIGRATION-README.md` in the repository:
 
 ````markdown
 # 🚀 GitLab CI/CD to GitHub Actions Migration Report
