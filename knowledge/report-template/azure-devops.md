@@ -1,6 +1,6 @@
 # 📄 MIGRATION REPORT TEMPLATE
 
-Use the following as the Pull Request body:
+Use the following content in `.github/ci-archive/MIGRATION-README.md` and as the Pull Request body:
 
 ````markdown
 # 🚀 Azure DevOps to GitHub Actions Migration Report
