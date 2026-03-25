@@ -191,8 +191,26 @@ When creating the migration Pull Request, you MUST:
 Inform users they need these tools for proper validation (Linux only):
 
 ```bash
-# Install actionlint for YAML linting
-curl -sL https://github.com/rhymond/actionlint/releases/latest/download/actionlint_linux_amd64.tar.gz | tar xz -C /tmp && sudo mv /tmp/actionlint /usr/local/bin/
+# Install actionlint for YAML linting (Linux)
+# Pin to a specific version. Check https://github.com/rhysd/actionlint/releases for newer releases.
+ACTIONLINT_VERSION="1.7.11"
+
+# Download the binary and checksums file separately (do NOT pipe directly into tar)
+curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_checksums.txt"
+
+# Verify SHA-256 checksum before extracting — abort if verification fails
+sha256sum --check --ignore-missing "actionlint_${ACTIONLINT_VERSION}_checksums.txt"
+
+# (Recommended) Also verify the artifact attestation using GitHub CLI (requires gh >= 2.49)
+# gh attestation verify --repo rhysd/actionlint "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+
+# Extract and install only after successful verification
+tar xzf "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -C /tmp actionlint
+sudo install -m 755 /tmp/actionlint /usr/local/bin/actionlint
+
+# Clean up downloaded artifacts
+rm "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" "actionlint_${ACTIONLINT_VERSION}_checksums.txt"
 
 # Install GitHub CLI (optional, for additional validation)
 curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
