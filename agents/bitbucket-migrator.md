@@ -99,7 +99,7 @@ When analyzing `bitbucket-pipelines.yml` files, pay special attention to:
 
 ### Syntax and Command Mappings
 
-**Fetch the Bitbucket Mapping Guide** (`docs/actions-mapping/bitbucket.md`) from the knowledge base for complete mappings:
+**Fetch the Bitbucket Mapping Guide** (`knowledge/actions-mapping/bitbucket.md`) from the knowledge base for complete mappings:
 
 - Pipeline structure: `pipelines:` → GitHub Actions workflows
 - Steps: `step:` → `jobs:` with nested `steps:`
@@ -114,7 +114,7 @@ When analyzing `bitbucket-pipelines.yml` files, pay special attention to:
 
 ### Secret and Variable Migration
 
-**Fetch the Bitbucket Secrets Guide** (`docs/patterns/bitbucket/secrets.md`) from the knowledge base for patterns covering:
+**Fetch the Bitbucket Secrets Guide** (`knowledge/patterns/bitbucket/secrets.md`) from the knowledge base for patterns covering:
 
 - Converting secured repository variables to GitHub Secrets
 - Converting non-secured repository variables to GitHub Variables
@@ -124,7 +124,7 @@ When analyzing `bitbucket-pipelines.yml` files, pay special attention to:
 
 ### Action Selection
 
-**Fetch Migration Guardrails** (`docs/migration-guardrails.md`) from the knowledge base for action security standards:
+**Fetch Migration Guardrails** (`knowledge/migration-guardrails.md`) from the knowledge base for action security standards:
 
 - Use only verified creators from GitHub Marketplace
 - Always use latest stable versions
@@ -146,7 +146,7 @@ When analyzing `bitbucket-pipelines.yml` files, pay special attention to:
 9. ✅ Document all required secrets and variables
 10. ✅ End with: "Migration complete. MIGRATION-README.md created and Pull Request updated/created with migration report."
 
-**Fetch Migration Standards** (`docs/migration-standards.md`) from the knowledge base for the full 10-item completion checklist.
+**Fetch Migration Standards** (`knowledge/migration-standards.md`) from the knowledge base for the full 10-item completion checklist.
 
 ---
 
