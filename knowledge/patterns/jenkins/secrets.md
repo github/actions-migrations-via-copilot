@@ -513,7 +513,7 @@ When migrating Jenkins credentials to GitHub Actions:
 - [ ] Convert credential bindings to environment variables
 - [ ] Update secret references in workflow files
 - [ ] Test credential access in non-production environment first
-- [ ] Document all required secrets in MIGRATION-README.md
+- [ ] Document all required secrets in the migration Pull Request
 - [ ] Remove or archive Jenkins credentials after successful migration
 - [ ] Update team documentation with new secret management process
 - [ ] Implement secret rotation schedule
@@ -522,16 +522,21 @@ When migrating Jenkins credentials to GitHub Actions:
 ## Troubleshooting
 
 ### Issue: Credential Not Available in Step
+
 **Solution**: Ensure secret is defined at correct scope (environment, repository, organization)
 
 ### Issue: Secret Value Contains Special Characters
+
 **Solution**: Use base64 encoding for complex secrets or escape properly in shell
 
 ### Issue: Need Dynamic Credential Selection
+
 **Solution**: Use environment-based deployments or matrix strategy with conditional logic
 
 ### Issue: Shared Credentials Across Teams
+
 **Solution**: Use organization-level secrets with repository access control
 
 ### Issue: Credential Rotation
+
 **Solution**: Update secrets in GitHub settings; workflows pick up new values automatically

@@ -1,3 +1,8 @@
+# 📄 MIGRATION REPORT TEMPLATE
+
+Use the following as the Pull Request body and also save the completed report to `.github/ci-archive/MIGRATION-README.md` in the repository:
+
+````markdown
 # 🚀 GitLab CI/CD to GitHub Actions Migration Report
 
 ## 📊 Migration Overview
@@ -13,7 +18,7 @@
 ## 🔄 Conversion Diagram
 
 ```mermaid
-graph TD
+graph LR
     A[GitLab CI/CD Pipeline] --> B[GitHub Actions Workflow]
 
     subgraph "GitLab CI/CD Structure"
@@ -41,7 +46,8 @@ graph TD
 
 ## 🔧 Key Transformations
 
-### Stage/Job Conversions:
+### Stage/Job Conversions
+
 - GitLab stages → GitHub Actions jobs with `needs:` dependencies
 - GitLab jobs → GitHub Actions job steps
 - Include expansions → Inline workflow code
@@ -49,14 +55,16 @@ graph TD
 - GitLab rules → GitHub Actions `if:` conditions
 - GitLab services → GitHub Actions services configuration
 
-### Variable and Environment Mappings:
+### Variable and Environment Mappings
+
 - GitLab variables → GitHub Actions environment variables and secrets
 - GitLab predefined variables → GitHub context variables (`github.*`)
 - GitLab environments → GitHub Actions environments with protection rules
 - GitLab masked variables → GitHub Actions secrets
 - Project/group/instance variables → Repository/organization secrets and variables
 
-### Structural Changes:
+### Structural Changes
+
 - Expanded all include statements inline
 - Expanded all template references inline
 - Converted stage dependencies to job `needs:` dependencies
@@ -67,12 +75,14 @@ graph TD
 
 ## ✅ Validation Results
 
-### Linting Results:
+### Linting Results
+
 ```
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
-### Manual Verification Checklist:
+### Manual Verification Checklist
+
 - [x] YAML syntax validated
 - [x] All actions properly versioned with latest stable versions
 - [x] Job dependencies verified
@@ -110,14 +120,16 @@ graph TD
 
 ## 🔗 Variable and Secret Requirements
 
-### Required GitHub Secrets:
+### Required GitHub Secrets
+
 - `DATABASE_PASSWORD` - Database connection password (from GitLab masked variables)
 - `API_SECRET_KEY` - Application API secret key
 - `DEPLOYMENT_TOKEN` - Deployment service token
 - `DOCKER_PASSWORD` - Docker registry password
 - [List other project-specific secrets migrated from GitLab variables]
 
-### Required GitHub Variables:
+### Required GitHub Variables
+
 - `NODE_ENV` - Node.js environment configuration
 - `API_ENDPOINT` - Application API endpoint
 - `BUILD_CONFIGURATION` - Build configuration setting
@@ -140,6 +152,7 @@ graph TD
 ## 📁 Original GitLab CI/CD Files
 
 The original GitLab CI/CD pipeline files have been moved to `.github/ci-archive/` for reference:
+
 - `.gitlab-ci.yml` → [`.github/ci-archive/.gitlab-ci.yml`](.github/ci-archive/.gitlab-ci.yml)
 - Include files → [`.github/ci-archive/.gitlab/`](.github/ci-archive/.gitlab/)
 - Templates → [`.github/ci-archive/`](.github/ci-archive/) with preserved structure
@@ -153,3 +166,5 @@ The original GitLab CI/CD pipeline files have been moved to `.github/ci-archive/
 
 ---
 *Migration completed by GitHub Copilot GitLab CI/CD Migration Agent*
+
+````

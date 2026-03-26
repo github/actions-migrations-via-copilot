@@ -1,3 +1,8 @@
+# 📄 MIGRATION REPORT TEMPLATE
+
+Use the following as the Pull Request body and as the contents of `.github/ci-archive/MIGRATION-README.md`:
+
+````markdown
 # 🚀 Bitbucket Pipelines to GitHub Actions Migration Report
 
 ## 📊 Migration Overview
@@ -13,7 +18,7 @@
 ## 🔄 Conversion Diagram
 
 ```mermaid
-graph TD
+graph LR
     A[Bitbucket Pipeline] --> B[GitHub Actions Workflow]
     C[Parallel Steps] --> D[Separate Jobs]
 
@@ -44,26 +49,30 @@ graph TD
 
 ## 🔧 Key Transformations
 
-### Step Conversions:
+### Step Conversions
+
 - Bitbucket steps → GitHub Actions jobs and steps
 - Parallel sections → Separate jobs with dependency management
 - Custom steps → Expanded inline workflow code
 - Container images → `runs-on` with container specifications
 - Bitbucket services → GitHub Actions service containers
 
-### Variable and Secret Mappings:
+### Variable and Secret Mappings
+
 - Secured repository variables → GitHub Secrets
 - Regular repository variables → GitHub Variables
 - Deployment variables → Environment-specific variables/secrets
 - Built-in variables → GitHub context variables (`github.run_number`, etc.)
 
-### Service and Environment Mappings:
+### Service and Environment Mappings
+
 - Bitbucket services → GitHub Actions service containers
 - Deployment environments → GitHub Actions environments with protection rules
 - Cache definitions → GitHub Actions cache actions
 - Manual triggers → GitHub Actions workflow_dispatch
 
-### Structural Changes:
+### Structural Changes
+
 - Expanded all custom step references inline
 - Converted parallel execution to separate jobs with proper dependencies
 - Enhanced security with proper secret and variable management
@@ -73,12 +82,14 @@ graph TD
 
 ## ✅ Validation Results
 
-### Linting Results:
+### Linting Results
+
 ```
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
-### Manual Verification Checklist:
+### Manual Verification Checklist
+
 - [x] YAML syntax validated
 - [x] All actions properly versioned with latest stable versions
 - [x] Job dependencies verified for parallel execution conversion
@@ -114,14 +125,16 @@ graph TD
 
 ## 🔗 Variable and Secret Requirements
 
-### Required GitHub Secrets:
+### Required GitHub Secrets
+
 - `DATABASE_PASSWORD` - Database connection password (from Bitbucket secured variables)
 - `API_SECRET_KEY` - Application API secret key
 - `DEPLOYMENT_TOKEN` - Deployment service token
 - `DOCKER_HUB_PASSWORD` - Docker Hub authentication
 - [List other project-specific secrets migrated from Bitbucket]
 
-### Required GitHub Variables:
+### Required GitHub Variables
+
 - `API_ENDPOINT` - Application API endpoint URL
 - `BUILD_CONFIGURATION` - Build configuration (release/debug)
 - `TARGET_ENVIRONMENT` - Deployment target environment
@@ -145,6 +158,7 @@ graph TD
 ## 📁 Original Bitbucket Files
 
 The original Bitbucket Pipelines configuration files have been moved to `.github/ci-archive/` for reference:
+
 - `bitbucket-pipelines.yml` → [`.github/ci-archive/bitbucket-pipelines.yml`](.github/ci-archive/bitbucket-pipelines.yml)
 - Custom steps → [`.github/ci-archive/custom-steps/`](.github/ci-archive/custom-steps/)
 
@@ -157,3 +171,5 @@ The original Bitbucket Pipelines configuration files have been moved to `.github
 
 ---
 *Migration completed by GitHub Copilot Bitbucket Pipelines Migration Agent*
+
+````

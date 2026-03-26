@@ -1,9 +1,8 @@
+# 📄 MIGRATION REPORT TEMPLATE
+
+Use the following as both the Pull Request body and the contents of `.github/ci-archive/MIGRATION-README.md` (create the file if it does not exist):
+
 ````markdown
-## 📄 MIGRATION REPORT TEMPLATE
-
-Create `.github/ci-archive/MIGRATION-README.md` with this complete template:
-
-```markdown
 # 🚀 Bamboo to GitHub Actions Migration Report
 
 ## 📊 Migration Overview
@@ -18,7 +17,7 @@ Create `.github/ci-archive/MIGRATION-README.md` with this complete template:
 ## 🔄 Conversion Diagram
 
 ```mermaid
-graph TD
+graph LR
     A[Bamboo Build Plan] --> B[GitHub Actions Workflow]
     C[Bamboo Deployment Project] --> D[GitHub Actions Deployment Workflow]
 
@@ -44,14 +43,16 @@ graph TD
 
 ## 🔧 Key Transformations
 
-### Build Plan Conversions:
+### Build Plan Conversions
+
 - Bamboo stages → GitHub Actions jobs with `needs:` dependencies
 - Bamboo jobs → GitHub Actions job steps
 - Bamboo tasks → Equivalent GitHub Actions or shell commands
 - Agent capabilities → `runs-on:` runner selections
 - Plan dependencies → Job dependencies with `needs:`
 
-### Task and Variable Mappings:
+### Task and Variable Mappings
+
 - `script` tasks → `run` steps
 - `artifact-definition` → `actions/upload-artifact@v4`
 - `artifact-download` → `actions/download-artifact@v4`
@@ -59,7 +60,8 @@ graph TD
 - Global variables → GitHub Variables and Secrets
 - Repository polling → GitHub webhook triggers
 
-### Structural Changes:
+### Structural Changes
+
 - Expanded all shared configurations inline
 - Converted plan dependencies to job dependencies
 - Enhanced security with proper secret and variable management
@@ -69,12 +71,14 @@ graph TD
 
 ## ✅ Validation Results
 
-### Linting Results:
+### Linting Results
+
 ```
 [VALIDATION_OUTPUT_ACTIONLINT]
 ```
 
-### Manual Verification Checklist:
+### Manual Verification Checklist
+
 - [x] YAML syntax validated
 - [x] All actions properly versioned with latest stable versions
 - [x] Job dependencies verified
@@ -107,13 +111,15 @@ graph TD
 
 ## 🔗 Variable and Secret Requirements
 
-### Required GitHub Secrets:
+### Required GitHub Secrets
+
 - `DATABASE_PASSWORD` - Database connection password (from Bamboo global variables)
 - `API_SECRET_KEY` - Application API secret key
 - `DEPLOYMENT_TOKEN` - Deployment service token
 - [List other project-specific secrets migrated from Bamboo]
 
-### Required GitHub Variables:
+### Required GitHub Variables
+
 - `API_ENDPOINT` - Application API endpoint URL
 - `BUILD_CONFIGURATION` - Build configuration (release/debug)
 - `TARGET_ENVIRONMENT` - Deployment target environment
@@ -135,6 +141,7 @@ graph TD
 ## 📁 Original Bamboo Files
 
 The original Bamboo configuration files have been moved to `.github/ci-archive/` for reference:
+
 - `bamboo-specs/` → [`.github/ci-archive/bamboo-specs/`](.github/ci-archive/bamboo-specs/)
 - Build plans → [`.github/ci-archive/`](.github/ci-archive/)
 - Deployment projects → [`.github/ci-archive/`](.github/ci-archive/)
@@ -148,6 +155,5 @@ The original Bamboo configuration files have been moved to `.github/ci-archive/`
 
 ---
 *Migration completed by GitHub Copilot Bamboo Migration Agent*
-```
 
 ````
