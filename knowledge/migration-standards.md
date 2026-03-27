@@ -96,21 +96,7 @@ Create `.github/ci-archive/MIGRATION-README.md` with complete migration report u
 
 **Step 5: Execute Validation**
 
-Execute validation steps and include **real output** in README:
-```bash
-# Run actionlint
-actionlint .github/workflows/*.yml
-
-# Capture actionlint output for report
-actionlint .github/workflows/*.yml > validation-output.txt 2>&1
-
-# Run CodeQL Actions workflow scanning
-codeql database create codeql-actions-db --language=actions --source-root=.
-codeql database analyze codeql-actions-db --format=sarif-latest --output=codeql-actions-results.sarif
-
-# Capture CodeQL summary for report
-codeql database analyze codeql-actions-db --format=csv --output=codeql-actions-results.csv
-```
+Execute both actionlint and CodeQL Actions scanning, then include **real output** in the README. See the **[Workflow Validation Guide](validation.md)** for tool installation and CLI commands.
 
 **Step 6: Fill Template Sections**
 
@@ -172,48 +158,7 @@ When creating the MIGRATION-README.md report, you MUST:
 
 ## 🧪 Workflow Validation Requirements
 
-### Required Tools
-
-Inform users they need these tools for proper validation (Linux only):
-```bash
-# Install actionlint for YAML linting
-curl -sL https://github.com/rhymond/actionlint/releases/latest/download/actionlint_linux_amd64.tar.gz | tar xz -C /tmp && sudo mv /tmp/actionlint /usr/local/bin/
-
-# Install CodeQL CLI for Actions workflow security scanning
-# Download from https://github.com/github/codeql-action/releases
-# Or via GitHub CLI:
-gh extension install github/gh-codeql
-
-# Install GitHub CLI (optional, for additional validation)
-curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
-sudo apt update && sudo apt install gh
-```
-
-### Validation Steps
-
-To ensure the correctness and security of your migrated GitHub Actions workflows:
-
-#### 1. Syntax Linting
-Execute actionlint for GitHub Actions YAML validation:
-```bash
-# Using actionlint (recommended)
-actionlint .github/workflows/your-workflow.yml
-```
-
-**Any syntax errors must be resolved before proceeding.**
-
-#### 2. CodeQL Actions Workflow Scanning
-Execute CodeQL to scan workflow files for security vulnerabilities (e.g., script injection, excessive permissions):
-```bash
-# Create CodeQL database for Actions workflows
-codeql database create codeql-actions-db --language=actions --source-root=.
-
-# Analyze the database for security issues
-codeql database analyze codeql-actions-db --format=sarif-latest --output=codeql-actions-results.sarif
-```
-
-**Any high or critical CodeQL findings must be resolved before proceeding.**
+For required tools (actionlint, CodeQL CLI), installation instructions, CLI usage, and detailed validation steps, see the **[Workflow Validation Guide](validation.md)**.
 
 ## 📋 Migration Completion Checklist
 

@@ -123,6 +123,8 @@ jobs:
 - **Never** skip CodeQL scanning — it detects issues like script injection that actionlint does not catch
 - **Recommend** enabling CodeQL Actions scanning in the target repository for ongoing security analysis
 
+For tool installation, CLI commands, and detailed procedures, see the **[Workflow Validation Guide](validation.md)**.
+
 ### Permission Standards
 - **Always** follow the principle of least privilege for permissions
 - **Always** use minimal required permissions for `GITHUB_TOKEN`

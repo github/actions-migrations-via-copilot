@@ -33,6 +33,13 @@ Security standards, limitations, and enforcement rules:
 - Action selection and security criteria
 - Action version verification process
 - Secret management best practices
+
+### [Workflow Validation](docs/validation.md)
+Required tools, installation, and execution procedures for validating migrated workflows:
+- actionlint — YAML syntax linting
+- CodeQL — Actions workflow security scanning (`--language=actions`)
+- Validation execution checklist
+- Migration report integration
 - Enforcement rules and compliance verification
 
 ## 🎯 CI/CD System-Specific Guides

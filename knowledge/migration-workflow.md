@@ -69,30 +69,7 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 6. Test trigger and condition conversions
 7. Validate secrets and variable references
 
-**CodeQL Actions Workflow Scanning:**
-CodeQL supports scanning GitHub Actions workflow files using the `actions` language. This detects security vulnerabilities such as script injection (untrusted input in `run:` steps), excessive permissions, and other workflow security issues.
-
-```bash
-# Create CodeQL database for Actions workflows
-codeql database create codeql-actions-db --language=actions --source-root=.
-
-# Analyze the database for security issues
-codeql database analyze codeql-actions-db --format=sarif-latest --output=codeql-actions-results.sarif
-```
-
-**Any CodeQL findings must be reviewed and resolved before proceeding.**
-
-**Validation Checklist:**
-- [ ] YAML syntax is valid (no parsing errors)
-- [ ] CodeQL Actions scan passes with no high/critical findings
-- [ ] All required actions are available and using latest stable versions
-- [ ] All actions are from verified creators on GitHub Marketplace
-- [ ] Job dependencies are correctly defined
-- [ ] Environment variables, secrets, and variables are properly referenced
-- [ ] Conditional expressions are syntactically correct
-- [ ] Workflow triggers match original behavior
-
-For complete validation requirements and tool setup, see [Workflow Validation Requirements](docs/README.md#workflow-validation-requirements).
+For tool installation, CLI commands, and the full validation checklist, see the **[Workflow Validation Guide](validation.md)**.
 
 ## Phase 5: Documentation Phase (FINAL)
 
