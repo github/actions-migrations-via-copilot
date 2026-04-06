@@ -65,15 +65,11 @@ safe-outputs:
   create-issue:
     title-prefix: "[Actions Migration] "
     labels: [automation, migration]
-    close-older-issues: true
     assignees: [copilot]
     target-repo: "*"
     max: 100
-  create-issue:
-    title-prefix: "[migration-report] "
-    labels: [automation, report]
-    close-older-issues: true
-    group-by-day: true
+  add-comment:
+    target: "*"
     max: 1
   noop:
 ---
@@ -107,7 +103,11 @@ For each organization in `organizations.json`:
 3. **Skip the repository if:**
    - `GH_MIGRATION_TYPE` is `"None"`, empty, or unset
    - No matching key exists in the migration type prompts mapping
-   - An open migration issue already exists (search: `repo:<org>/<repo> is:issue is:open "gh-aw-workflow-id:" in:body "[Actions Migration]" in:title`)
+   - An open migration issue already exists. Check with:
+     ```
+     gh api "/search/issues?q=repo:<org>/<repo>+is:issue+is:open+%22[Actions+Migration]%22+in:title" --jq '.total_count'
+     ```
+     If `total_count > 0`, skip the repo — a migration is already in progress. Do NOT close the existing issue.
 
 4. **For eligible repositories:**
    - Look up the agent prompt filename from the mapping (e.g., `Jenkins` → `jenkins-migrator.md`)
@@ -126,9 +126,11 @@ For each organization in `organizations.json`:
 
 6. **Respect batch size** — stop processing an organization after reaching the batch size limit.
 
+7. **Rate limiting** — if a `gh api` call returns HTTP 403 or 429, read the `Retry-After` header or wait 60 seconds, then retry up to 3 times. After 3 failures on the same repo, skip it and log the error. Note: each `create_issue` call has a platform-enforced 10-second delay, so 100 repos = ~17 minutes of built-in wait time.
+
 ## After Processing All Organizations
 
-Create a summary report issue using the second `create_issue` (with `[migration-report]` prefix) containing:
+Post a summary as a comment on the triggering workflow dispatch run's associated issue (if any), or log it via `add_comment` on the most recently created migration issue. The summary should contain:
 
 ```markdown
 ## Migration Submission Report - <YYYY-MM-DD>
