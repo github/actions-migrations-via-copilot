@@ -9,7 +9,7 @@ on:
   schedule:
     weekly
   workflow_dispatch:
-timeout-minutes: 60
+timeout-minutes: 360
 concurrency:
   group: submit-repos
   cancel-in-progress: false
