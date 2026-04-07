@@ -41,6 +41,24 @@ steps:
         const prompts = JSON.parse(process.env.MIGRATION_TYPE_PROMPTS)
         const batchSize = parseInt(process.env.BATCH_SIZE_VAR) || 100
 
+        // Retry helper for rate-limited API calls
+        async function withRetry(fn, label, maxRetries = 3) {
+          for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+              return await fn()
+            } catch (err) {
+              const status = err.status || err.response?.status
+              if ((status === 403 || status === 429) && attempt < maxRetries) {
+                const retryAfter = parseInt(err.response?.headers?.['retry-after'] || '60', 10)
+                core.warning(`Rate limited on ${label} (attempt ${attempt}/${maxRetries}), waiting ${retryAfter}s`)
+                await new Promise(r => setTimeout(r, retryAfter * 1000))
+                continue
+              }
+              throw err
+            }
+          }
+        }
+
         const eligible = []
         const skipped = []
         const errors = []
@@ -52,9 +70,10 @@ steps:
 
           let repos
           try {
-            repos = await github.paginate(github.rest.repos.listForOrg, {
-              org, per_page: 100, type: 'all'
-            })
+            repos = await withRetry(
+              () => github.paginate(github.rest.repos.listForOrg, { org, per_page: 100, type: 'all' }),
+              `listForOrg(${org})`
+            )
           } catch (err) {
             errors.push({ org, error: err.message })
             continue
@@ -68,9 +87,12 @@ steps:
             // Read custom property
             let migrationType = null
             try {
-              const { data: props } = await github.request(
-                'GET /repos/{owner}/{repo}/properties/values',
-                { owner: org, repo: repo.name }
+              const { data: props } = await withRetry(
+                () => github.request(
+                  'GET /repos/{owner}/{repo}/properties/values',
+                  { owner: org, repo: repo.name }
+                ),
+                `properties(${org}/${repo.name})`
               )
               const prop = props.find(p => p.property_name === 'GH_MIGRATION_TYPE')
               migrationType = prop?.value
@@ -90,9 +112,12 @@ steps:
 
             // Idempotency: skip if open migration issue exists
             try {
-              const { data: search } = await github.rest.search.issuesAndPullRequests({
-                q: `repo:${org}/${repo.name} is:issue is:open "[Actions Migration]" in:title`
-              })
+              const { data: search } = await withRetry(
+                () => github.rest.search.issuesAndPullRequests({
+                  q: `repo:${org}/${repo.name} is:issue is:open "[Actions Migration]" in:title`
+                }),
+                `search(${org}/${repo.name})`
+              )
               if (search.total_count > 0) {
                 skipped.push({ repo: `${org}/${repo.name}`, reason: 'Open migration issue already exists' })
                 continue
