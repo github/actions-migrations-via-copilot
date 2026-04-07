@@ -1,10 +1,9 @@
 ---
 name: Submit Repositories for Migration
 description: >
-  Iterates over repositories in configured organizations, reads each
-  repository's GH_MIGRATION_TYPE custom property, matches it against
-  MIGRATION_TYPE_PROMPTS, and hands off migration work to the Copilot
-  coding agent in the target repository.
+  Hybrid orchestrator: deterministic JS scans repos and computes eligible
+  migrations (steps), then a minimal agent creates issues via safe outputs.
+  Combines reliability of code with gh-aw write guardrails.
 on:
   schedule:
     weekly
@@ -24,38 +23,114 @@ steps:
       app-id: ${{ vars.GH_APP_ID }}
       private-key: ${{ secrets.GH_APP_PEM }}
       owner: ${{ github.repository_owner }}
-  - name: Load configuration
-    run: |
-      set -euo pipefail
-      mkdir -p /tmp/gh-aw/submit-repos
-      echo '${{ vars.ORGANIZATIONS }}' > /tmp/gh-aw/submit-repos/organizations.json
-      echo '${{ vars.MIGRATION_TYPE_PROMPTS }}' > /tmp/gh-aw/submit-repos/migration-type-prompts.json
-      echo '${{ vars.BATCH_SIZE }}' > /tmp/gh-aw/submit-repos/batch-size.txt
+
+  - name: Scan repositories and compute eligible migrations
+    id: scan
+    uses: actions/github-script@v8.0.0
     env:
-      GH_TOKEN: ${{ steps.app-token.outputs.token }}
+      MIGRATION_TYPE_PROMPTS: ${{ vars.MIGRATION_TYPE_PROMPTS }}
+      BATCH_SIZE_VAR: ${{ vars.BATCH_SIZE }}
+      ORGANIZATIONS: ${{ vars.ORGANIZATIONS }}
+    with:
+      github-token: ${{ steps.app-token.outputs.token }}
+      script: |
+        const fs = require('fs')
+        const path = require('path')
+
+        const orgs = JSON.parse(process.env.ORGANIZATIONS)
+        const prompts = JSON.parse(process.env.MIGRATION_TYPE_PROMPTS)
+        const batchSize = parseInt(process.env.BATCH_SIZE_VAR) || 100
+
+        const eligible = []
+        const skipped = []
+        const errors = []
+        let totalScanned = 0
+
+        for (const org of orgs) {
+          let submitted = 0
+          core.info(`Scanning organization: ${org}`)
+
+          let repos
+          try {
+            repos = await github.paginate(github.rest.repos.listForOrg, {
+              org, per_page: 100, type: 'all'
+            })
+          } catch (err) {
+            errors.push({ org, error: err.message })
+            continue
+          }
+
+          for (const repo of repos) {
+            if (repo.archived || repo.fork) continue
+            if (repo.name === '.github-private') continue
+            totalScanned++
+
+            // Read custom property
+            let migrationType = null
+            try {
+              const { data: props } = await github.request(
+                'GET /repos/{owner}/{repo}/properties/values',
+                { owner: org, repo: repo.name }
+              )
+              const prop = props.find(p => p.property_name === 'GH_MIGRATION_TYPE')
+              migrationType = prop?.value
+            } catch (err) {
+              // Property not set or not accessible
+            }
+
+            if (!migrationType || migrationType === 'None') {
+              skipped.push({ repo: `${org}/${repo.name}`, reason: 'No migration type or set to None' })
+              continue
+            }
+
+            if (!prompts[migrationType]) {
+              skipped.push({ repo: `${org}/${repo.name}`, reason: `Unknown migration type: ${migrationType}` })
+              continue
+            }
+
+            // Idempotency: skip if open migration issue exists
+            try {
+              const { data: search } = await github.rest.search.issuesAndPullRequests({
+                q: `repo:${org}/${repo.name} is:issue is:open "[Actions Migration]" in:title`
+              })
+              if (search.total_count > 0) {
+                skipped.push({ repo: `${org}/${repo.name}`, reason: 'Open migration issue already exists' })
+                continue
+              }
+            } catch (err) {
+              core.warning(`Search failed for ${org}/${repo.name}: ${err.message}`)
+            }
+
+            // Read agent prompt file
+            const agentFile = prompts[migrationType]
+            const agentPath = path.join(process.env.GITHUB_WORKSPACE, 'agents', agentFile)
+            let agentPrompt
+            try {
+              agentPrompt = fs.readFileSync(agentPath, 'utf8')
+            } catch (err) {
+              errors.push({ repo: `${org}/${repo.name}`, error: `Agent file not found: ${agentFile}` })
+              continue
+            }
+
+            eligible.push({ repo: `${org}/${repo.name}`, migrationType, agentFile, agentPrompt })
+            submitted++
+            if (submitted >= batchSize) {
+              core.info(`Batch size ${batchSize} reached for ${org}`)
+              break
+            }
+          }
+        }
+
+        // Write results for agent consumption
+        const results = { eligible, skipped, errors, totalScanned, orgs: orgs.length }
+        fs.mkdirSync('/tmp/gh-aw', { recursive: true })
+        fs.writeFileSync('/tmp/gh-aw/scan-results.json', JSON.stringify(results, null, 2))
+        core.info(`Scan complete: ${eligible.length} eligible, ${skipped.length} skipped, ${errors.length} errors out of ${totalScanned} repos`)
+
 tools:
   bash:
     - "cat"
-    - "echo"
-    - "ls:*"
-    - "pwd"
-    - "find:*"
-    - "grep:*"
-    - "head"
-    - "tail"
-    - "sort"
-    - "uniq"
-    - "wc"
-    - "date"
-    - "mkdir:*"
-    - "base64:*"
-    - "gh:*"
     - "jq:*"
-  github:
-    github-token: ${{ steps.app-token.outputs.token }}
-    toolsets: [repos, issues]
-    allowed-repos:
-      - "*/*"
 network:
   allowed:
     - defaults
@@ -74,94 +149,46 @@ safe-outputs:
   noop:
 ---
 
-# Submit Repositories for Migration
+# Create Migration Issues from Pre-Computed Scan Results
 
-You are an orchestrator that scans repositories across organizations and submits
-eligible ones for CI/CD migration to GitHub Actions.
+The deterministic scan has already run in the `steps:` phase. All repo scanning,
+property reading, idempotency checks, and prompt loading are done. Your job is
+to read the results and create issues via safe outputs.
 
-## Configuration
+## Instructions
 
-Read the following configuration files from `/tmp/gh-aw/submit-repos/`:
+1. **Read** `/tmp/gh-aw/scan-results.json`. It contains:
+   - `eligible`: repos needing migration (`repo`, `migrationType`, `agentFile`, `agentPrompt`)
+   - `skipped`: repos skipped (`repo`, `reason`)
+   - `errors`: errors during scanning
+   - `totalScanned`: total repos scanned
+   - `orgs`: number of organizations
 
-1. **`organizations.json`** — JSON array of GitHub organization names to scan
-2. **`migration-type-prompts.json`** — JSON object mapping migration type to agent prompt filename (e.g., `{"Jenkins": "jenkins-migrator.md", "GitLab": "gitlab-migrator.md", ...}`)
-3. **`batch-size.txt`** — Maximum repositories to process per organization
-
-Also read the agent prompt files from the checked-out repository under `agents/` to have the full prompt text available for each migration type.
-
-## Process
-
-For each organization in `organizations.json`:
-
-1. **List repositories** using `gh api --paginate "/orgs/<org>/repos?per_page=100&type=all"`. Skip archived repos and forks.
-
-2. **For each repository**, read the `GH_MIGRATION_TYPE` custom property:
-   ```
-   gh api "/repos/<org>/<repo>/properties/values" --jq '.[] | select(.property_name=="GH_MIGRATION_TYPE") | .value'
+2. **If `eligible` is empty**, call `noop`:
+   ```json
+   {"noop": {"message": "No action needed: 0 eligible repos out of <totalScanned> scanned across <orgs> organizations"}}
    ```
 
-3. **Skip the repository if:**
-   - `GH_MIGRATION_TYPE` is `"None"`, empty, or unset
-   - No matching key exists in the migration type prompts mapping
-   - An open migration issue already exists. Check with:
-     ```
-     gh api "/search/issues?q=repo:<org>/<repo>+is:issue+is:open+%22[Actions+Migration]%22+in:title" --jq '.total_count'
-     ```
-     If `total_count > 0`, skip the repo — a migration is already in progress. Do NOT close the existing issue.
+3. **For each entry in `eligible`**, call `create_issue`:
+   - `repo`: `eligible[i].repo`
+   - `title`: `Migrate <migrationType> CI/CD to GitHub Actions`
+   - `body`: `eligible[i].agentPrompt` (pass exactly as-is, do not modify)
 
-4. **For eligible repositories:**
-   - Look up the agent prompt filename from the mapping (e.g., `Jenkins` → `jenkins-migrator.md`)
-   - Read the agent file contents from `agents/<filename>`
-   - Create an issue in the target repository using `create_issue` with:
-     - `repo`: `<org>/<repo>`
-     - `title`: `Migrate <MigrationType> CI/CD to GitHub Actions`
-     - `body`: The full contents of the agent prompt file
-     - The issue will be automatically assigned to Copilot via the `assignees: [copilot]` configuration
+4. **After all issues created**, post a summary via `add_comment` on the last
+   created issue:
 
-5. **Track results** — maintain a running tally of:
-   - Repositories scanned
-   - Migrations submitted
-   - Repositories skipped (and reason: already has open issue, no migration type, type is "None")
-   - Errors encountered
+   ```markdown
+   ## Migration Submission Report
 
-6. **Respect batch size** — stop processing an organization after reaching the batch size limit.
+   | Metric | Count |
+   |--------|-------|
+   | Organizations scanned | <orgs> |
+   | Repositories scanned | <totalScanned> |
+   | Migrations submitted | <eligible.length> |
+   | Repositories skipped | <skipped.length> |
+   | Errors | <errors.length> |
+   ```
 
-7. **Rate limiting** — if a `gh api` call returns HTTP 403 or 429, read the `Retry-After` header or wait 60 seconds, then retry up to 3 times. After 3 failures on the same repo, skip it and log the error. Note: each `create_issue` call has a platform-enforced 10-second delay, so 100 repos = ~17 minutes of built-in wait time.
-
-## After Processing All Organizations
-
-Post a summary as a comment on the triggering workflow dispatch run's associated issue (if any), or log it via `add_comment` on the most recently created migration issue. The summary should contain:
-
-```markdown
-## Migration Submission Report - <YYYY-MM-DD>
-
-| Metric | Count |
-|--------|-------|
-| Organizations scanned | N |
-| Repositories scanned | N |
-| Migrations submitted | N |
-| Repositories skipped | N |
-| Errors encountered | N |
-
-### Submissions
-
-| Repository | Migration Type | Agent | Status |
-|------------|---------------|-------|--------|
-| org/repo   | Jenkins       | jenkins-migrator.md | Submitted |
-
-### Skipped
-
-| Repository | Reason |
-|------------|--------|
-| org/repo   | Already has open migration issue |
-| org/repo2  | GH_MIGRATION_TYPE is "None" |
-```
-
-## If No Repositories Require Migration
-
-You MUST call the `noop` tool with a message explaining why:
-```json
-{"noop": {"message": "No action needed: no eligible repositories found across N organizations (M repositories scanned, all either already submitted or have no migration type set)"}}
-```
-
-Do NOT skip calling noop — the workflow will fail if no safe output tool is called.
+Do NOT scan repositories yourself. Do NOT call GitHub API to list repos or read
+properties. Everything was computed deterministically. Read the JSON, create
+issues, done.
