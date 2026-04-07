@@ -81,6 +81,11 @@ PLACEHOLDER_PATTERNS=(
   "REPLACE_ME"
   "your-.*-here"
   "<your"
+)
+
+# Patterns that warrant a warning but not a failure (may appear legitimately
+# in email/notification action configs).
+PLACEHOLDER_WARN_PATTERNS=(
   "example\.com"
 )
 
@@ -215,10 +220,19 @@ check_no_placeholders() {
     fi
   done
 
-  if [[ ${#found_placeholders[@]} -eq 0 ]]; then
-    check_pass "No placeholders" "No placeholder text found in migration report"
-  else
+  local found_warnings=()
+  for pattern in "${PLACEHOLDER_WARN_PATTERNS[@]}"; do
+    if grep -qiE "$pattern" "$MIGRATION_README" 2>/dev/null; then
+      found_warnings+=("$pattern")
+    fi
+  done
+
+  if [[ ${#found_placeholders[@]} -gt 0 ]]; then
     check_fail "No placeholders" "Found placeholder patterns: ${found_placeholders[*]}"
+  elif [[ ${#found_warnings[@]} -gt 0 ]]; then
+    check_warn "No placeholders" "Found patterns that may be legitimate: ${found_warnings[*]} — verify manually"
+  else
+    check_pass "No placeholders" "No placeholder text found in migration report"
   fi
 }
 
