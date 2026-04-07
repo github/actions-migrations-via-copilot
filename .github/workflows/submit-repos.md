@@ -123,8 +123,8 @@ steps:
 
         // Write results for agent consumption
         const results = { eligible, skipped, errors, totalScanned, orgs: orgs.length }
-        fs.mkdirSync('/tmp/gh-aw', { recursive: true })
-        fs.writeFileSync('/tmp/gh-aw/scan-results.json', JSON.stringify(results, null, 2))
+        fs.mkdirSync('/tmp/gh-aw/agent', { recursive: true })
+        fs.writeFileSync('/tmp/gh-aw/agent/scan-results.json', JSON.stringify(results, null, 2))
         core.info(`Scan complete: ${eligible.length} eligible, ${skipped.length} skipped, ${errors.length} errors out of ${totalScanned} repos`)
 
 tools:
@@ -157,7 +157,7 @@ to read the results and create issues via safe outputs.
 
 ## Instructions
 
-1. **Read** `/tmp/gh-aw/scan-results.json`. It contains:
+1. **Read** `/tmp/gh-aw/agent/scan-results.json`. It contains:
    - `eligible`: repos needing migration (`repo`, `migrationType`, `agentFile`, `agentPrompt`)
    - `skipped`: repos skipped (`repo`, `reason`)
    - `errors`: errors during scanning
