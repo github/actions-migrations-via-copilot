@@ -1,9 +1,9 @@
 ---
 name: Submit Repositories for Migration
 description: >
-  Hybrid orchestrator: deterministic JS scans repos and computes eligible
-  migrations (steps), then a minimal agent creates issues via safe outputs.
-  Combines reliability of code with gh-aw write guardrails.
+  Deterministic orchestrator: scans repos for GH_MIGRATION_TYPE custom
+  property, creates a tracking issue, and dispatches migration-worker.md
+  for each eligible repository.
 on:
   schedule:
     weekly
@@ -24,7 +24,7 @@ steps:
       private-key: ${{ secrets.GH_APP_PEM }}
       owner: ${{ github.repository_owner }}
 
-  - name: Scan repositories and compute eligible migrations
+  - name: Scan repositories and dispatch workers
     id: scan
     uses: actions/github-script@v8.0.0
     env:
@@ -110,34 +110,23 @@ steps:
               continue
             }
 
-            // Idempotency: skip if open migration issue exists
+            // Idempotency: skip if open migration PR or issue exists
             try {
               const { data: search } = await withRetry(
                 () => github.rest.search.issuesAndPullRequests({
-                  q: `repo:${org}/${repo.name} is:issue is:open "[Actions Migration]" in:title`
+                  q: `repo:${org}/${repo.name} is:open "[Actions Migration]" in:title`
                 }),
                 `search(${org}/${repo.name})`
               )
               if (search.total_count > 0) {
-                skipped.push({ repo: `${org}/${repo.name}`, reason: 'Open migration issue already exists' })
+                skipped.push({ repo: `${org}/${repo.name}`, reason: 'Open migration issue/PR already exists' })
                 continue
               }
             } catch (err) {
               core.warning(`Search failed for ${org}/${repo.name}: ${err.message}`)
             }
 
-            // Read agent prompt file
-            const agentFile = prompts[migrationType]
-            const agentPath = path.join(process.env.GITHUB_WORKSPACE, 'agents', agentFile)
-            let agentPrompt
-            try {
-              agentPrompt = fs.readFileSync(agentPath, 'utf8')
-            } catch (err) {
-              errors.push({ repo: `${org}/${repo.name}`, error: `Agent file not found: ${agentFile}` })
-              continue
-            }
-
-            eligible.push({ repo: `${org}/${repo.name}`, migrationType, agentFile, agentPrompt })
+            eligible.push({ repo: `${org}/${repo.name}`, migrationType })
             submitted++
             if (submitted >= batchSize) {
               core.info(`Batch size ${batchSize} reached for ${org}`)
@@ -146,7 +135,7 @@ steps:
           }
         }
 
-        // Write results for agent consumption
+        // Write results for the agent to create tracking issue and dispatch workers
         const results = { eligible, skipped, errors, totalScanned, orgs: orgs.length }
         fs.mkdirSync('/tmp/gh-aw/agent', { recursive: true })
         fs.writeFileSync('/tmp/gh-aw/agent/scan-results.json', JSON.stringify(results, null, 2))
@@ -163,27 +152,25 @@ network:
 safe-outputs:
   github-token: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
   create-issue:
-    title-prefix: "[Actions Migration] "
-    labels: [automation, migration]
-    assignees: [copilot]
-    target-repo: "*"
-    max: 100
-  add-comment:
-    target: "*"
+    title-prefix: "[Migration Batch] "
+    labels: [automation, migration, tracking]
     max: 1
+  dispatch-workflow:
+    workflows: [migration-worker]
+    max: 50
   noop:
 ---
 
-# Create Migration Issues from Pre-Computed Scan Results
+# Dispatch Migration Workers from Pre-Computed Scan Results
 
 The deterministic scan has already run in the `steps:` phase. All repo scanning,
-property reading, idempotency checks, and prompt loading are done. Your job is
-to read the results and create issues via safe outputs.
+property reading, and idempotency checks are done. Your job is to create a
+tracking issue and dispatch workers.
 
 ## Instructions
 
 1. **Read** `/tmp/gh-aw/agent/scan-results.json`. It contains:
-   - `eligible`: repos needing migration (`repo`, `migrationType`, `agentFile`, `agentPrompt`)
+   - `eligible`: repos needing migration (`repo`, `migrationType`)
    - `skipped`: repos skipped (`repo`, `reason`)
    - `errors`: errors during scanning
    - `totalScanned`: total repos scanned
@@ -194,26 +181,41 @@ to read the results and create issues via safe outputs.
    {"noop": {"message": "No action needed: 0 eligible repos out of <totalScanned> scanned across <orgs> organizations"}}
    ```
 
-3. **For each entry in `eligible`**, call `create_issue`:
-   - `repo`: `eligible[i].repo`
-   - `title`: `Migrate <migrationType> CI/CD to GitHub Actions`
-   - `body`: `eligible[i].agentPrompt` (pass exactly as-is, do not modify)
-
-4. **After all issues created**, post a summary via `add_comment` on the last
-   created issue:
+3. **Create a tracking issue** via `create_issue` with title `<date> - <count> repos` and body:
 
    ```markdown
-   ## Migration Submission Report
+   ## Migration Batch - <YYYY-MM-DD>
 
    | Metric | Count |
    |--------|-------|
    | Organizations scanned | <orgs> |
    | Repositories scanned | <totalScanned> |
-   | Migrations submitted | <eligible.length> |
+   | Migrations dispatched | <eligible.length> |
    | Repositories skipped | <skipped.length> |
    | Errors | <errors.length> |
+
+   ### Dispatched
+
+   | Repository | Migration Type | Status |
+   |------------|---------------|--------|
+   | <repo> | <migrationType> | 🔄 Dispatched |
+
+   ### Skipped
+
+   | Repository | Reason |
+   |------------|--------|
+   | <repo> | <reason> |
+
+   Workers will report back to this issue as they complete.
    ```
+
+4. **For each entry in `eligible`**, call `dispatch_workflow` with:
+   - `workflow`: `migration-worker`
+   - `inputs`:
+     - `target_repo`: `eligible[i].repo`
+     - `migration_type`: `eligible[i].migrationType`
+     - `tracking_issue`: the issue number from step 3
 
 Do NOT scan repositories yourself. Do NOT call GitHub API to list repos or read
 properties. Everything was computed deterministically. Read the JSON, create
-issues, done.
+the tracking issue, dispatch workers, done.
