@@ -26,10 +26,27 @@ concurrency:
 permissions:
   contents: read
   issues: read
-checkout:
-  - repository: ${{ inputs.target_repo }}
-    github-token: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
-    current: true
+jobs:
+  checkout-target:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repository
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.target_repo }}
+          token: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
+          path: target-repo
+      - name: Upload target repo as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: target-repo
+          path: target-repo/
+steps:
+  - name: Download target repo
+    uses: actions/download-artifact@v4
+    with:
+      name: target-repo
+      path: ./
 tools:
   bash:
     - "cat"
@@ -61,7 +78,6 @@ safe-outputs:
     labels: [automation, migration]
     draft: true
     max: 1
-    protected-files: fallback-to-issue
   add-comment:
     target: ${{ inputs.tracking_issue }}
     max: 1
@@ -100,7 +116,7 @@ this repository from **${{ inputs.migration_type }}** to GitHub Actions.
    - Pin ALL actions to 40-character commit SHAs (not version tags)
    - Add a version comment next to each SHA (e.g., `# v4.2.0`)
    - Declare least-privilege `permissions:` at the top level
-   - Use `${{ secrets.SECRET_NAME }}` for all credentials — never hardcode
+   - Use GitHub Actions secrets syntax (e.g., `secrets.MY_SECRET`) for all credentials — never hardcode
    - Document any secrets the workflow requires
 
 4. **Archive the original CI files** — move them to `.github/ci-archive/`
