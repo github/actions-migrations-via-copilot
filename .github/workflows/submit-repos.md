@@ -66,6 +66,7 @@ safe-outputs:
   github-app:
     app-id: ${{ vars.GH_APP_ID }}
     private-key: ${{ secrets.GH_APP_PEM }}
+    repositories: ["*"]
   create-issue:
     title-prefix: "[Migration Batch] "
     labels: [automation, migration, tracking]
