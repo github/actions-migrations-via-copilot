@@ -19,8 +19,6 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v3
@@ -28,6 +26,10 @@ jobs:
           app-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PEM }}
           owner: ${{ github.repository_owner }}
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
       - name: Scan repositories
         uses: actions/github-script@v8.0.0
         env:
@@ -184,6 +186,7 @@ tracking issue and dispatch workers.
    - `orgs`: number of organizations
 
 2. **If `eligible` is empty**, call `noop`:
+
    ```json
    {"noop": {"message": "No action needed: 0 eligible repos out of <totalScanned> scanned across <orgs> organizations"}}
    ```
