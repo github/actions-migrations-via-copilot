@@ -1,4 +1,4 @@
-module.exports = async ({ github, core, process }) => {
+module.exports = async ({ github, core, process, getOctokit }) => {
     const fs = require('fs')
     const crypto = require('crypto')
 
@@ -92,7 +92,7 @@ module.exports = async ({ github, core, process }) => {
                 () => getInstallationToken(org),
                 `getInstallationToken(${org})`
             )
-            orgGithub = new github.constructor({ auth: token })
+            orgGithub = getOctokit(token)
         } catch (err) {
             errors.push({ org, error: `Failed to authenticate: ${err.message}` })
             continue

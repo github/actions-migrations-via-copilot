@@ -31,7 +31,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
       - name: Scan repositories
-        uses: actions/github-script@v8.0.0
+        uses: actions/github-script@v9.0.0
         env:
           MIGRATION_TYPE_PROMPTS: ${{ vars.MIGRATION_TYPE_PROMPTS }}
           BATCH_SIZE_VAR: ${{ vars.BATCH_SIZE }}
@@ -42,15 +42,15 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const script = require('${{ github.workspace }}/.github/scripts/scan-repositories.js')
-            return await script({github,core,process})
+            return await script({github,core,process,getOctokit})
       - name: Upload scan results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: scan-results
           path: /tmp/gh-aw/agent/scan-results.json
 steps:
   - name: Download scan results
-    uses: actions/download-artifact@v4
+    uses: actions/download-artifact@v8
     with:
       name: scan-results
       path: /tmp/gh-aw/agent/
@@ -63,7 +63,9 @@ network:
     - defaults
     - github
 safe-outputs:
-  github-token: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
+  github-app:
+    app-id: ${{ vars.GH_APP_ID }}
+    private-key: ${{ secrets.GH_APP_PEM }}
   create-issue:
     title-prefix: "[Migration Batch] "
     labels: [automation, migration, tracking]
@@ -129,6 +131,7 @@ tracking issue and dispatch workers.
      - `target_repo`: `eligible[i].repo`
      - `migration_type`: `eligible[i].migrationType`
      - `tracking_issue`: the issue number from step 3
+     - `target_repo_owner`: the org portion of `eligible[i].repo` (before the `/`)
 
 Do NOT scan repositories yourself. Do NOT call GitHub API to list repos or read
 properties. Everything was computed deterministically. Read the JSON, create
