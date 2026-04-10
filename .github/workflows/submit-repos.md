@@ -18,8 +18,6 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    outputs:
-      app_token: ${{ steps.app-token.outputs.token }}
     steps:
       - name: Generate GitHub App token
         id: app-token
@@ -38,109 +36,13 @@ jobs:
           MIGRATION_TYPE_PROMPTS: ${{ vars.MIGRATION_TYPE_PROMPTS }}
           BATCH_SIZE_VAR: ${{ vars.BATCH_SIZE }}
           ORGANIZATIONS: ${{ vars.ORGANIZATIONS }}
+          GH_APP_ID: ${{ vars.GH_APP_ID }}
+          GH_APP_PEM: ${{ secrets.GH_APP_PEM }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
-            const fs = require('fs')
-            const path = require('path')
-
-            const orgs = JSON.parse(process.env.ORGANIZATIONS)
-            const prompts = JSON.parse(process.env.MIGRATION_TYPE_PROMPTS)
-            const batchSize = parseInt(process.env.BATCH_SIZE_VAR) || 100
-
-            async function withRetry(fn, label, maxRetries = 3) {
-              for (let attempt = 1; attempt <= maxRetries; attempt++) {
-                try {
-                  return await fn()
-                } catch (err) {
-                  const status = err.status || err.response?.status
-                  if ((status === 403 || status === 429) && attempt < maxRetries) {
-                    const retryAfter = parseInt(err.response?.headers?.['retry-after'] || '60', 10)
-                    core.warning(`Rate limited on ${label} (attempt ${attempt}/${maxRetries}), waiting ${retryAfter}s`)
-                    await new Promise(r => setTimeout(r, retryAfter * 1000))
-                    continue
-                  }
-                  throw err
-                }
-              }
-            }
-
-            const eligible = []
-            const skipped = []
-            const errors = []
-            let totalScanned = 0
-
-            for (const org of orgs) {
-              let submitted = 0
-              core.info(`Scanning organization: ${org}`)
-
-              let repos
-              try {
-                repos = await withRetry(
-                  () => github.paginate(github.rest.repos.listForOrg, { org, per_page: 100, type: 'all' }),
-                  `listForOrg(${org})`
-                )
-              } catch (err) {
-                errors.push({ org, error: err.message })
-                continue
-              }
-
-              for (const repo of repos) {
-                if (repo.archived || repo.fork) continue
-                if (repo.name === '.github-private') continue
-                totalScanned++
-
-                let migrationType = null
-                try {
-                  const { data: props } = await withRetry(
-                    () => github.request(
-                      'GET /repos/{owner}/{repo}/properties/values',
-                      { owner: org, repo: repo.name }
-                    ),
-                    `properties(${org}/${repo.name})`
-                  )
-                  const prop = props.find(p => p.property_name === 'GH_MIGRATION_TYPE')
-                  migrationType = prop?.value
-                } catch (err) {}
-
-                if (!migrationType || migrationType === 'None') {
-                  skipped.push({ repo: `${org}/${repo.name}`, reason: 'No migration type or set to None' })
-                  continue
-                }
-
-                if (!prompts[migrationType]) {
-                  skipped.push({ repo: `${org}/${repo.name}`, reason: `Unknown migration type: ${migrationType}` })
-                  continue
-                }
-
-                try {
-                  const { data: search } = await withRetry(
-                    () => github.rest.search.issuesAndPullRequests({
-                      q: `repo:${org}/${repo.name} is:open "[Actions Migration]" in:title`
-                    }),
-                    `search(${org}/${repo.name})`
-                  )
-                  if (search.total_count > 0) {
-                    skipped.push({ repo: `${org}/${repo.name}`, reason: 'Open migration issue/PR already exists' })
-                    continue
-                  }
-                } catch (err) {
-                  core.warning(`Search failed for ${org}/${repo.name}: ${err.message}`)
-                }
-
-                eligible.push({ repo: `${org}/${repo.name}`, migrationType })
-                submitted++
-                if (submitted >= batchSize) {
-                  core.info(`Batch size ${batchSize} reached for ${org}`)
-                  break
-                }
-              }
-            }
-
-            const results = { eligible, skipped, errors, totalScanned, orgs: orgs.length }
-            fs.mkdirSync('/tmp/gh-aw/agent', { recursive: true })
-            fs.writeFileSync('/tmp/gh-aw/agent/scan-results.json', JSON.stringify(results, null, 2))
-            core.info(`Scan complete: ${eligible.length} eligible, ${skipped.length} skipped, ${errors.length} errors out of ${totalScanned} repos`)
+            const script = require('${{ github.workspace }}/.github/scripts/scan-repositories.js')
+            return await script({github,core,process})
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
