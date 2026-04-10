@@ -161,7 +161,7 @@ network:
     - defaults
     - github
 safe-outputs:
-  github-token: ${{ needs.scan.outputs.app_token }}
+  github-token: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
   create-issue:
     title-prefix: "[Migration Batch] "
     labels: [automation, migration, tracking]
