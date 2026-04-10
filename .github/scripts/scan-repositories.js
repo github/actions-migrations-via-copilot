@@ -1,7 +1,6 @@
 module.exports = async ({ github, core, process }) => {
     const fs = require('fs')
     const crypto = require('crypto')
-    const { getOctokit } = require('@actions/github')
 
     const orgs = JSON.parse(process.env.ORGANIZATIONS)
     const prompts = JSON.parse(process.env.MIGRATION_TYPE_PROMPTS)
@@ -93,7 +92,7 @@ module.exports = async ({ github, core, process }) => {
                 () => getInstallationToken(org),
                 `getInstallationToken(${org})`
             )
-            orgGithub = getOctokit(token)
+            orgGithub = new github.constructor({ auth: token })
         } catch (err) {
             errors.push({ org, error: `Failed to authenticate: ${err.message}` })
             continue
