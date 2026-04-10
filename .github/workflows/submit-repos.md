@@ -18,6 +18,8 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    outputs:
+      app_token: ${{ steps.app-token.outputs.token }}
     steps:
       - name: Generate GitHub App token
         id: app-token
@@ -159,7 +161,7 @@ network:
     - defaults
     - github
 safe-outputs:
-  github-token: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
+  github-token: ${{ needs.scan.outputs.app_token }}
   create-issue:
     title-prefix: "[Migration Batch] "
     labels: [automation, migration, tracking]
