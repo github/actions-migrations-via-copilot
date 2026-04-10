@@ -97,8 +97,8 @@ this repository from **${{ inputs.migration_type }}** to GitHub Actions.
 
 - **Target repository:** `${{ inputs.target_repo }}` (checked out as your workspace via `current: true`)
 - **Migration type:** `${{ inputs.migration_type }}`
-- **Knowledge base:** Available at `./knowledge/knowledge/`
-- **Agent prompts:** Available at `./knowledge/agents/`
+- **Knowledge base:** Available at `./knowledge/`
+- **Agent prompts:** Available at `./agents/`
 
 ## Instructions
 
@@ -115,7 +115,7 @@ this repository from **${{ inputs.migration_type }}** to GitHub Actions.
    base references, platform-specific expertise, and step-by-step process.
 
 3. **Read knowledge base documents** referenced in the agent file — the agent
-   file will reference documents under `./knowledge/knowledge/` (migration
+   file will reference documents under `./knowledge/` (migration
    workflow, standards, guardrails, action mappings, patterns, report templates).
    Read them with `cat` as needed — they are all available locally.
 
