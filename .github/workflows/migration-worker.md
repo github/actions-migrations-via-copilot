@@ -74,16 +74,16 @@ safe-outputs:
   github-app:
     app-id: ${{ vars.GH_APP_ID }}
     private-key: ${{ secrets.GH_APP_PEM }}
-    owner: ${{ inputs.target_repo_owner }}
-    repositories: ["*"]
   create-pull-request:
     target-repo: ${{ inputs.target_repo }}
+    github-token: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
     title-prefix: "[Actions Migration] "
     labels: [automation, migration]
     draft: true
     max: 1
   add-comment:
     target: ${{ inputs.tracking_issue }}
+    discussions: false
     max: 1
   noop:
 ---
