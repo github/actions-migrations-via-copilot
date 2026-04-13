@@ -21,7 +21,7 @@ jobs:
 
       - name: Load settings
         id: load-settings
-        uses: actions/github-script@v8.0.0
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             const fs = require('fs')
@@ -31,7 +31,7 @@ jobs:
 
       - name: Setup Custom Properties
         id: setup-custom-properties
-        uses: actions/github-script@v8.0.0
+        uses: actions/github-script@v9.0.0
         with:
           github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
           script: |
@@ -41,7 +41,7 @@ jobs:
 
       - name: Setup Repository Variables
         id: setup-repo-variables
-        uses: actions/github-script@v8.0.0
+        uses: actions/github-script@v9.0.0
         with:
           github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
           script: |
@@ -51,7 +51,7 @@ jobs:
 
       - name: Create Environment Secrets on Target Repositories
         id: create-secrets
-        uses: actions/github-script@v8.0.0
+        uses: actions/github-script@v9.0.0
         env:
           SECRET_VALUE: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
         with:
