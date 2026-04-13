@@ -31,13 +31,16 @@ permissions:
   contents: read
   issues: read
 checkout:
-  - current: true
   - repository: ${{ inputs.target_repo }}
     github-app:
       app-id: ${{ vars.GH_APP_ID }}
       private-key: ${{ secrets.GH_APP_PEM }}
       owner: ${{ inputs.target_repo_owner }}
-    path: ./target
+    current: true
+  - path: ./knowledge
+    sparse-checkout: |
+      knowledge/
+      agents/
 env: {}
 tools:
   bash:
@@ -92,27 +95,27 @@ Migrate the CI/CD pipeline in `${{ inputs.target_repo }}` from
 
 | Key | Value |
 |-----|-------|
-| Calling repository | Checked out as workspace (root) — contains `agents/` and `knowledge/` |
-| Target repository | `${{ inputs.target_repo }}` checked out at `./target/` |
+| Target repository | `${{ inputs.target_repo }}` checked out as workspace root |
+| Calling repository | Sparse-checked out at `./knowledge/` (agents and knowledge dirs) |
 | Migration type | `${{ inputs.migration_type }}` |
 | Tracking issue | #${{ inputs.tracking_issue }} |
-| Agent file | `./agents/${{ inputs.migration_type }}-migrator.md` |
-| Knowledge base | `./knowledge/` |
+| Agent file | `./knowledge/agents/${{ inputs.migration_type }}-migrator.md` |
+| Knowledge base | `./knowledge/knowledge/` |
 
 ## Instructions
 
-1. **Read the agent file** at `./agents/${{ inputs.migration_type }}-migrator.md`.
+1. **Read the agent file** at `./knowledge/agents/${{ inputs.migration_type }}-migrator.md`.
    If it does not exist, call `noop` with message:
    "No migration agent found for type: ${{ inputs.migration_type }}"
 
 2. **Read knowledge base documents** referenced in the agent file — they are
-   all available locally under `./knowledge/`.
+   all available locally under `./knowledge/knowledge/`.
 
 3. **Execute the migration** following the agent file's instructions against
-   the target repository at `./target/`. It defines the full process: source
-   file identification, pipeline analysis, workflow creation, file archival,
-   report generation, and PR creation. All new/modified files go under
-   `./target/.github/`.
+   the target repository at the workspace root. It defines the full process:
+   source file identification, pipeline analysis, workflow creation, file
+   archival, report generation, and PR creation. All new/modified files go
+   under `.github/`.
 
 4. **Create a pull request** on `${{ inputs.target_repo }}` via `create_pull_request`
    (uses the GH App token to push to the target repo).
