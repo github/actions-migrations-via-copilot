@@ -65,15 +65,30 @@ jobs:
                       const repos = await scan({ github, core, process })
                       return JSON.stringify(repos)
 
-            - name: Create tracking issue and dispatch workers
+            - name: Create tracking issue for ${{ matrix.org }}
+              id: issue
               if: steps.scan.outputs.result != '[]'
               uses: actions/github-script@v9
               env:
                   SCAN_RESULTS: ${{ steps.scan.outputs.result }}
                   ORG: ${{ matrix.org }}
               with:
+                  result-encoding: string
+                  script: |
+                      const createIssue = require('./.github/scripts/create-tracking-issue.js')
+                      const repos = JSON.parse(process.env.SCAN_RESULTS)
+                      return await createIssue({ github, core, context, org: process.env.ORG, repos })
+
+            - name: Dispatch migration workers for ${{ matrix.org }}
+              if: steps.scan.outputs.result != '[]'
+              uses: actions/github-script@v9
+              env:
+                  SCAN_RESULTS: ${{ steps.scan.outputs.result }}
+                  ORG: ${{ matrix.org }}
+                  TRACKING_ISSUE: ${{ steps.issue.outputs.result }}
+              with:
                   github-token: ${{ steps.app-token.outputs.token }}
                   script: |
                       const dispatch = require('./.github/scripts/dispatch-migrations.js')
-                      const orgEntry = { org: process.env.ORG, repos: JSON.parse(process.env.SCAN_RESULTS) }
-                      await dispatch({ github, core, context, orgEntry })
+                      const repos = JSON.parse(process.env.SCAN_RESULTS)
+                      await dispatch({ github, core, context, org: process.env.ORG, repos, trackingIssue: process.env.TRACKING_ISSUE })
