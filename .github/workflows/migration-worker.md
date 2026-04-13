@@ -31,16 +31,13 @@ permissions:
   contents: read
   issues: read
 checkout:
+  - current: true
   - repository: ${{ inputs.target_repo }}
     github-app:
       app-id: ${{ vars.GH_APP_ID }}
       private-key: ${{ secrets.GH_APP_PEM }}
       owner: ${{ inputs.target_repo_owner }}
-    current: true
-  - path: ./knowledge
-    sparse-checkout: |
-      knowledge/
-      agents/
+    path: ./target
 env: {}
 tools:
   bash:
@@ -75,7 +72,6 @@ safe-outputs:
     private-key: ${{ secrets.GH_APP_PEM }}
   create-pull-request:
     target-repo: ${{ inputs.target_repo }}
-    github-token: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
     title-prefix: "[Actions Migration] "
     labels: [automation, migration]
     draft: true
@@ -96,7 +92,8 @@ Migrate the CI/CD pipeline in `${{ inputs.target_repo }}` from
 
 | Key | Value |
 |-----|-------|
-| Target repository | `${{ inputs.target_repo }}` (checked out as workspace) |
+| Calling repository | Checked out as workspace (root) — contains `agents/` and `knowledge/` |
+| Target repository | `${{ inputs.target_repo }}` checked out at `./target/` |
 | Migration type | `${{ inputs.migration_type }}` |
 | Tracking issue | #${{ inputs.tracking_issue }} |
 | Agent file | `./agents/${{ inputs.migration_type }}-migrator.md` |
@@ -111,11 +108,17 @@ Migrate the CI/CD pipeline in `${{ inputs.target_repo }}` from
 2. **Read knowledge base documents** referenced in the agent file — they are
    all available locally under `./knowledge/`.
 
-3. **Execute the migration** following the agent file's instructions. It defines
-   the full process: source file identification, pipeline analysis, workflow
-   creation, file archival, report generation, and PR creation.
+3. **Execute the migration** following the agent file's instructions against
+   the target repository at `./target/`. It defines the full process: source
+   file identification, pipeline analysis, workflow creation, file archival,
+   report generation, and PR creation. All new/modified files go under
+   `./target/.github/`.
 
-4. **Report status** to tracking issue #${{ inputs.tracking_issue }} via `add_comment`:
+4. **Create a pull request** on `${{ inputs.target_repo }}` via `create_pull_request`
+   (uses the GH App token to push to the target repo).
+
+5. **Report status** to tracking issue #${{ inputs.tracking_issue }} via `add_comment`
+   (uses the default GITHUB_TOKEN on the calling repo):
    - Success: `✅ ${{ inputs.target_repo }}: PR opened — [summary]`
    - Failure: `❌ ${{ inputs.target_repo }}: [reason]`
 
