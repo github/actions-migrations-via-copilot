@@ -87,7 +87,6 @@ jobs:
                   ORG: ${{ matrix.org }}
                   TRACKING_ISSUE: ${{ steps.issue.outputs.result }}
               with:
-                  github-token: ${{ steps.app-token.outputs.token }}
                   script: |
                       const dispatch = require('./.github/scripts/dispatch-migrations.js')
                       const repos = JSON.parse(process.env.SCAN_RESULTS)
