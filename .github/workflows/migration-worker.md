@@ -31,16 +31,7 @@ permissions:
   contents: read
   issues: read
 checkout:
-  - repository: ${{ inputs.target_repo }}
-    github-app:
-      app-id: ${{ vars.GH_APP_ID }}
-      private-key: ${{ secrets.GH_APP_PEM }}
-      owner: ${{ inputs.target_repo_owner }}
-    current: true
-  - path: ./knowledge
-    sparse-checkout: |
-      knowledge/
-      agents/
+  - current: true
 env: {}
 tools:
   bash:
@@ -95,32 +86,35 @@ Migrate the CI/CD pipeline in `${{ inputs.target_repo }}` from
 
 | Key | Value |
 |-----|-------|
-| Target repository | `${{ inputs.target_repo }}` checked out as workspace root |
-| Calling repository | Sparse-checked out at `./knowledge/` (agents and knowledge dirs) |
+| Calling repository | Checked out as workspace root — contains `agents/` and `knowledge/` |
+| Target repository | `${{ inputs.target_repo }}` — access via GitHub API (repos toolset) |
 | Migration type | `${{ inputs.migration_type }}` |
 | Tracking issue | #${{ inputs.tracking_issue }} |
-| Agent file | `./knowledge/agents/${{ inputs.migration_type }}-migrator.md` |
-| Knowledge base | `./knowledge/knowledge/` |
+| Agent file | `./agents/${{ inputs.migration_type }}-migrator.md` |
+| Knowledge base | `./knowledge/` |
 
 ## Instructions
 
-1. **Read the agent file** at `./knowledge/agents/${{ inputs.migration_type }}-migrator.md`.
+1. **Read the agent file** at `./agents/${{ inputs.migration_type }}-migrator.md`.
    If it does not exist, call `noop` with message:
    "No migration agent found for type: ${{ inputs.migration_type }}"
 
 2. **Read knowledge base documents** referenced in the agent file — they are
-   all available locally under `./knowledge/knowledge/`.
+   all available locally under `./knowledge/`.
 
-3. **Execute the migration** following the agent file's instructions against
-   the target repository at the workspace root. It defines the full process:
-   source file identification, pipeline analysis, workflow creation, file
-   archival, report generation, and PR creation. All new/modified files go
-   under `.github/`.
+3. **Read the target repository** `${{ inputs.target_repo }}` using the GitHub
+   API (repos toolset) to retrieve source CI/CD configuration files identified
+   by the agent file (e.g., Jenkinsfile, .gitlab-ci.yml, etc.).
 
-4. **Create a pull request** on `${{ inputs.target_repo }}` via `create_pull_request`
-   (uses the GH App token to push to the target repo).
+4. **Execute the migration** following the agent file's instructions. It defines
+   the full process: source file identification, pipeline analysis, workflow
+   creation, file archival, report generation, and PR creation.
 
-5. **Report status** to tracking issue #${{ inputs.tracking_issue }} via `add_comment`
+5. **Create a pull request** on `${{ inputs.target_repo }}` via `create_pull_request`
+   (uses the GH App token to push to the target repo). Include all generated
+   workflow files, archived source CI files, and the migration report.
+
+6. **Report status** to tracking issue #${{ inputs.tracking_issue }} via `add_comment`
    (uses the default GITHUB_TOKEN on the calling repo):
    - Success: `✅ ${{ inputs.target_repo }}: PR opened — [summary]`
    - Failure: `❌ ${{ inputs.target_repo }}: [reason]`
