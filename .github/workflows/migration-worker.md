@@ -17,7 +17,7 @@ on:
         type: string
       tracking_issue:
         description: "Parent tracking issue number for status reporting"
-        required: false
+        required: true
         type: string
       target_repo_owner:
         description: "Organization that owns the target repository"
@@ -41,8 +41,7 @@ checkout:
     sparse-checkout: |
       knowledge/
       agents/
-env:
-  MIGRATION_TYPE_PROMPTS: ${{ vars.MIGRATION_TYPE_PROMPTS }}
+env: {}
 tools:
   bash:
     - "cat"
@@ -90,55 +89,41 @@ safe-outputs:
 
 # CI/CD Migration Worker
 
-You are a CI/CD migration agent. Your job is to migrate the CI/CD pipeline in
-this repository from **${{ inputs.migration_type }}** to GitHub Actions.
+Migrate the CI/CD pipeline in `${{ inputs.target_repo }}` from
+**${{ inputs.migration_type }}** to GitHub Actions.
 
 ## Context
 
-- **Target repository:** `${{ inputs.target_repo }}` (checked out as your workspace via `current: true`)
-- **Migration type:** `${{ inputs.migration_type }}`
-- **Knowledge base:** Available at `./knowledge/`
-- **Agent prompts:** Available at `./agents/`
+| Key | Value |
+|-----|-------|
+| Target repository | `${{ inputs.target_repo }}` (checked out as workspace) |
+| Migration type | `${{ inputs.migration_type }}` |
+| Tracking issue | #${{ inputs.tracking_issue }} |
+| Agent file | `./agents/${{ inputs.migration_type }}-migrator.md` |
+| Knowledge base | `./knowledge/` |
 
 ## Instructions
 
-1. **Determine the agent file** — the repository variable `MIGRATION_TYPE_PROMPTS`
-   contains a JSON mapping of migration types to agent filenames. Parse it and
-   look up `${{ inputs.migration_type }}` to get the agent file path under
-   `./knowledge/agents/`.
-
-   If no matching entry exists, call `noop` with message:
+1. **Read the agent file** at `./agents/${{ inputs.migration_type }}-migrator.md`.
+   If it does not exist, call `noop` with message:
    "No migration agent found for type: ${{ inputs.migration_type }}"
 
-2. **Read the agent file** — use `cat` to read the full contents of the matched
-   agent file. This file contains the specialized migration prompt, knowledge
-   base references, platform-specific expertise, and step-by-step process.
+2. **Read knowledge base documents** referenced in the agent file — they are
+   all available locally under `./knowledge/`.
 
-3. **Read knowledge base documents** referenced in the agent file — the agent
-   file will reference documents under `./knowledge/` (migration
-   workflow, standards, guardrails, action mappings, patterns, report templates).
-   Read them with `cat` as needed — they are all available locally.
+3. **Execute the migration** following the agent file's instructions. It defines
+   the full process: source file identification, pipeline analysis, workflow
+   creation, file archival, report generation, and PR creation.
 
-4. **Execute the migration** by following the agent file's instructions exactly.
-   The agent file defines the full migration process including:
-   - Source file identification
-   - Pipeline analysis
-   - GitHub Actions workflow creation
-   - Original file archival
-   - Migration report generation
-   - Pull request creation (title, body, and content)
-
-5. **Report status** — if a tracking issue was provided (${{ inputs.tracking_issue }}),
-   post a comment via `add_comment`:
-   - On success: `✅ ${{ inputs.target_repo }}: PR opened — [migration summary]`
-   - On failure/no changes: `❌ ${{ inputs.target_repo }}: [reason]`
+4. **Report status** to tracking issue #${{ inputs.tracking_issue }} via `add_comment`:
+   - Success: `✅ ${{ inputs.target_repo }}: PR opened — [summary]`
+   - Failure: `❌ ${{ inputs.target_repo }}: [reason]`
 
 ## Rules
 
-- Do NOT modify application source code — only create/modify files in `.github/`
-- Do NOT create custom actions — use verified marketplace actions only
-- Do NOT use `permissions: write-all` — declare least-privilege permissions
-- Do NOT leave placeholder text (TODO, FIXME, CHANGEME) in output files
-- EVERY action must be pinned to a 40-char commit SHA
-- ALWAYS follow the agent file's instructions — it is the authoritative source
-  for platform-specific migration logic
+- Only create/modify files in `.github/` — do NOT touch application source code
+- Use verified marketplace actions only — no custom actions
+- Pin every action to a 40-char commit SHA
+- Declare least-privilege permissions — never use `permissions: write-all`
+- No placeholder text (TODO, FIXME, CHANGEME) in output files
+- The agent file is authoritative — follow its instructions exactly

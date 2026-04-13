@@ -1,0 +1,76 @@
+name: Submit Repositories for Migration
+
+on:
+    schedule:
+        - cron: "5 12 * * 5"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    issues: write
+    actions: write
+
+concurrency:
+    group: submit-repos
+    cancel-in-progress: false
+
+jobs:
+    scan:
+        runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.scan.outputs.result }}
+        steps:
+            - name: Generate GitHub App token
+              id: app-token
+              uses: actions/create-github-app-token@v3
+              with:
+                  client-id: ${{ vars.GH_APP_ID }}
+                  private-key: ${{ secrets.GH_APP_PEM }}
+                  owner: ${{ github.repository_owner }}
+
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Scan repositories
+              id: scan
+              uses: actions/github-script@v9
+              env:
+                  BATCH_SIZE: ${{ vars.BATCH_SIZE }}
+                  ORGANIZATIONS: ${{ vars.ORGANIZATIONS }}
+              with:
+                  github-token: ${{ steps.app-token.outputs.token }}
+                  result-encoding: string
+                  script: |
+                      const scan = require('./.github/scripts/scan-repositories.js')
+                      const eligible = await scan({ github, core, process })
+                      return JSON.stringify(eligible)
+
+    dispatch:
+        needs: scan
+        if: needs.scan.outputs.matrix != '[]'
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                include: ${{ fromJSON(needs.scan.outputs.matrix) }}
+            fail-fast: false
+        steps:
+            - name: Generate GitHub App token for ${{ matrix.org }}
+              id: app-token
+              uses: actions/create-github-app-token@v3
+              with:
+                  client-id: ${{ vars.GH_APP_ID }}
+                  private-key: ${{ secrets.GH_APP_PEM }}
+                  owner: ${{ matrix.org }}
+
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Create tracking issue and dispatch workers
+              uses: actions/github-script@v9
+              env:
+                  ORG_ENTRY: ${{ toJSON(matrix) }}
+              with:
+                  github-token: ${{ steps.app-token.outputs.token }}
+                  script: |
+                      const dispatch = require('./.github/scripts/dispatch-migrations.js')
+                      await dispatch({ github, core, context, orgEntry: JSON.parse(process.env.ORG_ENTRY) })

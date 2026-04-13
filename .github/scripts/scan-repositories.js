@@ -1,64 +1,6 @@
-module.exports = async ({ github, core, process, getOctokit }) => {
-    const fs = require('fs')
-    const crypto = require('crypto')
-
+module.exports = async ({ github, core, process }) => {
     const orgs = JSON.parse(process.env.ORGANIZATIONS)
-    const prompts = JSON.parse(process.env.MIGRATION_TYPE_PROMPTS)
-    const batchSize = parseInt(process.env.BATCH_SIZE_VAR) || 100
-    const appId = process.env.GH_APP_ID
-    const appPem = process.env.GH_APP_PEM
-    const apiBase = process.env.GITHUB_API_URL || 'https://api.github.com'
-
-    function generateJWT() {
-        const now = Math.floor(Date.now() / 1000)
-        const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url')
-        const payload = Buffer.from(JSON.stringify({
-            iat: now - 60,
-            exp: now + (10 * 60),
-            iss: appId
-        })).toString('base64url')
-        const signature = crypto.createSign('RSA-SHA256')
-            .update(`${header}.${payload}`)
-            .sign(appPem, 'base64url')
-        return `${header}.${payload}.${signature}`
-    }
-
-    async function getInstallationToken(org) {
-        const jwt = generateJWT()
-
-        const installRes = await fetch(
-            `${apiBase}/orgs/${encodeURIComponent(org)}/installation`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${jwt}`,
-                    'Accept': 'application/vnd.github+json',
-                    'X-GitHub-Api-Version': '2022-11-28'
-                }
-            }
-        )
-        if (!installRes.ok) {
-            throw new Error(`Failed to get app installation for ${org}: ${installRes.status} ${installRes.statusText}`)
-        }
-        const installation = await installRes.json()
-
-        const tokenRes = await fetch(
-            `${apiBase}/app/installations/${installation.id}/access_tokens`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${jwt}`,
-                    'Accept': 'application/vnd.github+json',
-                    'X-GitHub-Api-Version': '2022-11-28'
-                }
-            }
-        )
-        if (!tokenRes.ok) {
-            throw new Error(`Failed to create installation token for ${org}: ${tokenRes.status} ${tokenRes.statusText}`)
-        }
-        const tokenData = await tokenRes.json()
-
-        return tokenData.token
-    }
+    const batchSize = parseInt(process.env.BATCH_SIZE) || 100
 
     async function withRetry(fn, label, maxRetries = 3) {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -78,46 +20,43 @@ module.exports = async ({ github, core, process, getOctokit }) => {
     }
 
     const eligible = []
-    const skipped = []
-    const errors = []
-    let totalScanned = 0
+    const orgResults = {}
+    let totalRepos = 0
+    let skippedNoType = 0
+    let skippedExisting = 0
+    let skippedArchived = 0
+    let orgErrors = 0
 
     for (const org of orgs) {
         let submitted = 0
         core.info(`Scanning organization: ${org}`)
 
-        let orgGithub
-        try {
-            const token = await withRetry(
-                () => getInstallationToken(org),
-                `getInstallationToken(${org})`
-            )
-            orgGithub = getOctokit(token)
-        } catch (err) {
-            errors.push({ org, error: `Failed to authenticate: ${err.message}` })
-            continue
-        }
-
         let repos
         try {
             repos = await withRetry(
-                () => orgGithub.paginate(orgGithub.rest.repos.listForOrg, { org, per_page: 100, type: 'all' }),
+                () => github.paginate(github.rest.repos.listForOrg, { org, per_page: 100, type: 'all' }),
                 `listForOrg(${org})`
             )
         } catch (err) {
-            errors.push({ org, error: err.message })
+            core.warning(`Failed to list repos for ${org}: ${err.message}`)
+            orgErrors++
             continue
         }
 
+        core.info(`  Found ${repos.length} repositories in ${org}`)
+
         for (const repo of repos) {
-            if (repo.archived || repo.fork) continue
+            totalRepos++
+            if (repo.archived || repo.fork) {
+                skippedArchived++
+                continue
+            }
             if (repo.name === '.github-private') continue
-            totalScanned++
 
             let migrationType = null
             try {
                 const { data: props } = await withRetry(
-                    () => orgGithub.request(
+                    () => github.request(
                         'GET /repos/{owner}/{repo}/properties/values',
                         { owner: org, repo: repo.name }
                     ),
@@ -128,41 +67,60 @@ module.exports = async ({ github, core, process, getOctokit }) => {
             } catch (err) { }
 
             if (!migrationType || migrationType === 'None') {
-                skipped.push({ repo: `${org}/${repo.name}`, reason: 'No migration type or set to None' })
-                continue
-            }
-
-            if (!prompts[migrationType]) {
-                skipped.push({ repo: `${org}/${repo.name}`, reason: `Unknown migration type: ${migrationType}` })
+                skippedNoType++
                 continue
             }
 
             try {
                 const { data: search } = await withRetry(
-                    () => orgGithub.rest.search.issuesAndPullRequests({
+                    () => github.rest.search.issuesAndPullRequests({
                         q: `repo:${org}/${repo.name} is:open "[Actions Migration]" in:title`
                     }),
                     `search(${org}/${repo.name})`
                 )
                 if (search.total_count > 0) {
-                    skipped.push({ repo: `${org}/${repo.name}`, reason: 'Open migration issue/PR already exists' })
+                    skippedExisting++
                     continue
                 }
             } catch (err) {
                 core.warning(`Search failed for ${org}/${repo.name}: ${err.message}`)
             }
 
-            eligible.push({ repo: `${org}/${repo.name}`, migrationType })
+            if (!orgResults[org]) orgResults[org] = []
+            orgResults[org].push({ repo: repo.name, type: migrationType })
             submitted++
             if (submitted >= batchSize) {
-                core.info(`Batch size ${batchSize} reached for ${org}`)
+                core.info(`  Batch size ${batchSize} reached for ${org}`)
                 break
             }
         }
+
+        core.info(`  ${org}: ${submitted} eligible`)
     }
 
-    const results = { eligible, skipped, errors, totalScanned, orgs: orgs.length }
-    fs.mkdirSync('/tmp/gh-aw/agent', { recursive: true })
-    fs.writeFileSync('/tmp/gh-aw/agent/scan-results.json', JSON.stringify(results, null, 2))
-    core.info(`Scan complete: ${eligible.length} eligible, ${skipped.length} skipped, ${errors.length} errors out of ${totalScanned} repos`)
+    for (const [org, repos] of Object.entries(orgResults)) {
+        eligible.push({ org, repos })
+    }
+
+    const totalEligible = eligible.reduce((sum, e) => sum + e.repos.length, 0)
+    const byType = eligible.flatMap(e => e.repos).reduce((acc, r) => {
+        acc[r.type] = (acc[r.type] || 0) + 1
+        return acc
+    }, {})
+
+    core.info('--- Scan Summary ---')
+    core.info(`Organizations scanned: ${orgs.length} (${orgErrors} failed)`)
+    core.info(`Total repositories:    ${totalRepos}`)
+    core.info(`Skipped (archived/fork): ${skippedArchived}`)
+    core.info(`Skipped (no migration type): ${skippedNoType}`)
+    core.info(`Skipped (existing migration): ${skippedExisting}`)
+    core.info(`Eligible for migration: ${totalEligible} across ${eligible.length} orgs`)
+    if (totalEligible > 0) {
+        core.info('Breakdown by type:')
+        for (const [type, count] of Object.entries(byType)) {
+            core.info(`  ${type}: ${count}`)
+        }
+    }
+
+    return eligible
 }
