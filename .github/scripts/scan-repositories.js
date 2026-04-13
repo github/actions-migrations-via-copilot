@@ -1,5 +1,5 @@
 module.exports = async ({ github, core, process }) => {
-    const orgs = JSON.parse(process.env.ORGANIZATIONS)
+    const org = process.env.ORG
     const batchSize = parseInt(process.env.BATCH_SIZE) || 100
 
     async function withRetry(fn, label, maxRetries = 3) {
@@ -20,102 +20,86 @@ module.exports = async ({ github, core, process }) => {
     }
 
     const eligible = []
-    const orgResults = {}
     let totalRepos = 0
     let skippedNoType = 0
     let skippedExisting = 0
     let skippedArchived = 0
-    let orgErrors = 0
 
-    for (const org of orgs) {
-        let submitted = 0
-        core.info(`Scanning organization: ${org}`)
+    core.info(`Scanning organization: ${org}`)
 
-        let repos
+    let repos
+    try {
+        repos = await withRetry(
+            () => github.paginate(github.rest.repos.listForOrg, { org, per_page: 100, type: 'all' }),
+            `listForOrg(${org})`
+        )
+    } catch (err) {
+        core.setFailed(`Failed to list repos for ${org}: ${err.message}`)
+        return []
+    }
+
+    core.info(`Found ${repos.length} repositories in ${org}`)
+
+    for (const repo of repos) {
+        totalRepos++
+        if (repo.archived || repo.fork) {
+            skippedArchived++
+            continue
+        }
+        if (repo.name === '.github-private') continue
+
+        let migrationType = null
         try {
-            repos = await withRetry(
-                () => github.paginate(github.rest.repos.listForOrg, { org, per_page: 100, type: 'all' }),
-                `listForOrg(${org})`
+            const { data: props } = await withRetry(
+                () => github.request(
+                    'GET /repos/{owner}/{repo}/properties/values',
+                    { owner: org, repo: repo.name }
+                ),
+                `properties(${org}/${repo.name})`
             )
-        } catch (err) {
-            core.warning(`Failed to list repos for ${org}: ${err.message}`)
-            orgErrors++
+            const prop = props.find(p => p.property_name === 'GH_MIGRATION_TYPE')
+            migrationType = prop?.value
+        } catch (err) { }
+
+        if (!migrationType || migrationType === 'None') {
+            skippedNoType++
             continue
         }
 
-        core.info(`  Found ${repos.length} repositories in ${org}`)
-
-        for (const repo of repos) {
-            totalRepos++
-            if (repo.archived || repo.fork) {
-                skippedArchived++
+        try {
+            const { data: search } = await withRetry(
+                () => github.rest.search.issuesAndPullRequests({
+                    q: `repo:${org}/${repo.name} is:open "[Actions Migration]" in:title`
+                }),
+                `search(${org}/${repo.name})`
+            )
+            if (search.total_count > 0) {
+                skippedExisting++
                 continue
             }
-            if (repo.name === '.github-private') continue
-
-            let migrationType = null
-            try {
-                const { data: props } = await withRetry(
-                    () => github.request(
-                        'GET /repos/{owner}/{repo}/properties/values',
-                        { owner: org, repo: repo.name }
-                    ),
-                    `properties(${org}/${repo.name})`
-                )
-                const prop = props.find(p => p.property_name === 'GH_MIGRATION_TYPE')
-                migrationType = prop?.value
-            } catch (err) { }
-
-            if (!migrationType || migrationType === 'None') {
-                skippedNoType++
-                continue
-            }
-
-            try {
-                const { data: search } = await withRetry(
-                    () => github.rest.search.issuesAndPullRequests({
-                        q: `repo:${org}/${repo.name} is:open "[Actions Migration]" in:title`
-                    }),
-                    `search(${org}/${repo.name})`
-                )
-                if (search.total_count > 0) {
-                    skippedExisting++
-                    continue
-                }
-            } catch (err) {
-                core.warning(`Search failed for ${org}/${repo.name}: ${err.message}`)
-            }
-
-            if (!orgResults[org]) orgResults[org] = []
-            orgResults[org].push({ repo: repo.name, type: migrationType })
-            submitted++
-            if (submitted >= batchSize) {
-                core.info(`  Batch size ${batchSize} reached for ${org}`)
-                break
-            }
+        } catch (err) {
+            core.warning(`Search failed for ${org}/${repo.name}: ${err.message}`)
         }
 
-        core.info(`  ${org}: ${submitted} eligible`)
+        eligible.push({ repo: repo.name, type: migrationType })
+        if (eligible.length >= batchSize) {
+            core.info(`Batch size ${batchSize} reached`)
+            break
+        }
     }
 
-    for (const [org, repos] of Object.entries(orgResults)) {
-        eligible.push({ org, repos })
-    }
-
-    const totalEligible = eligible.reduce((sum, e) => sum + e.repos.length, 0)
-    const byType = eligible.flatMap(e => e.repos).reduce((acc, r) => {
+    const byType = eligible.reduce((acc, r) => {
         acc[r.type] = (acc[r.type] || 0) + 1
         return acc
     }, {})
 
-    core.info('--- Scan Summary ---')
-    core.info(`Organizations scanned: ${orgs.length} (${orgErrors} failed)`)
+    core.info(`--- Scan Summary: ${org} ---`)
     core.info(`Total repositories:    ${totalRepos}`)
     core.info(`Skipped (archived/fork): ${skippedArchived}`)
     core.info(`Skipped (no migration type): ${skippedNoType}`)
     core.info(`Skipped (existing migration): ${skippedExisting}`)
-    core.info(`Eligible for migration: ${totalEligible} across ${eligible.length} orgs`)
-    if (totalEligible > 0) {
+    core.info(`Eligible for migration: ${eligible.length}`)
+    if (eligible.length > 0) {
         core.info('Breakdown by type:')
         for (const [type, count] of Object.entries(byType)) {
             core.info(`  ${type}: ${count}`)

@@ -1,8 +1,8 @@
 name: Submit Repositories for Migration
 
 on:
-    schedule:
-        - cron: "5 12 * * 5"
+    # schedule:
+    #     - cron: "5 12 * * 5"
     workflow_dispatch:
 
 permissions:
@@ -15,43 +15,29 @@ concurrency:
     cancel-in-progress: false
 
 jobs:
-    scan:
+    prepare:
         runs-on: ubuntu-latest
         outputs:
-            matrix: ${{ steps.scan.outputs.result }}
+            matrix: ${{ steps.orgs.outputs.result }}
         steps:
-            - name: Generate GitHub App token
-              id: app-token
-              uses: actions/create-github-app-token@v3
-              with:
-                  client-id: ${{ vars.GH_APP_ID }}
-                  private-key: ${{ secrets.GH_APP_PEM }}
-                  owner: ${{ github.repository_owner }}
-
-            - name: Checkout
-              uses: actions/checkout@v6
-
-            - name: Scan repositories
-              id: scan
+            - name: Parse organizations
+              id: orgs
               uses: actions/github-script@v9
               env:
-                  BATCH_SIZE: ${{ vars.BATCH_SIZE }}
                   ORGANIZATIONS: ${{ vars.ORGANIZATIONS }}
               with:
-                  github-token: ${{ steps.app-token.outputs.token }}
                   result-encoding: string
                   script: |
-                      const scan = require('./.github/scripts/scan-repositories.js')
-                      const eligible = await scan({ github, core, process })
-                      return JSON.stringify(eligible)
+                      const orgs = JSON.parse(process.env.ORGANIZATIONS)
+                      return JSON.stringify(orgs.map(org => ({ org })))
 
-    dispatch:
-        needs: scan
-        if: needs.scan.outputs.matrix != '[]'
+    scan-and-dispatch:
+        needs: prepare
+        if: needs.prepare.outputs.matrix != '[]'
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                include: ${{ fromJSON(needs.scan.outputs.matrix) }}
+                include: ${{ fromJSON(needs.prepare.outputs.matrix) }}
             fail-fast: false
         steps:
             - name: Generate GitHub App token for ${{ matrix.org }}
@@ -65,12 +51,29 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v6
 
-            - name: Create tracking issue and dispatch workers
+            - name: Scan repositories for ${{ matrix.org }}
+              id: scan
               uses: actions/github-script@v9
               env:
-                  ORG_ENTRY: ${{ toJSON(matrix) }}
+                  BATCH_SIZE: ${{ vars.BATCH_SIZE }}
+                  ORG: ${{ matrix.org }}
+              with:
+                  github-token: ${{ steps.app-token.outputs.token }}
+                  result-encoding: string
+                  script: |
+                      const scan = require('./.github/scripts/scan-repositories.js')
+                      const repos = await scan({ github, core, process })
+                      return JSON.stringify(repos)
+
+            - name: Create tracking issue and dispatch workers
+              if: steps.scan.outputs.result != '[]'
+              uses: actions/github-script@v9
+              env:
+                  SCAN_RESULTS: ${{ steps.scan.outputs.result }}
+                  ORG: ${{ matrix.org }}
               with:
                   github-token: ${{ steps.app-token.outputs.token }}
                   script: |
                       const dispatch = require('./.github/scripts/dispatch-migrations.js')
-                      await dispatch({ github, core, context, orgEntry: JSON.parse(process.env.ORG_ENTRY) })
+                      const orgEntry = { org: process.env.ORG, repos: JSON.parse(process.env.SCAN_RESULTS) }
+                      await dispatch({ github, core, context, orgEntry })
