@@ -20,7 +20,7 @@ on:
         required: true
         type: string
       target_repo_owner:
-        description: "Organization that owns the target repository"
+        description: "Owner portion of the target repository; must match target_repo"
         required: true
         type: string
 timeout-minutes: 60
@@ -64,6 +64,8 @@ safe-outputs:
   github-app:
     app-id: ${{ vars.GH_APP_ID }}
     private-key: ${{ secrets.GH_APP_PEM }}
+    owner: ${{ inputs.target_repo_owner }}
+    repositories: ["*"]
   create-pull-request:
     target-repo: ${{ inputs.target_repo }}
     title-prefix: "[Actions Migration] "
