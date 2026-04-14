@@ -72,10 +72,7 @@ safe-outputs:
     labels: [automation, migration]
     draft: true
     max: 1
-  add-comment:
-    target: ${{ inputs.tracking_issue }}
-    discussions: false
-    max: 1
+    allowed-files: [".github/**"]
   noop:
 ---
 
@@ -87,7 +84,7 @@ Migrate the CI/CD pipeline in `${{ inputs.target_repo }}` from
 ## Context
 
 | Key | Value |
-|-----|-------|
+| --- | ----- |
 | Calling repository | Checked out as workspace root — contains `agents/` and `knowledge/` |
 | Target repository | `${{ inputs.target_repo }}` — access via GitHub API (repos toolset) |
 | Migration type | `${{ inputs.migration_type }}` |
@@ -116,10 +113,8 @@ Migrate the CI/CD pipeline in `${{ inputs.target_repo }}` from
    (uses the GH App token to push to the target repo). Include all generated
    workflow files, archived source CI files, and the migration report.
 
-6. **Report status** to tracking issue #${{ inputs.tracking_issue }} via `add_comment`
-   (uses the default GITHUB_TOKEN on the calling repo):
-   - Success: `✅ ${{ inputs.target_repo }}: PR opened — [summary]`
-   - Failure: `❌ ${{ inputs.target_repo }}: [reason]`
+6. **If a PR cannot be created**, call `noop` with a concise failure reason.
+   Do not attempt any separate tracking issue comments from the agent.
 
 ## Rules
 
