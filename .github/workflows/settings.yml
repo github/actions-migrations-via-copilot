@@ -1,0 +1,62 @@
+name: Configuration Settings
+
+# This workflow consumes the settings/config.yaml file and creates
+# the variables and secrets required for the migration workflows.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  configure_repo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout migrations-via-actions Repo
+        uses: actions/checkout@v6
+
+      - name: npm install
+        id: npm-install
+        run: |
+          npm install fs js-yaml libsodium-wrappers
+
+      - name: Load settings
+        id: load-settings
+        uses: actions/github-script@v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const yaml = require('js-yaml')
+            const script = require('${{ github.workspace }}/.github/scripts/load-config.js')
+            return await script({core,process,fs,yaml})
+
+      - name: Setup Custom Properties
+        id: setup-custom-properties
+        uses: actions/github-script@v9.0.0
+        with:
+          github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
+          script: |
+            const config = '${{ steps.load-settings.outputs.config }}'
+            const script = require('${{ github.workspace }}/.github/scripts/setup-custom-properties.js')
+            return await script({github,core,config})
+
+      - name: Setup Repository Variables
+        id: setup-repo-variables
+        uses: actions/github-script@v9.0.0
+        with:
+          github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
+          script: |
+            const config = '${{ steps.load-settings.outputs.config }}'
+            const script = require('${{ github.workspace }}/.github/scripts/create-repo-vars.js')
+            return await script({github,context,core,config})
+
+      - name: Create Environment Secrets on Target Repositories
+        id: create-secrets
+        uses: actions/github-script@v9.0.0
+        env:
+          SECRET_VALUE: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
+        with:
+          github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
+          script: |
+            const config = '${{ steps.load-settings.outputs.config }}'
+            const script = require('${{ github.workspace }}/.github/scripts/create-environment-secrets.js')
+            return await script({github,core,process,config})

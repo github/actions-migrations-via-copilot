@@ -1,0 +1,61 @@
+name: Submit Repositories
+
+# This workflow submits the appropriate issue for each repository
+# in each organization configured in the settings/config.yaml file.
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '0 */1 * * *'
+
+concurrency:
+  group: submit-repos-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  submit-repos:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        organization: ${{ fromJson(vars.ORGANIZATIONS) }}
+      fail-fast: false
+
+    concurrency:
+      group: submit-repos-${{ matrix.organization }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PEM }}
+          owner: ${{ matrix.organization }}
+
+      - name: Query and submit issues for repositories
+        uses: actions/github-script@v9.0.0
+        env:
+          MIGRATION_TYPE_PROMPTS: ${{ vars.MIGRATION_TYPE_PROMPTS }}
+          BATCH_SIZE_VAR: ${{ vars.BATCH_SIZE }}
+          ISSUE_SUBMIT_TOKEN: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
+        with:
+          github-token: ${{ steps.app-token.outputs.token}}
+          script: |
+            const script = require('${{ github.workspace }}/.github/scripts/submit-repositories.js')
+
+            const org = '${{ matrix.organization }}'
+            const batchSize = parseInt(process.env.BATCH_SIZE_VAR) || 100
+
+            const result = await script({
+              github,
+              context,
+              core,
+              process,
+              org,
+              batchSize
+            })
+
+            core.info(`Processing completed for ${org}: ${JSON.stringify(result)}`)
