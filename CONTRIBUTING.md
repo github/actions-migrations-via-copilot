@@ -1,10 +1,71 @@
-# Contributing
+# Actions Migrations via Copilot — Contribution License Agreement
+
+Thanks for contributing! 🎉 This Contribution License Agreement ("Agreement") covers the license rights you grant to GitHub, Inc. and its affiliates ("GitHub") when you contribute to this project. By signing, you ("You") agree to the terms below. This Agreement is effective as of your signature date.
+
+## 1. What This Covers
+
+This Agreement applies to every contribution you make to this repository, now and in the future. You must agree to these terms before contributing.
+
+## 2. Your Work Must Be Original
+
+You represent that each contribution is your own original work.
+
+If you want to contribute materials that aren't entirely yours (e.g., third-party code), you may do so **separately** — provided you:
+
+- retain all original copyright and license notices,
+- note in the Submission description: "Contains third-party materials:" followed by the name(s) and any license restrictions you're aware of, and
+- follow any additional instructions in the project's [contributing guide](CONTRIBUTING.md).
+
+## 3. Employer Contributions
+
+If you're contributing as part of your work for an employer — or if your employer has IP rights over your work by contract or law — you must get your employer's permission before contributing.
+
+When that's the case, "You" means both you and your employer. If you change employers and want to keep contributing, you need your new employer's permission.
+
+## 4. License Grants
+
+a. Copyright License. You grant GitHub (and anyone who receives the Submission from GitHub, directly or indirectly) a **perpetual, worldwide, non-exclusive, royalty-free, irrevocable** license to reproduce, prepare derivative works of, publicly display, publicly perform, distribute, and sublicense the Submission.
+
+b. Patent License. You grant GitHub (and downstream recipients) a **perpetual, worldwide, non-exclusive, royalty-free, irrevocable** patent license — covering only patent claims necessarily infringed by your Submission or its combination with the Project — to make, have made, use, offer to sell, sell, import, and otherwise dispose of the Submission alone or with the Project.
+
+c. No Other Rights. All rights not expressly granted here are reserved by each party. No additional licenses are implied.
+
+## 5. Your Representations
+
+You represent that:
+
+- You are legally entitled to grant the licenses in Section 5.
+- Each contribution is your original work (except as disclosed under Section 3).
+- If applicable, you have your employer's permission (see Section 4).
+- If contributing on behalf of your employer, you have authority to bind them to this Agreement.
+
+You are not expected to provide support for your Submissions unless you choose to.
+
+EXCEPT FOR THE REPRESENTATIONS IN SECTIONS 3, 4, AND 6, YOUR SUBMISSIONS ARE PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND — INCLUDING WARRANTIES OF NONINFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE — UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING.
+
+## 6. Let Us Know If Something Changes
+
+If you learn of anything that would make your representations in this Agreement inaccurate, notify GitHub in writing.
+
+## 7. Public Record
+
+Contributions to this project — including your name and any information you include with your Submission — may be maintained indefinitely and disclosed publicly.
+
+## 8. Governing Law
+
+This Agreement is governed by the laws of the State of California and the federal laws of the United States. Both parties consent to exclusive jurisdiction and venue in the federal and state courts in San Francisco, California, and waive any objection to personal jurisdiction or forum.
+
+## 9. Entire Agreement
+
+This is the entire agreement between the parties on this subject and supersedes all prior agreements or communications. GitHub may assign this Agreement.
+
+--
+
+## Ways to contribute
 
 Contributions are welcome — whether that's fixing a typo, improving an agent prompt, or adding support for a new CI/CD platform.
 
 This project follows a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you agree to abide by its terms.
-
-## Ways to contribute
 
 ### Migration agents (`agents/`)
 
@@ -43,7 +104,11 @@ To add support for a new platform:
 
 ## AI contributions
 
-This project runs on LLMs, so AI-assisted contributions are welcome. That said, AI tools can produce a lot of low-quality issues and PRs fast — please review what you're submitting before you submit it.
+This project runs on LLMs, so AI-assisted contributions are welcome. That said, AI tools can produce a lot of low-quality issues and PRs fast — please review what you're submitting before you submit it. The human submitter is responsible for:
+
+- Reviewing all AI-generated code
+- Ensuring compliance with licensing requirements
+- Taking full responsibility for the contribution
 
 ### Issues
 
