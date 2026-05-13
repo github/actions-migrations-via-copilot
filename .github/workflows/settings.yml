@@ -17,7 +17,7 @@ jobs:
       - name: npm install
         id: npm-install
         run: |
-          npm install fs js-yaml libsodium-wrappers
+          npm install js-yaml
 
       - name: Load settings
         id: load-settings
@@ -48,15 +48,3 @@ jobs:
             const config = '${{ steps.load-settings.outputs.config }}'
             const script = require('${{ github.workspace }}/.github/scripts/create-repo-vars.js')
             return await script({github,context,core,config})
-
-      - name: Create Environment Secrets on Target Repositories
-        id: create-secrets
-        uses: actions/github-script@v9.0.0
-        env:
-          SECRET_VALUE: ${{ secrets.ISSUE_SUBMIT_TOKEN }}
-        with:
-          github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
-          script: |
-            const config = '${{ steps.load-settings.outputs.config }}'
-            const script = require('${{ github.workspace }}/.github/scripts/create-environment-secrets.js')
-            return await script({github,core,process,config})
