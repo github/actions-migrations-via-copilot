@@ -9,6 +9,8 @@ on:
 jobs:
   configure_repo:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout migrations-via-actions Repo
