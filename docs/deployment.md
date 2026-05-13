@@ -8,7 +8,8 @@ Deploy GitHub Actions Migration Agents to your GitHub Enterprise environment.
 2. Clone and configure this repository
 3. Push to `.github-private`
 4. Configure secrets and variables for automation
-5. Enable agents in Enterprise settings
+5. Create the `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN` Copilot Agents secret in each target organization (manual)
+6. Enable agents in Enterprise settings
 
 ## Prerequisites
 
@@ -80,13 +81,14 @@ Verify at `https://github.com/YOUR-ORG-SLUG/.github-private`
 ### Create Personal Access Token
 
 Generate a Classic PAT with:
+
 - Scopes: `repo`, `admin:org`
 - SSO authorization: Enable for all organizations
 - Expiration: Per your organization policy
 
 ### Add Secrets
 
-Navigate to `https://github.com/YOUR-ORG-SLUG/.github-private/settings/secrets/actions`:
+Navigate to `https://github.com/YOUR-ORG-SLUG/.github-private/settings/secrets/actions`
 
 | Secret Name          | Value                                             |
 | -------------------- | ------------------------------------------------- |
@@ -138,6 +140,33 @@ Run the Settings workflow to create variables from config:
 5. Check variables at `https://github.com/YOUR-ORG-SLUG/.github-private/settings/variables/actions`
 
 Expected variables: `GH_APP_ID`, `GH_MIGRATION_TYPE_DEFAULT`, `ORGANIZATIONS`, `BATCH_SIZE`
+
+### Create Copilot Agents Secret (Manual)
+
+The migration agents use the GitHub MCP server, which requires a Personal Access Token exposed as the `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN` secret. This must be created as a **Copilot Agents secret** at the organization level. There is no API for this, so it must be configured manually for each organization listed in `config.yaml`.
+
+First, create a dedicated PAT for MCP knowledgebase access:
+
+1. Generate a **fine-grained PAT** (recommended) scoped only to the `.github-private` repository:
+   - **Resource owner**: Your organization
+   - **Repository access**: Only select repositories → `.github-private`
+   - **Repository permissions**: Contents (Read-only), Metadata (Read-only)
+   - **Expiration**: Per your organization policy
+   - **SSO authorization**: Enable for the organization
+2. If your organization requires classic PATs, generate one with the minimum scope `repo` and authorize SSO for the organization. Prefer the fine-grained option above.
+
+> **Why a dedicated token?** Scoping this PAT to `.github-private` with read-only access limits the blast radius if it is ever exposed. Do not reuse `ISSUE_SUBMIT_TOKEN`, which has broader privileges needed for the automation workflows.
+
+Then, for each organization:
+
+1. Navigate to `https://github.com/organizations/YOUR-ORG-SLUG/settings/secrets/agents`
+2. Click **New organization secret**
+3. Configure the secret:
+   - **Name**: `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN`
+   - **Value**: The dedicated PAT created above
+4. Click **Add secret**
+
+> **Note:** Repeat this step for every organization in the `organizations` list of `config.yaml`. The secret must be available to Copilot coding agent runs in repositories belonging to those organizations.
 
 ## Step 4: Enable Agents in Enterprise Settings
 
