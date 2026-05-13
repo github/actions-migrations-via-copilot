@@ -143,7 +143,7 @@ Expected variables: `GH_APP_ID`, `GH_MIGRATION_TYPE_DEFAULT`, `ORGANIZATIONS`, `
 
 ### Create Copilot Agents Secret (Manual)
 
-The migration agents use the GitHub MCP server, which requires a Personal Access Token exposed as the `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN` secret. This must be created as a **Copilot Agents secret** at the organization level. There is no API for this, so it must be configured manually for each organization listed in `config.yaml`.
+The migration agents use the GitHub MCP server, which requires a Personal Access Token exposed as the `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN` secret. This must be created as a **Copilot Agents secret** at the organization level. There is no API for this, so it must be configured manually for each organization listed in `.github/settings/config.yaml`.
 
 First, create a dedicated PAT for MCP knowledgebase access:
 
