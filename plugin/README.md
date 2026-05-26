@@ -58,7 +58,7 @@ In an interactive Copilot CLI session:
 
 ```
 /agent          # list available agents (should include the migrators)
-/skills list    # list available skills (should include all 12)
+/skills list    # list available skills (should include all 11)
 ```
 
 After editing plugin contents, re-install to refresh the cache:
