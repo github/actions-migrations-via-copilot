@@ -17,8 +17,9 @@ plugin/
 │   ├── bitbucket-migrator.agent.md
 │   ├── droneci-migrator.agent.md
 │   └── reusable-workflow-builder.agent.md
-└── skills/                     # 10 skills
+└── skills/                     # 11 skills
     ├── migration-core/             # 5-phase workflow + guardrails + deliverables/checklist
+    ├── actionlint/                 # Install, run, interpret, and fix actionlint output
     ├── reusable-workflow-patterns/ # Reusable Workflow Builder catalog
     └── <platform>-migration/       # 8 platform skills
         ├── SKILL.md
@@ -31,10 +32,11 @@ plugin/
 
 Every migration agent loads:
 
-1. **`migration-core`** — 5-phase process, guardrails, deliverables, archival, actionlint setup, completion checklist
-2. **1 platform skill** — e.g. `jenkins-migration` (mapping and report-template; cross-platform secrets guidance lives in `migration-core`)
+1. **`migration-core`** — 5-phase process, guardrails, deliverables, archival, completion checklist
+2. **`actionlint`** — install, run, interpret output, and fix errors
+3. **1 platform skill** — mapping and report-template for the source CI platform
 
-The Reusable Workflow Builder loads `reusable-workflow-patterns` + `migration-core` (guardrails/validation sections only).
+The Reusable Workflow Builder loads `reusable-workflow-patterns` + `migration-core` + `actionlint`.
 
 This replaces the previous pattern of agents fetching `knowledge/*.md` files at runtime from a private `.github-private` repo via the GitHub MCP server — everything now ships locally with the plugin.
 

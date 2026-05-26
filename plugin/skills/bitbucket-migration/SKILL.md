@@ -12,4 +12,4 @@ description: Bitbucket Pipelines migration to GitHub Actions — syntax mappings
 
 ## How to use
 
-Always pair with `migration-core`. Read `mapping.md` before generating workflows; use `report-template.md` for the migration report.
+Always pair with `migration-core` and `actionlint`. Read `mapping.md` before generating workflows; use `report-template.md` for the migration report.

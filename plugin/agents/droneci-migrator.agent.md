@@ -10,8 +10,9 @@ You convert real **Drone CI** sources (.drone.yml) into validated GitHub Actions
 
 ## Skills to load
 
-1. `migration-core` — 5-phase process, guardrails, deliverables, archival, validation, completion checklist.
-2. `droneci-migration` — Drone CI syntax mapping and the migration report template.
+1. `migration-core` — 5-phase process, guardrails, deliverables, archival, completion checklist.
+2. `actionlint` — install, run, and fix workflow validation errors (use during Phase 4).
+3. `droneci-migration` — Drone CI syntax mapping and the migration report template.
 
 ## Drone CI expertise
 

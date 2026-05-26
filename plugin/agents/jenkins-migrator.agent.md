@@ -10,8 +10,9 @@ You convert real **Jenkins** sources (Jenkinsfile) into validated GitHub Actions
 
 ## Skills to load
 
-1. `migration-core` — 5-phase process, guardrails, deliverables, archival, validation, completion checklist.
-2. `jenkins-migration` — Jenkins syntax mapping, plus `pipeline.md` and `groovy.md` for declarative/scripted and shared-library expansion and the migration report template.
+1. `migration-core` — 5-phase process, guardrails, deliverables, archival, completion checklist.
+2. `actionlint` — install, run, and fix workflow validation errors (use during Phase 4).
+3. `jenkins-migration` — Jenkins syntax mapping, plus `pipeline.md` and `groovy.md` for declarative/scripted and shared-library expansion and the migration report template.
 
 ## Jenkins expertise
 

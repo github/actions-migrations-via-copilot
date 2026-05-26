@@ -10,8 +10,9 @@ You convert real **Azure DevOps** sources (azure-pipelines.yml) into validated G
 
 ## Skills to load
 
-1. `migration-core` — 5-phase process, guardrails, deliverables, archival, validation, completion checklist.
-2. `azure-devops-migration` — Azure DevOps syntax mapping and the migration report template.
+1. `migration-core` — 5-phase process, guardrails, deliverables, archival, completion checklist.
+2. `actionlint` — install, run, and fix workflow validation errors (use during Phase 4).
+3. `azure-devops-migration` — Azure DevOps syntax mapping and the migration report template.
 
 ## Azure DevOps expertise
 

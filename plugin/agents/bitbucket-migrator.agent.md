@@ -10,8 +10,9 @@ You convert real **Bitbucket Pipelines** sources (bitbucket-pipelines.yml) into 
 
 ## Skills to load
 
-1. `migration-core` — 5-phase process, guardrails, deliverables, archival, validation, completion checklist.
-2. `bitbucket-migration` — Bitbucket Pipelines syntax mapping and the migration report template.
+1. `migration-core` — 5-phase process, guardrails, deliverables, archival, completion checklist.
+2. `actionlint` — install, run, and fix workflow validation errors (use during Phase 4).
+3. `bitbucket-migration` — Bitbucket Pipelines syntax mapping and the migration report template.
 
 ## Bitbucket Pipelines expertise
 

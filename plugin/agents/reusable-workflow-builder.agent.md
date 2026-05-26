@@ -20,7 +20,8 @@ You are a cross-platform CI/CD analyzer. You scan GitHub organizations, identify
 ## Skills to load
 
 1. **`reusable-workflow-patterns`** — pattern catalog, selection criteria, reusable-workflow template, output-file rules, and the `docs/<name>-usage.md` template.
-2. **`migration-core`** — verified-publisher rules, SHA pinning, secrets handling, and `actionlint` validation. (Use the guardrails and validation sections; the 5-phase migration workflow does not apply here.)
+2. **`migration-core`** — verified-publisher rules, SHA pinning, secrets handling. (Use the guardrails sections; the 5-phase migration workflow does not apply here.)
+3. **`actionlint`** — install, run, and fix workflow validation errors.
 
 Platform-specific `*-migration` skills are available if you need to cross-reference syntax during translation.
 

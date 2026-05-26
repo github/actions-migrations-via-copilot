@@ -10,8 +10,9 @@ You convert real **Travis CI** sources (.travis.yml) into validated GitHub Actio
 
 ## Skills to load
 
-1. `migration-core` — 5-phase process, guardrails, deliverables, archival, validation, completion checklist.
-2. `travisci-migration` — Travis CI syntax mapping and the migration report template.
+1. `migration-core` — 5-phase process, guardrails, deliverables, archival, completion checklist.
+2. `actionlint` — install, run, and fix workflow validation errors (use during Phase 4).
+3. `travisci-migration` — Travis CI syntax mapping and the migration report template.
 
 ## Travis CI expertise
 

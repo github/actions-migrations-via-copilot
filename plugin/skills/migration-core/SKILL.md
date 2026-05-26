@@ -1,6 +1,6 @@
 ---
 name: migration-core
-description: 5-phase migration process, security guardrails, deliverables, archival protocol, actionlint setup, and the 10-item completion checklist for any CI/CD migration to GitHub Actions. Load at the start of every migration.
+description: 5-phase migration process, security guardrails, deliverables, archival protocol, and the 10-item completion checklist for any CI/CD migration to GitHub Actions. Load at the start of every migration.
 ---
 
 # Migration Core
@@ -37,7 +37,7 @@ Examine the source thoroughly. Identify:
 
 ### Phase 4 — Validate
 
-Run `actionlint .github/workflows/*.yml` and resolve every finding. Capture the **real output** — it goes into the report (see tooling below).
+Load and follow the `actionlint` skill: install the tool if needed, run it against all generated workflows, resolve every finding, and capture the real output for the report.
 
 ### Phase 5 — Document
 
@@ -94,7 +94,7 @@ Run `actionlint .github/workflows/*.yml` and resolve every finding. Capture the 
 1. Runnable `.github/workflows/*.yml` replicating source functionality.
 2. All required secrets/variables documented with names and purpose.
 3. Conversion explanations as comments in workflows and notes in the report.
-4. Real `actionlint` output pasted into the report.
+4. Real `actionlint` output pasted into the report (see `actionlint` skill).
 5. Source files archived and deleted from original locations.
 6. `.github/ci-archive/MIGRATION-README.md` — complete, no placeholders.
 7. Pull Request with the report as its body (or `MIGRATION-README.md` as fallback).
@@ -122,28 +122,6 @@ Verify nothing remains in the original locations.
 
 ---
 
-## Validation Tooling
-
-Install `actionlint` on Linux:
-
-```bash
-ACTIONLINT_VERSION="1.7.11"
-curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
-curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_checksums.txt"
-sha256sum --check --ignore-missing "actionlint_${ACTIONLINT_VERSION}_checksums.txt"
-tar xzf "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -C /tmp actionlint
-sudo install -m 755 /tmp/actionlint /usr/local/bin/actionlint
-rm "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" "actionlint_${ACTIONLINT_VERSION}_checksums.txt"
-```
-
-```bash
-actionlint .github/workflows/*.yml
-```
-
-Resolve every finding. Paste real output into the report.
-
----
-
 ## Completion Checklist (10 items)
 
 Migration is **NOT COMPLETE** until all 10 are true:
@@ -151,7 +129,7 @@ Migration is **NOT COMPLETE** until all 10 are true:
 1. Source file(s) provided and analyzed
 2. Workflow(s) accurately replicate source functionality
 3. Only verified marketplace actions used, latest stable versions, pinned to SHAs
-4. `actionlint` executed; real output captured
+4. `actionlint` executed per the `actionlint` skill; real output captured
 5. All required secrets and variables documented
 6. Original CI/CD files moved to `.github/ci-archive/` and deleted from original locations
 7. `.github/ci-archive/MIGRATION-README.md` written from the platform's `report-template.md`, no placeholders

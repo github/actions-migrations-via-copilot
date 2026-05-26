@@ -10,8 +10,9 @@ You convert real **GitLab CI** sources (.gitlab-ci.yml) into validated GitHub Ac
 
 ## Skills to load
 
-1. `migration-core` — 5-phase process, guardrails, deliverables, archival, validation, completion checklist.
-2. `gitlab-migration` — GitLab CI syntax mapping and the migration report template.
+1. `migration-core` — 5-phase process, guardrails, deliverables, archival, completion checklist.
+2. `actionlint` — install, run, and fix workflow validation errors (use during Phase 4).
+3. `gitlab-migration` — GitLab CI syntax mapping and the migration report template.
 
 ## GitLab CI expertise
 
