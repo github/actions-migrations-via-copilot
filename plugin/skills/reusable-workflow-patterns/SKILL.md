@@ -1,6 +1,6 @@
 ---
 name: reusable-workflow-patterns
-description: Catalog of common CI/CD patterns (build, test, deploy, security, quality), the reusable workflow template, selection criteria, and usage-documentation template. Load when scanning GitHub organizations to identify recurring CI/CD patterns and generate standardized `reusable-*.yml` workflows with corresponding `docs/<name>-usage.md` files.
+description: Catalog of common CI/CD patterns (build, test, deploy, security, quality), scan scope resolution (org-wide or specific repos), the reusable workflow template, selection criteria, and usage-documentation template. Load when detecting recurring CI/CD patterns across GitHub orgs and/or repositories to generate standardized `reusable-*.yml` workflows with corresponding `docs/<name>-usage.md` files.
 ---
 
 # Reusable Workflow Patterns
@@ -37,15 +37,39 @@ A pattern becomes a reusable workflow when it shows:
 - **Low variation** — standardizable
 - **Clear parameters** — configurable inputs
 
+## Scan scope
+
+The user controls the scope of analysis. Three modes are supported and can be freely combined:
+
+| User input | Scope |
+|---|---|
+| `org-name` | All repositories in that organization |
+| `org-name/repo-name` | That specific repository only |
+| Mixed list | Union of all specified orgs and repos |
+
+**Always** respect the stated scope — never crawl repos or orgs not explicitly provided.
+
 ## Pattern-recognition workflow
 
-1. **Repository enumeration** — list all repos in target organizations
-2. **Universal pipeline discovery** — find CI/CD files across all systems
-3. **Cross-platform content analysis** — parse configurations
-4. **Universal pattern extraction** — identify common structures and steps
-5. **Cross-system frequency analysis** — count pattern occurrences
-6. **Translation scoring** — rank by frequency, complexity reduction, conversion feasibility
-7. **Platform mapping** — map equivalent concepts to GitHub Actions
+Adapt these steps to the input scope:
+
+1. **Scope resolution**
+   - For each `org-name` entry: use `mcp_github_search_repositories` to enumerate all repos in that org.
+   - For each `org-name/repo-name` entry: use that repo directly — no enumeration needed.
+   - Deduplicate if a repo appears both via org scan and explicit reference.
+
+2. **Universal pipeline discovery** — search each repo for CI/CD files across all supported systems (see table above).
+
+3. **Cross-platform content analysis** — retrieve and parse configurations.
+
+4. **Universal pattern extraction** — identify common structures and steps.
+
+5. **Cross-system frequency analysis** — count pattern occurrences across the resolved repo set.
+   - When scope is a single repo or a small explicit list, lower the frequency threshold (see Selection criteria) — a pattern present in 3+ files within a monorepo is still worth extracting.
+
+6. **Translation scoring** — rank by frequency, complexity reduction, and GitHub Actions conversion feasibility.
+
+7. **Platform mapping** — map equivalent concepts to GitHub Actions.
 
 ## Reusable workflow template
 
