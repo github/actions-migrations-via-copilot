@@ -1,0 +1,25 @@
+{
+  "name": "actions-migrator",
+  "description": "Migrate CI/CD pipelines from Jenkins, Azure DevOps, CircleCI, GitLab, Travis CI, Bamboo, Bitbucket Pipelines, and Drone CI to GitHub Actions. Includes a Reusable Workflow Builder that detects cross-platform patterns across multiple organizations.",
+  "version": "0.1.0",
+  "author": {
+    "name": "GitHub Professional Services"
+  },
+  "license": "MIT",
+  "keywords": [
+    "github-actions",
+    "ci-cd",
+    "migration",
+    "jenkins",
+    "azure-devops",
+    "circleci",
+    "gitlab",
+    "travis-ci",
+    "bamboo",
+    "bitbucket",
+    "drone-ci",
+    "reusable-workflows"
+  ],
+  "agents": "agents/",
+  "skills": "skills/"
+}

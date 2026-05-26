@@ -12,6 +12,17 @@ Add support for new CI/CD platforms by creating migration agents and knowledgeba
 | **Report Template**   | `knowledge/report-template/<platform>.md`                     |
 | **Optional Patterns** | `knowledge/patterns/<platform>/{pipeline,plugins,scripts}.md` |
 
+### Also extend the Copilot CLI plugin
+
+When you add a new platform, mirror the content into [`plugin/`](../plugin/README.md):
+
+| Task                      | Files to Create                                                                                                       |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Plugin agent**          | `plugin/agents/<platform>-migrator.agent.md` (slim composer — see existing files for the template)                    |
+| **Plugin platform skill** | `plugin/skills/<platform>-migration/SKILL.md` + `mapping.md` + `report-template.md` (+ any extras like `pipeline.md`) |
+
+The skill's `mapping.md` and `report-template.md` are copies of the corresponding files under `knowledge/`. The `SKILL.md` adds the YAML frontmatter (`name`, `description`) so the plugin runtime can index it. Pattern: see `plugin/skills/jenkins-migration/`. Cross-platform secrets/credentials guidance lives in the shared `migration-core` skill, so no per-platform `secrets.md` is needed in the plugin.
+
 ## Adding a New Migration Agent
 
 ### 1. Create Agent File

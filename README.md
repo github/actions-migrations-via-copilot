@@ -90,16 +90,30 @@ Every migration produces:
 
 ```
 .
-├── agents/                    # Agent definitions (9 migration agents)
+├── agents/                    # Agent definitions (9 migration agents) — .github-private deployment
 ├── docs/                      # Deployment, operations, and extending guides
-├── knowledge/                 # Migration knowledgebase
+├── knowledge/                 # Migration knowledgebase (source of truth)
 │   ├── actions-mapping/       # CI/CD → Actions mappings
 │   ├── patterns/              # Platform-specific conversion patterns
 │   └── report-template/       # Migration report templates
+├── plugin/                    # Copilot CLI plugin (agents + composable skills, derived from knowledge/)
+│   ├── plugin.json
+│   ├── agents/                # 9 thin agent composers
+│   └── skills/                # 12 skills (3 core + 8 platform + 1 reusable-workflow-patterns)
 └── .github/                   # Automation workflows
 ```
 
 **Detailed structure:** See [Extending Guide](docs/extending.md#quick-reference) for complete file organization.
+
+### Copilot CLI plugin
+
+A parallel packaging is provided as a Copilot CLI plugin under [`plugin/`](plugin/README.md). It bundles the same agents with the knowledge base pre-split into composable skills — no runtime MCP fetch from `.github-private` required. Install locally with:
+
+```bash
+copilot plugin install ./plugin
+```
+
+See [`plugin/README.md`](plugin/README.md) for details.
 
 ## Contributing
 
