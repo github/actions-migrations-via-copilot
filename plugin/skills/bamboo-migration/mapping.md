@@ -1,4 +1,3 @@
-````markdown
 # Bamboo to GitHub Actions Mapping Guide
 
 This guide provides a mapping of common Bamboo build plan and deployment project syntax and configurations to their equivalent GitHub Actions. Use this as a reference when migrating your CI/CD pipelines from Bamboo to GitHub Actions.
@@ -678,5 +677,3 @@ on:
 ---
 
 *This mapping guide is maintained as part of the CI/CD Migration Knowledge Base.*
-
-````
