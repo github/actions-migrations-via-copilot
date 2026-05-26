@@ -99,7 +99,7 @@ Every migration produces:
 ├── plugin/                    # Copilot CLI plugin (agents + composable skills, derived from knowledge/)
 │   ├── plugin.json
 │   ├── agents/                # 9 thin agent composers
-│   └── skills/                # 12 skills (3 core + 8 platform + 1 reusable-workflow-patterns)
+│   └── skills/                # 11 skills (3 core + 8 platform)
 └── .github/                   # Automation workflows
 ```
 
