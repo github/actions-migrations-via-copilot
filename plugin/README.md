@@ -144,9 +144,9 @@ $EDITOR plugin/skills/jenkins-migration/mapping.md
 # 2. Re-install to refresh the plugin cache
 copilot plugin install ./plugin
 
-# 3. Run a migration against a sample repo and inspect the result
+# 3. Run a migration against a real Jenkinsfile and inspect the result
 copilot
-> Use the jenkins-migrator agent to convert ./fixtures/sample/Jenkinsfile
+> Use the jenkins-migrator agent to convert ./Jenkinsfile
 ```
 
 After each skill edit, re-run `copilot plugin install ./plugin` to refresh the cache.
