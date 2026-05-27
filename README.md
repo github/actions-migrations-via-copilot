@@ -40,10 +40,10 @@ The **Reusable Workflow Builder** scans multiple GitHub organizations, detects c
 
 This project ships the same agents for two GitHub Copilot surfaces. Pick the one that matches how your team works.
 
-| Surface                   | Best For                                                                      | How agents are delivered                                                                                                                                                                              |
-| ------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **🌐 Copilot cloud agent** | Org-wide rollout, batch migrations across many repos, central governance      | Deployed to your enterprise's `.github-private` repository. Agents fetch the knowledgebase from `knowledge/` at runtime via the GitHub MCP server. → [Jump to setup](#-using-the-copilot-cloud-agent) |
-| **💻 Copilot CLI**         | Local/interactive use, individual developers, customizing skills for your org | Installed as a Copilot CLI plugin. The knowledgebase ships pre-split into composable skills under `plugin/`—no runtime fetch required. → [Jump to setup](#-using-the-copilot-cli)                     |
+| Surface                   | Best For                                                                      | How agents are delivered                                                                                                                                                                             |
+| ------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **🌐 Copilot cloud agent** | Org-wide rollout, batch migrations across many repos, central governance      | Deployed to your enterprise's `.github-private` repository. Agents fetch the knowledgebase from `knowledge/` at runtime via the GitHub MCP server. → [Jump to setup](#using-the-copilot-cloud-agent) |
+| **💻 Copilot CLI**         | Local/interactive use, individual developers, customizing skills for your org | Installed as a Copilot CLI plugin. The knowledgebase ships pre-split into composable skills under `plugin/`—no runtime fetch required. → [Jump to setup](#using-the-copilot-cli)                     |
 
 Both surfaces produce the same deliverables:
 
