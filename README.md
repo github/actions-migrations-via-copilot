@@ -1,6 +1,6 @@
 # GitHub Actions Migration Agents
 
-Enterprise-grade GitHub Copilot Agents that automatically migrate CI/CD pipelines from virtually any platform to GitHub Actions—powered by a comprehensive knowledgebase of migration patterns and best practices.
+Enterprise-grade GitHub Copilot agents that automatically migrate CI/CD pipelines from virtually any platform to GitHub Actions—powered by a comprehensive knowledgebase of migration patterns and best practices.
 
 ## Why This Project?
 
@@ -20,18 +20,6 @@ Organizations migrating to GitHub Actions face:
 - 📊 **Complete documentation** of every decision
 - 🔄 **Reusable patterns** for future migrations
 
-## How It Works
-
-Migration agents are GitHub Copilot Custom Agents deployed to your enterprise's `.github-private` repository. Each agent:
-
-1. **Reads** source CI/CD configuration files
-2. **References** the knowledgebase for conversion patterns
-3. **Generates** GitHub Actions workflows
-4. **Validates** with actionlint
-5. **Documents** all changes in a migration report
-
-**Knowledgebase-driven:** Agents fetch patterns, security guidelines, and action mappings from `knowledge/` during each migration, ensuring consistent, up-to-date conversions.
-
 ## Available Migration Agents
 
 | Agent                         | Migrates From              | Handles                                     |
@@ -46,53 +34,98 @@ Migration agents are GitHub Copilot Custom Agents deployed to your enterprise's 
 | **Drone CI Migrator**         | .drone.yml                 | Pipelines, plugins                          |
 | **Reusable Workflow Builder** | GitHub Actions across orgs | Pattern analysis, reusable workflows        |
 
-### Reusable Workflow Builder
+The **Reusable Workflow Builder** scans multiple GitHub organizations, detects common CI/CD patterns (Node.js builds, AWS deployments, Docker workflows), and generates standardized reusable workflows—reducing duplication and capturing organizational best practices.
 
-This unique agent scans multiple GitHub organizations, detects common CI/CD patterns (Node.js builds, AWS deployments, Docker workflows), and generates standardized reusable workflows—reducing duplication and capturing organizational best practices.
+## Choose Your Surface
 
-## What You Get
+This project ships the same agents for two GitHub Copilot surfaces. Pick the one that matches how your team works.
 
-Every migration produces:
+| Surface                   | Best For                                                                      | How agents are delivered                                                                                                                                                                             |
+| ------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **🌐 Copilot cloud agent** | Org-wide rollout, batch migrations across many repos, central governance      | Deployed to your enterprise's `.github-private` repository. Agents fetch the knowledgebase from `knowledge/` at runtime via the GitHub MCP server. → [Jump to setup](#using-the-copilot-cloud-agent) |
+| **💻 Copilot CLI**         | Local/interactive use, individual developers, customizing skills for your org | Installed as a Copilot CLI plugin. The knowledgebase ships pre-split into composable skills under `plugin/`—no runtime fetch required. → [Jump to setup](#using-the-copilot-cli)                     |
 
-1. **`.github/workflows/*.yml`** - Production-ready, validated workflows
-2. **`.github/ci-archive/`** - Original files and **`MIGRATION-README.md`** preserved for reference
-3. **Pull Request** - Migration report included in the PR body (mirroring `MIGRATION-README.md`) with:
-   - Validation results
-   - Required secrets
-   - Next steps
-   - Knowledgebase references
+Both surfaces produce the same deliverables:
 
-## Getting Started
+1. **`.github/workflows/*.yml`** — production-ready, validated workflows
+2. **`.github/ci-archive/`** — original files and `MIGRATION-README.md` preserved for reference
+3. **Pull Request** — migration report in the PR body with validation results, required secrets, next steps, and knowledgebase references
 
-### Quick Start
+---
 
-1. **Deploy** - Follow the [Deployment Guide](docs/deployment.md) to set up agents in your enterprise
-2. **Migrate** - Use the [Operations Guide](docs/operations.md) to run migrations
-3. **Extend** - Add new platforms using the [Extending Guide](docs/extending.md)
+## 🌐 Using the Copilot Cloud Agent
 
-### Two Ways to Migrate
+Agents live in [`agents/`](agents/) and reference the knowledgebase in [`knowledge/`](knowledge/) at runtime. They are deployed to your enterprise's `.github-private` repository so they're available to all internal repos.
+
+### Getting started
+
+1. **Deploy** — Follow the [Deployment Guide](docs/deployment.md) to set up the agents in your enterprise's `.github-private` repo.
+2. **Migrate** — Run migrations using the [Operations Guide](docs/operations.md).
+
+### Two ways to migrate
 
 | Method     | Best For                  | Guide                                                   |
 | ---------- | ------------------------- | ------------------------------------------------------- |
 | **Manual** | Individual repos, testing | [Operations Guide](docs/operations.md#manual-migration) |
 | **Batch**  | Multiple repos, scale     | [Operations Guide](docs/operations.md#batch-migration)  |
 
+---
+
+## 💻 Using the Copilot CLI
+
+The same nine agents are packaged as a Copilot CLI plugin under [`plugin/`](plugin/README.md), with the knowledgebase pre-split into composable skills. See [`plugin/README.md`](plugin/README.md) for the composition model and full skill catalog.
+
+### Option A — Install from the marketplace (use as-is)
+
+Fastest path. Use this when you want the agents with the default knowledgebase.
+
+```bash
+copilot plugin marketplace add github/actions-migrations-via-copilot
+copilot plugin install actions-migrator
+```
+
+The marketplace is defined in [`.github/plugin/marketplace.json`](.github/plugin/marketplace.json).
+
+### Option B — Install locally (customize skills)
+
+Use this when you want to tailor patterns, action mappings, security guardrails, or report templates to your organization.
+
+```bash
+git clone https://github.com/github/actions-migrations-via-copilot.git
+cd actions-migrations-via-copilot
+# edit files under plugin/skills/ to match your org's standards
+copilot plugin install ./plugin
+```
+
+---
+
+## How Migration Works
+
+Whichever surface you choose, each agent follows the same five-phase process:
+
+1. **Reads** source CI/CD configuration files
+2. **References** the knowledgebase for conversion patterns
+3. **Generates** GitHub Actions workflows
+4. **Validates** with actionlint
+5. **Documents** all changes in a migration report
+
 ## Documentation
 
-| Guide                                      | Purpose                            |
-| ------------------------------------------ | ---------------------------------- |
-| **[Deployment Guide](docs/deployment.md)** | Set up agents in your enterprise   |
-| **[Operations Guide](docs/operations.md)** | Use agents to migrate repositories |
-| **[Extending Guide](docs/extending.md)**   | Add new CI/CD platforms            |
-| **[Contributing Guide](CONTRIBUTING.md)**  | Contribute improvements            |
+| Guide                                      | Purpose                                        |
+| ------------------------------------------ | ---------------------------------------------- |
+| **[Deployment Guide](docs/deployment.md)** | Set up agents in your enterprise (cloud agent) |
+| **[Operations Guide](docs/operations.md)** | Use agents to migrate repositories             |
+| **[Extending Guide](docs/extending.md)**   | Add new CI/CD platforms                        |
+| **[Plugin README](plugin/README.md)**      | Copilot CLI plugin details                     |
+| **[Contributing Guide](CONTRIBUTING.md)**  | Contribute improvements                        |
 
 ## Project Structure
 
 ```
 .
-├── agents/                    # Agent definitions (9 migration agents) — .github-private deployment
+├── agents/                    # Agent definitions (9 migration agents) — cloud agent / .github-private deployment
 ├── docs/                      # Deployment, operations, and extending guides
-├── knowledge/                 # Migration knowledgebase (source of truth)
+├── knowledge/                 # Migration knowledgebase (source of truth for cloud agent)
 │   ├── actions-mapping/       # CI/CD → Actions mappings
 │   ├── patterns/              # Platform-specific conversion patterns
 │   └── report-template/       # Migration report templates
@@ -100,27 +133,19 @@ Every migration produces:
 │   ├── plugin.json
 │   ├── agents/                # 9 thin agent composers
 │   └── skills/                # 11 skills (3 core + 8 platform)
-└── .github/                   # Automation workflows
+└── .github/
+    └── plugin/
+        └── marketplace.json   # Copilot CLI plugin marketplace manifest
 ```
 
 **Detailed structure:** See [Extending Guide](docs/extending.md#quick-reference) for complete file organization.
-
-### Copilot CLI plugin
-
-A parallel packaging is provided as a Copilot CLI plugin under [`plugin/`](plugin/README.md). It bundles the same agents with the knowledge base pre-split into composable skills — no runtime MCP fetch from `.github-private` required. Install locally with:
-
-```bash
-copilot plugin install ./plugin
-```
-
-See [`plugin/README.md`](plugin/README.md) for details.
 
 ## Contributing
 
 We welcome contributions! See our guides:
 
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - General contribution guidelines
-- **[Extending Guide](docs/extending.md)** - Add new CI/CD platforms or improve agents
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — General contribution guidelines
+- **[Extending Guide](docs/extending.md)** — Add new CI/CD platforms or improve agents
 
 **Ways to contribute:**
 
@@ -131,10 +156,10 @@ We welcome contributions! See our guides:
 
 ## Support
 
-- **Documentation** - [Deployment](docs/deployment.md) | [Operations](docs/operations.md) | [Extending](docs/extending.md)
-- **Discussions** - [Ask questions and share experiences](https://github.com/github/actions-migrations-via-copilot/discussions)
-- **Issues** - [Report bugs or request features](https://github.com/github/actions-migrations-via-copilot/issues)
-- **GitHub Actions Docs** - [Official documentation](https://docs.github.com/actions)
+- **Documentation** — [Deployment](docs/deployment.md) | [Operations](docs/operations.md) | [Extending](docs/extending.md) | [Plugin](plugin/README.md)
+- **Discussions** — [Ask questions and share experiences](https://github.com/github/actions-migrations-via-copilot/discussions)
+- **Issues** — [Report bugs or request features](https://github.com/github/actions-migrations-via-copilot/issues)
+- **GitHub Actions Docs** — [Official documentation](https://docs.github.com/actions)
 
 ## Acknowledgments
 

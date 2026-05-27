@@ -1,0 +1,18 @@
+{
+    "name": "actions-migrations-via-copilot",
+    "owner": {
+        "name": "GitHub Professional Services"
+    },
+    "metadata": {
+        "description": "Copilot CLI plugins for migrating CI/CD pipelines to GitHub Actions",
+        "version": "1.3.0"
+    },
+    "plugins": [
+        {
+            "name": "actions-migrator",
+            "description": "Migrate CI/CD pipelines from Jenkins, Azure DevOps, CircleCI, GitLab, Travis CI, Bamboo, Bitbucket Pipelines, and Drone CI to GitHub Actions. Includes a Reusable Workflow Builder that detects cross-platform patterns across multiple organizations.",
+            "version": "1.3.0",
+            "source": "./plugin"
+        }
+    ]
+}
