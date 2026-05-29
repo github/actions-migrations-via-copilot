@@ -26,14 +26,6 @@ on:
                 required: false
                 default: "[]"
                 type: string
-            scan_depth:
-                description: "shallow = skip Dependency Graph; with-deps = populate dependencies.csv via Dependency Graph GraphQL."
-                required: false
-                default: "shallow"
-                type: choice
-                options:
-                    - shallow
-                    - with-deps
             retention:
                 description: "Number of recent inventory/<run-id>/ snapshots to retain. Older snapshots are deleted in the same PR."
                 required: false
@@ -179,17 +171,16 @@ jobs:
                       const extract = require('${{ github.workspace }}/.github/scripts/repo-scan/extract.js')
                       await extract({ github, core, process })
 
-            - name: Query Dependency Graph
-              if: steps.enumerate.outputs.count != '0' && inputs.scan_depth == 'with-deps'
+            - name: Extract CI pipeline dependencies
+              if: steps.enumerate.outputs.count != '0'
               uses: actions/github-script@v9.0.0
               env:
                   MATRIX_KEY: ${{ matrix.key }}
                   RUN_ID: ${{ github.run_id }}
               with:
-                  github-token: ${{ steps.resolve-token.outputs.token }}
                   script: |
                       const deps = require('${{ github.workspace }}/.github/scripts/repo-scan/deps.js')
-                      await deps({ github, core, process })
+                      await deps({ core, process })
 
             - name: Classify and emit per-shard CSV
               if: steps.enumerate.outputs.count != '0'
@@ -242,7 +233,6 @@ jobs:
                   ORGS_INPUT: ${{ inputs.organizations }}
                   REPOS_INPUT: ${{ inputs.repositories }}
                   EXCLUDES_INPUT: ${{ inputs.excludes }}
-                  SCAN_DEPTH: ${{ inputs.scan_depth }}
                   RETENTION: ${{ inputs.retention }}
               with:
                   script: |
@@ -265,7 +255,6 @@ jobs:
                       - organizations: `${{ inputs.organizations }}`
                       - repositories: `${{ inputs.repositories }}`
                       - excludes: `${{ inputs.excludes }}`
-                      - scan_depth: `${{ inputs.scan_depth }}`
                       - retention: `${{ inputs.retention }}`
 
                       Review the diff, then merge to land the snapshot under `inventory/<run-id>/`. Run the `inventory-analysis` Copilot CLI agent against `inventory/latest` for Stage 2 analysis.

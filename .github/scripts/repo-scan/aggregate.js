@@ -121,7 +121,6 @@ module.exports = async ({ core, process }) => {
             organizations: safeJson(process.env.ORGS_INPUT, []),
             repositories: safeJson(process.env.REPOS_INPUT, []),
             excludes: safeJson(process.env.EXCLUDES_INPUT, []),
-            scan_depth: process.env.SCAN_DEPTH || 'shallow',
             retention,
         },
         counts: {

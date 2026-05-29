@@ -20,7 +20,7 @@ The agent operates on a snapshot directory `inventory/<run-id>/` produced by the
 | --- | --- | --- |
 | `manifest.json` | yes | Snapshot metadata (inputs, counts, run-id). |
 | `repos.csv` | yes | Per-repo canonical labels. Columns documented in `docs/repo-scan.md#reposcsv-columns`. |
-| `dependencies.csv` | no | Per-(repo, package) rows from Dependency Graph. Present only if `scan_depth=with-deps`. |
+| `dependencies.csv` | no | Per-(repo, source-file, CI dependency) rows extracted from captured pipeline files (reusable workflows, actions, shared libraries, includes, templates, orbs, pipes, plugin images). Columns documented in `docs/repo-scan.md#dependenciescsv-columns`. |
 | `pipelines/<org>/<repo>/...` | yes | Raw pipeline files; used for sampling. |
 | `manifests/<org>/<repo>/...` | no | Raw manifest files; used opportunistically for tiebreakers. |
 | `raw/<org>__<repo>.json` | yes | Detailed per-repo signal dump; used to surface truncation flags in `REPORT.md`. |
@@ -97,14 +97,15 @@ For each tentative cluster, count how many of the four dimensions are non-empty 
 
 Singleton clusters (one member) are emitted with confidence reduced by one tier (HIGH → MEDIUM, MEDIUM → LOW) — a cluster of one is rarely actionable.
 
-## Refinement via dependency overlap (optional)
+## Refinement via CI dependency overlap (optional)
 
-If `dependencies.csv` exists:
+If `dependencies.csv` exists it contains CI-side dependencies — reusable workflows, marketplace actions, shared libraries, includes, templates, orbs, pipes, plugin images. Repos in the same cluster that share the same CI building blocks are stronger consolidation candidates; repos that pull in idiosyncratic dependencies are weaker candidates.
 
-1. For each repo in a cluster, take the top 50 `package` values (sorted by package name; or by frequency if frequencies are available).
-2. Compute the cluster centroid = the multiset union of all member top-50s.
-3. For each member, compute Jaccard similarity (`|A ∩ B| / |A ∪ B|`) between its top 50 and the centroid.
-4. Members with similarity < 0.2 are flagged `outlier: true` in `clusters.json` but remain in the cluster.
+1. For each repo in a cluster, collect the set of `dependency_ref` values (ignore `version`).
+2. Compute the cluster centroid = the union of all member dependency sets.
+3. For each member, compute Jaccard similarity (`|A ∩ B| / |A ∪ B|`) between its dependency set and the centroid.
+4. Members with similarity < 0.2 (or with an empty dependency set in a cluster where the centroid is non-empty) are flagged `outlier: true` in `clusters.json` but remain in the cluster.
+5. When most members share a specific external reference (e.g. `my-org/shared-ci-templates`, `circleci/aws-cli`), surface it in the cluster's `recommendation` — it's the existing reusable building block to start from.
 
 If 3+ outliers share a refined sub-key, you MAY split them into a sub-cluster with the same key plus a numeric suffix (e.g. `Java|Maven|Jenkins|AWS-ECS:2`).
 
@@ -216,7 +217,7 @@ Use this template verbatim (fill in the bracketed sections):
 ## Suggested next actions
 
 1. **Build reusable workflows** for clusters: [list HIGH-confidence cluster labels with 3+ members].
-2. **Re-scan with `scan_depth=with-deps`** to enable dependency-overlap refinement [if currently shallow].
+2. **Re-scan if `dependencies.csv` looks sparse** [list any clusters whose members captured pipelines but no CI deps — likely a missing path pattern in `extract.js`].
 3. **Expand the taxonomy** for these unmapped signals: [list any unrecognized labels seen in `signals_json`].
 ```
 

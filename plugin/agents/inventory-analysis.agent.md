@@ -1,6 +1,6 @@
 ---
 name: inventory-analysis
-description: Analyze a committed `inventory/<run-id>/` snapshot produced by the Stage 1 `repo-scan.yml` workflow. Builds technology-similarity clusters (language + build tool + CI platform + deploy target, optionally refined by Dependency Graph overlap), scores clusters HIGH/MEDIUM/LOW, samples representative pipelines, and writes `analysis/clusters.json|csv` and `analysis/REPORT.md` back into the same snapshot directory. Use when the user asks to group repos by tech stack, identify reusable-workflow candidates, or summarize a scan.
+description: Analyze a committed `inventory/<run-id>/` snapshot produced by the Stage 1 `repo-scan.yml` workflow. Builds technology-similarity clusters (language + build tool + CI platform + deploy target, optionally refined by CI-dependency overlap — shared workflows, actions, libraries, templates, orbs), scores clusters HIGH/MEDIUM/LOW, samples representative pipelines, and writes `analysis/clusters.json|csv` and `analysis/REPORT.md` back into the same snapshot directory. Use when the user asks to group repos by tech stack, identify reusable-workflow candidates, or summarize a scan.
 tools: ["bash", "edit", "view", "create", "grep", "glob"]
 ---
 
@@ -39,7 +39,7 @@ If no path is given, default to `inventory/latest`.
 2. **Parse** `repos.csv` (required) and `dependencies.csv` (optional).
 3. **Cluster** — derive cluster keys per the skill heuristics (language, build tool, CI platform, deploy target).
 4. **Score** — HIGH / MEDIUM / LOW based on how many of the four dimensions are populated for every member.
-5. **Refine** (if `dependencies.csv` exists) — Jaccard similarity on the top 50 packages flags outliers within each cluster.
+5. **Refine** (if `dependencies.csv` exists) — Jaccard similarity on CI dependencies (shared workflows, actions, libraries, templates, orbs) flags outliers within each cluster and surfaces shared building blocks for the cluster's recommendation.
 6. **Sample** — up to 3 representative pipeline files per cluster from `pipelines/`, preferring largest by LOC.
 7. **Write** `analysis/clusters.json`, `analysis/clusters.csv`, `analysis/REPORT.md`.
 

@@ -9,7 +9,7 @@ The (separate) Stage 2 analysis is documented in [`inventory-analysis.md`](inven
 | Requirement                              | Notes                                                                                                                                     |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | GitHub App installed on every target org | Same app used by `submit-repos.yml`. Set `vars.GH_APP_ID` and `secrets.GH_APP_PEM` in this repo.                                          |
-| App permissions                          | `Contents: read`, `Metadata: read`. For `scan_depth=with-deps`: `Dependency graph: read`.                                                 |
+| App permissions                          | `Contents: read`, `Metadata: read`.                                                                                                       |
 | Branch protection                        | The workflow opens a PR; merging it lands the snapshot under `inventory/`. Reviewers should diff `repos.csv` and spot-check `pipelines/`. |
 
 ## Running a scan
@@ -17,13 +17,12 @@ The (separate) Stage 2 analysis is documented in [`inventory-analysis.md`](inven
 1. Open the **Actions** tab → **Repo Pipeline Scan** → **Run workflow**.
 2. Fill in the inputs:
 
-| Input           | Type                       | Required               | Example                     | Notes                                                                                       |
-| --------------- | -------------------------- | ---------------------- | --------------------------- | ------------------------------------------------------------------------------------------- |
-| `organizations` | JSON array of strings      | No                     | `["my-org-a","my-org-b"]`   | Every non-archived, non-disabled, non-fork repo in each org is scanned.                     |
-| `repositories`  | JSON array of `owner/repo` | No                     | `["other-org/repo-1"]`      | Explicit repos to include in addition to the org scan.                                      |
-| `excludes`      | JSON array of `owner/repo` | No                     | `["my-org-a/legacy-thing"]` | Applied after enumeration.                                                                  |
-| `scan_depth`    | `shallow` \| `with-deps`   | No (default `shallow`) | `with-deps`                 | `with-deps` adds `dependencies.csv` (slower; needs `Dependency graph: read`).               |
-| `retention`     | integer                    | No (default `12`)      | `12`                        | Keep the most recent N snapshots under `inventory/`; older ones are deleted in the same PR. |
+| Input           | Type                       | Required          | Example                     | Notes                                                                                       |
+| --------------- | -------------------------- | ----------------- | --------------------------- | ------------------------------------------------------------------------------------------- |
+| `organizations` | JSON array of strings      | No                | `["my-org-a","my-org-b"]`   | Every non-archived, non-disabled, non-fork repo in each org is scanned.                     |
+| `repositories`  | JSON array of `owner/repo` | No                | `["other-org/repo-1"]`      | Explicit repos to include in addition to the org scan.                                      |
+| `excludes`      | JSON array of `owner/repo` | No                | `["my-org-a/legacy-thing"]` | Applied after enumeration.                                                                  |
+| `retention`     | integer                    | No (default `12`) | `12`                        | Keep the most recent N snapshots under `inventory/`; older ones are deleted in the same PR. |
 
 At least one of `organizations` or `repositories` must be provided.
 
@@ -47,7 +46,7 @@ inventory/
 └── <run-id>/
     ├── manifest.json                     # inputs, timestamp, counts, truncation flags
     ├── repos.csv                         # per-repo classification (Stage 1)
-    ├── dependencies.csv                  # per-(repo, package) rows (Stage 1, when scan_depth=with-deps)
+    ├── dependencies.csv                  # CI-side dependencies referenced by captured pipeline files (Stage 1)
     ├── pipelines/<org>/<repo>/...        # raw CI/CD config files preserved with original paths
     ├── manifests/<org>/<repo>/...        # raw manifest files (package.json, pom.xml, etc.)
     ├── raw/<org>__<repo>.json            # per-repo extracted signals
@@ -82,15 +81,19 @@ The canonical label vocabulary used in these columns is defined in [`plugin/skil
 
 ### `dependencies.csv` columns
 
-| Column          | Description                                             |
-| --------------- | ------------------------------------------------------- |
-| `org`           | Owner login                                             |
-| `repo`          | Repository name                                         |
-| `ecosystem`     | Dependency Graph ecosystem (e.g. `npm`, `maven`, `pip`) |
-| `package`       | Package name                                            |
-| `version`       | Resolved version (empty if unresolved)                  |
-| `requirement`   | Declared requirement string                             |
-| `manifest_path` | Path of the manifest the dependency was declared in     |
+This file captures **CI-side dependencies** — references that a captured pipeline file makes to artifacts *outside the source repository* (reusable workflows, marketplace actions, shared libraries, included pipeline files, templates, orbs, pipes, plugin images). It does **not** capture application-code package dependencies (npm, Maven, pip, etc.); use GitHub's Dependency Graph for that.
+
+| Column            | Description                                                                                                                                                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `org`             | Owner login                                                                                                                                                                                                                                                 |
+| `repo`            | Repository name                                                                                                                                                                                                                                             |
+| `ci_platform`     | Canonical CI platform the source file belongs to (`GitHubActions`, `GitLabCI`, `AzureDevOps`, `Jenkins`, `CircleCI`, `BitbucketPipelines`, `DroneCI`, `TravisCI`)                                                                                           |
+| `source_path`     | Path of the pipeline file that declares the dependency (relative to the repo root)                                                                                                                                                                          |
+| `dependency_kind` | One of `Action`, `ReusableWorkflow`, `GitLabIncludeProject`, `GitLabIncludeRemote`, `GitLabIncludeTemplate`, `AzureTemplate`, `AzureRepoResource`, `JenkinsSharedLibrary`, `CircleCIOrb`, `BitbucketPipe`, `BitbucketImport`, `DronePlugin`, `TravisImport` |
+| `dependency_ref`  | The referenced identifier (action name, workflow path, library name, orb, pipe, plugin image, etc.)                                                                                                                                                         |
+| `version`         | Ref/version pin if specified, otherwise empty                                                                                                                                                                                                               |
+
+Local references (e.g. `uses: ./.github/actions/...` in GitHub Actions, `include: local: ...` in GitLab CI, sibling-file `template:` references in Azure DevOps) are intentionally excluded.
 
 ### `manifest.json`
 
@@ -103,7 +106,6 @@ The canonical label vocabulary used in these columns is defined in [`plugin/skil
     "organizations": ["my-org-a"],
     "repositories": [],
     "excludes": [],
-    "scan_depth": "with-deps",
     "retention": 12
   },
   "counts": {
@@ -119,11 +121,10 @@ The canonical label vocabulary used in these columns is defined in [`plugin/skil
 
 To bound API usage and snapshot size:
 
-| Cap                             | Default           | Override                                               |
-| ------------------------------- | ----------------- | ------------------------------------------------------ |
-| Pipeline files per repo         | 25                | Edit `MAX_PIPELINE_FILES_PER_REPO` in `repo-scan.yml`. |
-| Pipeline bytes per repo         | 524288 (512 KB)   | Edit `MAX_PIPELINE_BYTES_PER_REPO` in `repo-scan.yml`. |
-| Dependency Graph pages per repo | 10 × 25 manifests | Hard-coded in `deps.js` to bound runtime on monorepos. |
+| Cap                     | Default         | Override                                               |
+| ----------------------- | --------------- | ------------------------------------------------------ |
+| Pipeline files per repo | 25              | Edit `MAX_PIPELINE_FILES_PER_REPO` in `repo-scan.yml`. |
+| Pipeline bytes per repo | 524288 (512 KB) | Edit `MAX_PIPELINE_BYTES_PER_REPO` in `repo-scan.yml`. |
 
 Repos that hit a cap are recorded with `truncated: true` in their `raw/<owner>__<repo>.json`, and counted in `manifest.json#counts.repositories_truncated`. The Stage 2 agent surfaces these in its `REPORT.md`.
 
@@ -153,7 +154,7 @@ See [`inventory-analysis.md`](inventory-analysis.md) for the full operator guide
 | `At least one of organizations or repositories must be provided.` | Both inputs are empty.                                                                            | Provide at least one.                                          |
 | `Input ... is not valid JSON.`                                    | A bare string was passed instead of a JSON array.                                                 | Use `["my-org"]`, not `my-org`.                                |
 | Many repos with empty `ci_platforms`                              | App lacks `Contents: read` on those repos, or the repo uses a CI pattern not yet in `extract.js`. | Check app installation; consider adding signals.               |
-| `dependencies.csv` is empty even with `scan_depth=with-deps`      | App lacks `Dependency graph: read`.                                                               | Update the app permission and re-run.                          |
+| `dependencies.csv` is empty for a repo that clearly uses actions  | The repo's pipeline files were not captured (no matching path pattern in `extract.js`).           | Add the missing path pattern and re-scan.                      |
 | Aggregator job opens a PR with no changes                         | Every shard failed enumeration.                                                                   | Check shard logs in the matrix; usually a token-scoping issue. |
 
 ## Related

@@ -41,7 +41,7 @@ inventory/<run-id>/analysis/
 1. **Resolve** the snapshot path and parse `manifest.json` + `repos.csv` (plus `dependencies.csv` when present).
 2. **Cluster** every repo by a 4-tuple key: `(primary_language, top_build_tool, top_ci_platform, top_deploy_target)`.
 3. **Score** each cluster `HIGH` / `MEDIUM` / `LOW` based on how many of the four dimensions are populated for every member. `LOW` clusters are dissolved; their members appear in the `unclustered` list.
-4. **Refine** (if `dependencies.csv` exists) — Jaccard similarity on the top 50 packages flags outliers within each cluster.
+4. **Refine** (if `dependencies.csv` exists) — Jaccard similarity on CI-side dependencies (shared workflows, actions, libraries, templates, orbs) flags outliers within each cluster and surfaces shared building blocks.
 5. **Sample** up to 3 representative pipeline files per cluster (largest by LOC).
 6. **Write** the three output files under `analysis/`.
 
@@ -64,7 +64,7 @@ gh pr create --fill
 The top-of-report "Suggested next actions" block typically recommends:
 
 1. **Build reusable workflows** — for each `HIGH`-confidence cluster with 3+ members, invoke the [`reusable-workflow-builder`](../agents/reusable-workflow-builder.md) agent with the cluster's member repos as the scope.
-2. **Re-scan with `scan_depth=with-deps`** — if the current snapshot is shallow, more refinement is unlocked by Dependency Graph data.
+2. **Re-scan if `dependencies.csv` is sparse** — if many captured pipelines yielded no CI dependencies, the path patterns in `extract.js` likely missed a file type; extend them and re-scan.
 3. **Extend the taxonomy** — for any unrecognized signals surfaced in the report.
 
 ## Troubleshooting
