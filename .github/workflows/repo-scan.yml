@@ -1,0 +1,274 @@
+name: Repo Pipeline Scan
+
+# Stage 1 of the repo pipeline inventory & similarity categorization feature.
+# Scans the configured organizations and/or explicit repositories, captures
+# pipeline + manifest files, classifies each repo using rule-based signals,
+# and commits the snapshot to `inventory/<run-id>/` via a pull request.
+#
+# Stage 2 (cluster analysis) is run separately via the local `inventory-analysis`
+# Copilot CLI agent against the committed snapshot. See docs/repo-scan.md.
+
+on:
+    workflow_dispatch:
+        inputs:
+            organizations:
+                description: 'JSON array of GitHub organization logins to scan (e.g. ["my-org-a","my-org-b"]). Leave empty to only scan explicit repositories.'
+                required: false
+                default: "[]"
+                type: string
+            repositories:
+                description: 'JSON array of additional owner/repo entries to include (e.g. ["other-org/repo-1"]).'
+                required: false
+                default: "[]"
+                type: string
+            excludes:
+                description: "JSON array of owner/repo entries to skip even if they would otherwise be included."
+                required: false
+                default: "[]"
+                type: string
+            scan_depth:
+                description: "shallow = skip Dependency Graph; with-deps = populate dependencies.csv via Dependency Graph GraphQL."
+                required: false
+                default: "shallow"
+                type: choice
+                options:
+                    - shallow
+                    - with-deps
+            retention:
+                description: "Number of recent inventory/<run-id>/ snapshots to retain. Older snapshots are deleted in the same PR."
+                required: false
+                default: "12"
+                type: string
+
+permissions:
+    contents: read
+
+concurrency:
+    group: repo-scan-${{ github.run_id }}
+    cancel-in-progress: false
+
+env:
+    MAX_PIPELINE_FILES_PER_REPO: "25"
+    MAX_PIPELINE_BYTES_PER_REPO: "524288"
+
+jobs:
+    plan:
+        name: Plan matrix
+        runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.build-matrix.outputs.matrix }}
+            has_inputs: ${{ steps.build-matrix.outputs.has_inputs }}
+        steps:
+            - name: Validate and build matrix
+              id: build-matrix
+              uses: actions/github-script@v9.0.0
+              env:
+                  ORGS_INPUT: ${{ inputs.organizations }}
+                  REPOS_INPUT: ${{ inputs.repositories }}
+              with:
+                  script: |
+                      const parseArray = (raw, name) => {
+                        if (!raw || raw.trim() === '') return []
+                        let parsed
+                        try {
+                          parsed = JSON.parse(raw)
+                        } catch (err) {
+                          core.setFailed(`Input \`${name}\` is not valid JSON: ${err.message}`)
+                          throw err
+                        }
+                        if (!Array.isArray(parsed)) {
+                          core.setFailed(`Input \`${name}\` must be a JSON array.`)
+                          throw new Error(`${name} is not an array`)
+                        }
+                        return parsed.map(String).map((s) => s.trim()).filter(Boolean)
+                      }
+
+                      const orgs = parseArray(process.env.ORGS_INPUT, 'organizations')
+                      const repos = parseArray(process.env.REPOS_INPUT, 'repositories')
+
+                      if (orgs.length === 0 && repos.length === 0) {
+                        core.setFailed('At least one of `organizations` or `repositories` must be provided.')
+                        return
+                      }
+
+                      const entries = orgs.map((org) => ({ key: org, kind: 'org', org }))
+                      if (repos.length > 0) {
+                        entries.push({ key: '__explicit__', kind: 'explicit', org: '__explicit__' })
+                      }
+
+                      core.setOutput('matrix', JSON.stringify({ include: entries }))
+                      core.setOutput('has_inputs', 'true')
+                      core.info(`Planned ${entries.length} matrix entries: ${entries.map((e) => e.key).join(', ')}`)
+
+    scan:
+        name: Scan ${{ matrix.key }}
+        needs: plan
+        if: needs.plan.outputs.has_inputs == 'true'
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+        steps:
+            - name: Checkout this repository
+              uses: actions/checkout@v6
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "20"
+
+            - name: Mint scoped app token
+              id: app-token
+              if: matrix.kind == 'org'
+              uses: actions/create-github-app-token@v3
+              with:
+                  app-id: ${{ vars.GH_APP_ID }}
+                  private-key: ${{ secrets.GH_APP_PEM }}
+                  owner: ${{ matrix.org }}
+
+            - name: Mint app token for explicit repos
+              id: app-token-explicit
+              if: matrix.kind == 'explicit'
+              uses: actions/create-github-app-token@v3
+              with:
+                  app-id: ${{ vars.GH_APP_ID }}
+                  private-key: ${{ secrets.GH_APP_PEM }}
+
+            - name: Resolve token
+              id: resolve-token
+              env:
+                  ORG_TOKEN: ${{ steps.app-token.outputs.token }}
+                  EXPLICIT_TOKEN: ${{ steps.app-token-explicit.outputs.token }}
+                  MATRIX_KIND: ${{ matrix.kind }}
+              run: |
+                  if [ "$MATRIX_KIND" = "org" ]; then
+                    echo "::add-mask::$ORG_TOKEN"
+                    echo "token=$ORG_TOKEN" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "::add-mask::$EXPLICIT_TOKEN"
+                    echo "token=$EXPLICIT_TOKEN" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Enumerate repositories
+              id: enumerate
+              uses: actions/github-script@v9.0.0
+              env:
+                  MATRIX_KIND: ${{ matrix.kind }}
+                  MATRIX_ORG: ${{ matrix.org }}
+                  REPOSITORIES_INPUT: ${{ inputs.repositories }}
+                  EXCLUDES_INPUT: ${{ inputs.excludes }}
+                  RUN_ID: ${{ github.run_id }}
+              with:
+                  github-token: ${{ steps.resolve-token.outputs.token }}
+                  script: |
+                      const enumerate = require('${{ github.workspace }}/.github/scripts/repo-scan/enumerate.js')
+                      const repos = await enumerate({ github, core, process })
+                      core.setOutput('count', String(repos.length))
+
+            - name: Extract pipeline + manifest signals
+              if: steps.enumerate.outputs.count != '0'
+              uses: actions/github-script@v9.0.0
+              env:
+                  MATRIX_KEY: ${{ matrix.key }}
+                  RUN_ID: ${{ github.run_id }}
+                  MAX_PIPELINE_FILES_PER_REPO: ${{ env.MAX_PIPELINE_FILES_PER_REPO }}
+                  MAX_PIPELINE_BYTES_PER_REPO: ${{ env.MAX_PIPELINE_BYTES_PER_REPO }}
+              with:
+                  github-token: ${{ steps.resolve-token.outputs.token }}
+                  script: |
+                      const extract = require('${{ github.workspace }}/.github/scripts/repo-scan/extract.js')
+                      await extract({ github, core, process })
+
+            - name: Query Dependency Graph
+              if: steps.enumerate.outputs.count != '0' && inputs.scan_depth == 'with-deps'
+              uses: actions/github-script@v9.0.0
+              env:
+                  MATRIX_KEY: ${{ matrix.key }}
+                  RUN_ID: ${{ github.run_id }}
+              with:
+                  github-token: ${{ steps.resolve-token.outputs.token }}
+                  script: |
+                      const deps = require('${{ github.workspace }}/.github/scripts/repo-scan/deps.js')
+                      await deps({ github, core, process })
+
+            - name: Classify and emit per-shard CSV
+              if: steps.enumerate.outputs.count != '0'
+              uses: actions/github-script@v9.0.0
+              env:
+                  MATRIX_KEY: ${{ matrix.key }}
+                  RUN_ID: ${{ github.run_id }}
+              with:
+                  script: |
+                      const classify = require('${{ github.workspace }}/.github/scripts/repo-scan/classify.js')
+                      await classify({ core, process })
+
+            - name: Upload shard artifact
+              if: steps.enumerate.outputs.count != '0'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: repo-scan-shard-${{ matrix.key }}
+                  path: shard/
+                  if-no-files-found: warn
+                  retention-days: 7
+
+    aggregate:
+        name: Aggregate snapshot and open PR
+        needs: [plan, scan]
+        if: needs.plan.outputs.has_inputs == 'true'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
+        steps:
+            - name: Checkout this repository
+              uses: actions/checkout@v6
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "20"
+
+            - name: Download shard artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: shards/
+                  pattern: repo-scan-shard-*
+                  merge-multiple: false
+
+            - name: Aggregate into inventory snapshot
+              uses: actions/github-script@v9.0.0
+              env:
+                  RUN_ID: ${{ github.run_id }}
+                  ORGS_INPUT: ${{ inputs.organizations }}
+                  REPOS_INPUT: ${{ inputs.repositories }}
+                  EXCLUDES_INPUT: ${{ inputs.excludes }}
+                  SCAN_DEPTH: ${{ inputs.scan_depth }}
+                  RETENTION: ${{ inputs.retention }}
+              with:
+                  script: |
+                      const aggregate = require('${{ github.workspace }}/.github/scripts/repo-scan/aggregate.js')
+                      await aggregate({ core, process })
+
+            - name: Open pull request with snapshot
+              uses: peter-evans/create-pull-request@v7
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  branch: repo-scan/run-${{ github.run_id }}
+                  base: ${{ github.event.repository.default_branch }}
+                  title: "inventory: repo-scan snapshot run-${{ github.run_id }}"
+                  commit-message: |
+                      inventory: add repo-scan snapshot run-${{ github.run_id }}
+                  body: |
+                      Automated snapshot from `repo-scan.yml` run [`${{ github.run_id }}`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+
+                      **Inputs**
+                      - organizations: `${{ inputs.organizations }}`
+                      - repositories: `${{ inputs.repositories }}`
+                      - excludes: `${{ inputs.excludes }}`
+                      - scan_depth: `${{ inputs.scan_depth }}`
+                      - retention: `${{ inputs.retention }}`
+
+                      Review the diff, then merge to land the snapshot under `inventory/<run-id>/`. Run the `inventory-analysis` Copilot CLI agent against `inventory/latest` for Stage 2 analysis.
+                  add-paths: |
+                      inventory/**
+                  delete-branch: true

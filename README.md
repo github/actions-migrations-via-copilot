@@ -22,19 +22,22 @@ Organizations migrating to GitHub Actions face:
 
 ## Available Migration Agents
 
-| Agent                         | Migrates From              | Handles                                     |
-| ----------------------------- | -------------------------- | ------------------------------------------- |
-| **Jenkins Migrator**          | Jenkinsfile                | Pipelines, shared libraries, Groovy scripts |
-| **Azure DevOps Migrator**     | azure-pipelines.yml        | YAML pipelines, templates, variable groups  |
-| **CircleCI Migrator**         | .circleci/config.yml       | Workflows, jobs, Orbs                       |
-| **GitLab Migrator**           | .gitlab-ci.yml             | Pipelines, includes, Pages                  |
-| **Travis CI Migrator**        | .travis.yml                | Build matrix, deploy providers              |
-| **Bamboo Migrator**           | bamboo-specs.yml           | Build plans, deployment projects            |
-| **Bitbucket Migrator**        | bitbucket-pipelines.yml    | Pipelines, Pipes                            |
-| **Drone CI Migrator**         | .drone.yml                 | Pipelines, plugins                          |
-| **Reusable Workflow Builder** | GitHub Actions across orgs | Pattern analysis, reusable workflows        |
+| Agent                         | Migrates From                  | Handles                                                |
+| ----------------------------- | ------------------------------ | ------------------------------------------------------ |
+| **Jenkins Migrator**          | Jenkinsfile                    | Pipelines, shared libraries, Groovy scripts            |
+| **Azure DevOps Migrator**     | azure-pipelines.yml            | YAML pipelines, templates, variable groups             |
+| **CircleCI Migrator**         | .circleci/config.yml           | Workflows, jobs, Orbs                                  |
+| **GitLab Migrator**           | .gitlab-ci.yml                 | Pipelines, includes, Pages                             |
+| **Travis CI Migrator**        | .travis.yml                    | Build matrix, deploy providers                         |
+| **Bamboo Migrator**           | bamboo-specs.yml               | Build plans, deployment projects                       |
+| **Bitbucket Migrator**        | bitbucket-pipelines.yml        | Pipelines, Pipes                                       |
+| **Drone CI Migrator**         | .drone.yml                     | Pipelines, plugins                                     |
+| **Reusable Workflow Builder** | GitHub Actions across orgs     | Pattern analysis, reusable workflows                   |
+| **Inventory Analysis**        | `inventory/<run-id>/` snapshot | Technology-similarity clustering, consolidation report |
 
 The **Reusable Workflow Builder** scans multiple GitHub organizations, detects common CI/CD patterns (Node.js builds, AWS deployments, Docker workflows), and generates standardized reusable workflows—reducing duplication and capturing organizational best practices.
+
+The **Repo Pipeline Inventory** feature is a two-stage flow for understanding CI/CD across many repos before migrating: Stage 1 (`.github/workflows/repo-scan.yml`) scans organizations and commits a deterministic snapshot under `inventory/<run-id>/`; Stage 2 (the `inventory-analysis` agent, run locally via Copilot CLI) clusters repos by technology similarity and produces a consolidation report. See [`docs/repo-scan.md`](docs/repo-scan.md) and [`docs/inventory-analysis.md`](docs/inventory-analysis.md).
 
 ## Choose Your Surface
 

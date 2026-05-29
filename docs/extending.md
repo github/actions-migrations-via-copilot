@@ -4,13 +4,14 @@ Add support for new CI/CD platforms by creating migration agents and knowledgeba
 
 ## Quick Reference
 
-| Task                  | Files to Create                                               |
-| --------------------- | ------------------------------------------------------------- |
-| **New Agent**         | `agents/<platform>-migrator.md`                               |
-| **Action Mappings**   | `knowledge/actions-mapping/<platform>.md`                     |
-| **Security Patterns** | `knowledge/patterns/<platform>/secrets.md`                    |
-| **Report Template**   | `knowledge/report-template/<platform>.md`                     |
-| **Optional Patterns** | `knowledge/patterns/<platform>/{pipeline,plugins,scripts}.md` |
+| Task                  | Files to Create                                                                                                                                                                                                                                                                   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **New Agent**         | `agents/<platform>-migrator.md`                                                                                                                                                                                                                                                   |
+| **Action Mappings**   | `knowledge/actions-mapping/<platform>.md`                                                                                                                                                                                                                                         |
+| **Security Patterns** | `knowledge/patterns/<platform>/secrets.md`                                                                                                                                                                                                                                        |
+| **Report Template**   | `knowledge/report-template/<platform>.md`                                                                                                                                                                                                                                         |
+| **Optional Patterns** | `knowledge/patterns/<platform>/{pipeline,plugins,scripts}.md`                                                                                                                                                                                                                     |
+| **Repo Scan signal**  | `.github/scripts/repo-scan/extract.js` (`PIPELINE_PATTERNS` / `MANIFEST_PATTERNS` / `PATH_ONLY_PATTERNS`) and/or `.github/scripts/repo-scan/classify.js` (`DEPLOY_TARGET_CUES`), then add the canonical label to `plugin/skills/inventory-analysis/SKILL.md` (Canonical taxonomy) |
 
 ### Also extend the Copilot CLI plugin
 
