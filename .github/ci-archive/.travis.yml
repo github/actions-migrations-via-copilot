@@ -1,0 +1,11 @@
+language: node_js
+node_js:
+  - 18
+script:
+  - npm test
+  - npm run build
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: "hardcoded-secret-123"
+  local_dir: build
