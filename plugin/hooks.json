@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "description": "Block dangerous file operations during migration",
+        "bash": "TOOL_INPUT=\"$COPILOT_HOOK_TOOL_INPUT\"; BLOCKED=''; if echo \"$TOOL_INPUT\" | grep -qE 'rm\\s+(-rf?\\s+)?[^.]*$' 2>/dev/null && ! echo \"$TOOL_INPUT\" | grep -q '.github/ci-archive' 2>/dev/null; then BLOCKED='Blocked: file deletion only allowed inside .github/ci-archive/'; fi; HAS_SECRET=$(echo \"$TOOL_INPUT\" | grep -ciE '(password|secret|token|api.key)\\s*[:=]' 2>/dev/null); HAS_EXPR=$(echo \"$TOOL_INPUT\" | grep -cF '${' 2>/dev/null); if [ \"$HAS_SECRET\" -gt 0 ] && [ \"$HAS_EXPR\" -eq 0 ]; then BLOCKED=\"${BLOCKED}Blocked: possible hardcoded secret detected. Use GitHub Secrets instead.\"; fi; if [ -n \"$BLOCKED\" ]; then echo \"{\\\"decision\\\":\\\"reject\\\",\\\"reason\\\":\\\"$BLOCKED\\\"}\"; else echo '{\"decision\":\"approve\"}'; fi"
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "description": "Validate workflow quality after file writes",
+        "bash": "TOOL_NAME=\"$COPILOT_HOOK_TOOL_NAME\"; if [ \"$TOOL_NAME\" != 'write' ] && [ \"$TOOL_NAME\" != 'create' ] && [ \"$TOOL_NAME\" != 'edit' ]; then exit 0; fi; FILE=\"$COPILOT_HOOK_TOOL_INPUT_PATH\"; if [ -z \"$FILE\" ] || ! echo \"$FILE\" | grep -q '.github/workflows/' 2>/dev/null; then exit 0; fi; if [ ! -f \"$FILE\" ]; then exit 0; fi; WARNINGS=''; if grep -qE 'uses:\\s+[^@]+@v[0-9]' \"$FILE\" 2>/dev/null; then WARNINGS=\"${WARNINGS}Warning: actions pinned to version tags, not SHA hashes. \"; fi; if grep -qiE '(TODO|FIXME|CHANGEME|PLACEHOLDER|XXX)' \"$FILE\" 2>/dev/null; then WARNINGS=\"${WARNINGS}Warning: placeholder text found. \"; fi; if grep -qE 'permissions:\\s*write-all' \"$FILE\" 2>/dev/null; then WARNINGS=\"${WARNINGS}Warning: write-all permissions found. \"; fi; if ! grep -qE '^permissions:' \"$FILE\" 2>/dev/null; then WARNINGS=\"${WARNINGS}Warning: no permissions block. \"; fi; if [ -n \"$WARNINGS\" ]; then echo \"{\\\"additionalContext\\\":\\\"Quality check on $FILE: ${WARNINGS}Fix before completing migration.\\\"}\"; fi"
+      },
+      {
+        "type": "command",
+        "description": "Auto-run actionlint after workflow file writes",
+        "bash": "TOOL_NAME=\"$COPILOT_HOOK_TOOL_NAME\"; if [ \"$TOOL_NAME\" != 'write' ] && [ \"$TOOL_NAME\" != 'create' ] && [ \"$TOOL_NAME\" != 'edit' ]; then exit 0; fi; FILE=\"$COPILOT_HOOK_TOOL_INPUT_PATH\"; if [ -z \"$FILE\" ] || ! echo \"$FILE\" | grep -q '.github/workflows/' 2>/dev/null; then exit 0; fi; if [ ! -f \"$FILE\" ]; then exit 0; fi; if ! command -v actionlint >/dev/null 2>&1; then echo '{\"additionalContext\":\"actionlint not installed. Run: brew install actionlint\"}'; exit 0; fi; LINT=$(actionlint \"$FILE\" 2>&1); if [ -n \"$LINT\" ]; then CLEAN=$(echo \"$LINT\" | head -20 | tr '\"' \"'\" | tr '\\n' ' '); echo \"{\\\"additionalContext\\\":\\\"actionlint errors in $FILE: ${CLEAN}\\\"}\"; fi"
+      }
+    ]
+  }
+}

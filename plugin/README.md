@@ -67,6 +67,7 @@ plugin/
 │   ├── bitbucket-migrator.agent.md
 │   ├── droneci-migrator.agent.md
 │   └── reusable-workflow-builder.agent.md
+├── hooks.json                  # Deterministic enforcement hooks
 └── skills/                     # 11 skills
     ├── migration-core/             # 5-phase workflow + guardrails + deliverables/checklist
     ├── actionlint/                 # Install, run, interpret, and fix actionlint output
@@ -89,6 +90,44 @@ Every migration agent loads:
 The Reusable Workflow Builder loads `reusable-workflow-patterns` + `migration-core` + `actionlint`.
 
 This replaces the previous pattern of agents fetching `knowledge/*.md` files at runtime from a private `.github-private` repo via the GitHub MCP server — everything now ships locally with the plugin.
+
+---
+
+## Hooks — Deterministic Enforcement
+
+The plugin includes hooks that run deterministic checks during migrations. Unlike skills and agent instructions (which the model can choose to ignore), hooks execute as shell commands at specific lifecycle points and can **block** operations or **inject warnings** into the agent's context.
+
+### `migration-guard.json`
+
+| Hook | Lifecycle | What it does |
+|------|-----------|-------------|
+| File deletion guard | `preToolUse` | Blocks `rm` operations outside `.github/ci-archive/`. Prevents accidental deletion of application source code. |
+| Secret detection | `preToolUse` | Rejects tool calls that contain hardcoded secrets (passwords, tokens, API keys). Forces use of GitHub Secrets. |
+| Action pinning check | `postToolUse` | After any workflow file write, warns if actions are pinned to version tags (`@v4`) instead of SHA hashes. |
+| Placeholder detection | `postToolUse` | Warns if generated workflows contain TODO/FIXME/CHANGEME text. |
+| Permissions audit | `postToolUse` | Warns if workflows use `permissions: write-all` or lack a permissions block entirely. |
+| **actionlint auto-run** | `postToolUse` | **Automatically runs actionlint after every workflow file write.** Injects lint errors directly into the agent's context, forcing fixes before proceeding. Requires actionlint to be installed. |
+
+### Why hooks matter
+
+The `migration-core` skill already contains guardrails as agent instructions. Hooks add a **deterministic layer** — the agent can't bypass them. This is the difference between "please don't delete files outside ci-archive" (instruction) and "the system will reject the tool call" (hook).
+
+The actionlint hook is especially valuable: the `actionlint` skill tells the agent to install and run actionlint, but the agent could skip it or ignore the output. The hook runs actionlint automatically after every workflow file write and injects errors into the agent's context — the agent has to fix them to proceed.
+
+### Enabling hooks
+
+Hooks are installed automatically with the plugin. To verify:
+
+```bash
+copilot
+/hooks list
+```
+
+To disable hooks temporarily (e.g., for debugging):
+
+```bash
+copilot --disable-hooks
+```
 
 ---
 
