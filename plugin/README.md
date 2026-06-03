@@ -92,6 +92,45 @@ This replaces the previous pattern of agents fetching `knowledge/*.md` files at 
 
 ---
 
+## Hooks — Deterministic Enforcement
+
+The plugin includes hooks that run deterministic checks during migrations. Unlike skills and agent instructions (which the model can choose to ignore), hooks execute as shell commands at specific lifecycle points and can **block** operations or **inject warnings** into the agent's context.
+
+### `hooks.json`
+
+| Hook | Event | Matcher | What it does |
+|------|-------|---------|-------------|
+| Secret detection | `preToolUse` | `create\|edit` | Hard-denies file writes containing hardcoded secrets (passwords, tokens, API keys). Forces use of `${{ secrets.NAME }}`. Uses `permissionDecision: "deny"`. |
+| File deletion guard | `preToolUse` | `bash` | Hard-denies `rm` operations outside `.github/ci-archive/`. Prevents accidental deletion of application source code. |
+| Quality check + actionlint | `postToolUse` | `create\|edit` | After any workflow file write, injects `additionalContext` with: unpinned actions (tag vs SHA), placeholder text (TODO/FIXME), over-broad permissions (`write-all`), missing permissions block, and actionlint errors. The agent sees these on the same turn. |
+| **Quality gate** | `agentStop` | — | Scans ALL workflow files when the agent finishes a turn. If any have issues, returns `decision: "block"` forcing the agent to take another turn to fix them. Safety valve releases after 3 attempts to prevent infinite loops. |
+| **Migration scorecard** | `sessionEnd` | — | Appends an entry to `.github/MIGRATION-SCORECARD.md` with session ID, timestamp, completion reason, and workflow counts (total / clean / with-issues). Multiple passes show quality progression. Audit artifact for migration quality tracking. |
+
+### Why hooks matter
+
+The `migration-core` skill already contains guardrails as agent instructions. Hooks add a **deterministic layer** — the agent can't bypass them. This is the difference between "please don't delete files outside ci-archive" (instruction) and "the system will reject the tool call" (hook).
+
+**actionlint** runs in three hooks: `postToolUse` (per-file, immediate feedback), `agentStop` (all files, blocks completion), and `sessionEnd` (final scorecard counts). The agent cannot skip or ignore lint errors — the quality gate blocks completion until they're fixed.
+
+**The quality gate** (`agentStop`) is the key enforcement mechanism. Instead of just warning after each file write, it checks all workflows at the end of every agent turn and forces continuation until they pass. This works in both CLI interactive mode and cloud agent jobs.
+
+### Enabling hooks
+
+Hooks are installed automatically with the plugin. To verify:
+
+```bash
+copilot
+/hooks list
+```
+
+To disable hooks temporarily (e.g., for debugging):
+
+```bash
+copilot --disable-hooks
+```
+
+---
+
 ## Customizing Skills
 
 Customizing skills is the CLI plugin's equivalent of editing the `knowledge/` knowledge base in the [cloud-agent deployment](../docs/deployment.md). Because the plugin ships content **locally**, your edits take effect on the next `copilot plugin install ./plugin`—no `.github-private` push, no MCP round-trip.

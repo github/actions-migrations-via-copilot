@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "description": "Block hardcoded secrets in file writes",
+        "matcher": "create|edit",
+        "timeoutSec": 10,
+        "bash": "INPUT=$(cat); CONTENT=$(echo \"$INPUT\" | jq -r '.toolArgs' 2>/dev/null | jq -r '.content // .new_string // empty' 2>/dev/null); [ -z \"$CONTENT\" ] && echo '{}' && exit 0; FOUND=0; echo \"$CONTENT\" | while IFS= read -r line; do echo \"$line\" | grep -qiE '(password|secret|token|api[_-]?key)\\s*[:=]' 2>/dev/null || continue; echo \"$line\" | grep -qF '${' 2>/dev/null && continue; echo \"$line\" | grep -qiE '[:=]\\s*.{8,}' 2>/dev/null && echo 'HIT'; done | grep -q 'HIT' && echo '{\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: hardcoded secret detected. Use GitHub Secrets (${{ secrets.NAME }}) instead.\"}' || echo '{}'"
+      },
+      {
+        "type": "command",
+        "description": "Guard against file deletion outside ci-archive",
+        "matcher": "bash",
+        "timeoutSec": 10,
+        "bash": "INPUT=$(cat); CMD=$(echo \"$INPUT\" | jq -r '.toolArgs' 2>/dev/null | jq -r '.command // empty' 2>/dev/null); if echo \"$CMD\" | grep -qE 'rm\\s+(-[rfi]+\\s+)*' 2>/dev/null; then TARGETS=$(echo \"$CMD\" | grep -oE '\\S+' | grep -v '^rm$' | grep -v '^-' || true); for t in $TARGETS; do if echo \"$t\" | grep -qF '..'; then echo '{\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: path traversal (..) not allowed in delete operations.\"}'; exit 0; fi; done; for t in $TARGETS; do case \"$t\" in */.github/ci-archive/*) ;; *.github/ci-archive/*) ;; *) echo '{\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: file deletion only allowed inside .github/ci-archive/.\"}'; exit 0 ;; esac; done; fi; echo '{}'"
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "description": "Quality check and actionlint on workflow files after write",
+        "matcher": "create|edit",
+        "timeoutSec": 60,
+        "bash": "INPUT=$(cat); ARGS=$(echo \"$INPUT\" | jq -r '.toolArgs' 2>/dev/null | jq -c '.' 2>/dev/null); FILE=$(echo \"$ARGS\" | jq -r '.file_path // .path // empty' 2>/dev/null); echo \"$FILE\" | grep -q '.github/workflows/' || exit 0; [ -f \"$FILE\" ] || exit 0; if ! command -v actionlint >/dev/null 2>&1; then if [ \"$(uname)\" = 'Linux' ]; then V='1.7.11'; EXPECTED='900919a84f2229bac68ca9cd4103ea297abc35e9689ebb842c6e34a3d1b01b0a'; TGZ=\"/tmp/actionlint_${V}_linux_amd64.tar.gz\"; curl -fsSL -o \"$TGZ\" \"https://github.com/rhysd/actionlint/releases/download/v${V}/actionlint_${V}_linux_amd64.tar.gz\" 2>/dev/null; ACTUAL=$(sha256sum \"$TGZ\" 2>/dev/null | awk '{print $1}'); if [ \"$ACTUAL\" != \"$EXPECTED\" ]; then ESCAPED='actionlint install FAILED: checksum mismatch. Linting skipped — treat workflows as unverified.'; printf '{\"additionalContext\":\"%s\"}' \"$ESCAPED\"; exit 0; fi; tar xz -C /tmp -f \"$TGZ\" actionlint 2>/dev/null && install -m 755 /tmp/actionlint /usr/local/bin/actionlint 2>/dev/null; rm -f \"$TGZ\"; elif command -v brew >/dev/null 2>&1; then brew install actionlint 2>/dev/null; fi; fi; if ! command -v actionlint >/dev/null 2>&1; then ESCAPED='actionlint not available (install failed). Linting skipped — treat workflows as unverified.'; printf '{\"additionalContext\":\"%s\"}' \"$ESCAPED\"; exit 0; fi; W=''; grep -qE 'uses:\\s+[^@]+@v[0-9]' \"$FILE\" 2>/dev/null && W=\"${W}- Unpinned actions: use full SHA commit refs\\n\"; grep -qiE '(TODO|FIXME|CHANGEME|PLACEHOLDER|XXX)' \"$FILE\" 2>/dev/null && W=\"${W}- Placeholder text found: replace before merging\\n\"; grep -qE 'permissions:\\s*write-all' \"$FILE\" 2>/dev/null && W=\"${W}- Over-broad permissions: replace write-all with least-privilege\\n\"; grep -qE '^permissions:' \"$FILE\" 2>/dev/null || W=\"${W}- Missing top-level permissions block\\n\"; L=$(actionlint \"$FILE\" 2>&1 | head -5); if [ -n \"$W\" ] || [ -n \"$L\" ]; then MSG=\"MIGRATION QUALITY CHECK ($FILE):\\n${W}\"; [ -n \"$L\" ] && MSG=\"${MSG}actionlint errors:\\n${L}\\n\"; MSG=\"${MSG}Fix these issues now.\"; ESCAPED=$(printf '%s' \"$MSG\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g'); printf '{\"additionalContext\":\"%s\"}' \"$ESCAPED\"; fi"
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "description": "Migration quality gate — block completion if workflows have issues",
+        "timeoutSec": 60,
+        "bash": "INPUT=$(cat); CWD=$(echo \"$INPUT\" | jq -r '.cwd // \".\"' 2>/dev/null); COUNTER_FILE='/tmp/.migration-quality-gate'; COUNT=$(cat \"$COUNTER_FILE\" 2>/dev/null || echo 0); COUNT=$((COUNT + 1)); echo \"$COUNT\" > \"$COUNTER_FILE\"; if [ \"$COUNT\" -gt 3 ]; then rm -f \"$COUNTER_FILE\"; echo '{}'; exit 0; fi; if ! command -v actionlint >/dev/null 2>&1; then if [ \"$(uname)\" = 'Linux' ]; then V='1.7.11'; EXPECTED='900919a84f2229bac68ca9cd4103ea297abc35e9689ebb842c6e34a3d1b01b0a'; TGZ=\"/tmp/actionlint_${V}_linux_amd64.tar.gz\"; curl -fsSL -o \"$TGZ\" \"https://github.com/rhysd/actionlint/releases/download/v${V}/actionlint_${V}_linux_amd64.tar.gz\" 2>/dev/null; ACTUAL=$(sha256sum \"$TGZ\" 2>/dev/null | awk '{print $1}'); if [ \"$ACTUAL\" != \"$EXPECTED\" ]; then rm -f \"$TGZ\"; fi; tar xz -C /tmp -f \"$TGZ\" actionlint 2>/dev/null && install -m 755 /tmp/actionlint /usr/local/bin/actionlint 2>/dev/null; rm -f \"$TGZ\"; elif command -v brew >/dev/null 2>&1; then brew install actionlint 2>/dev/null; fi; fi; ISSUES=''; LINT_AVAIL=0; command -v actionlint >/dev/null 2>&1 && LINT_AVAIL=1; [ \"$LINT_AVAIL\" -eq 0 ] && ISSUES='actionlint-unavailable; '; for f in \"$CWD\"/.github/workflows/*.yml \"$CWD\"/.github/workflows/*.yaml; do [ -f \"$f\" ] || continue; FN=$(basename \"$f\"); W=''; grep -qE 'uses:\\s+[^@]+@v[0-9]' \"$f\" 2>/dev/null && W=\"${W}unpinned-actions \"; grep -qiE '(TODO|FIXME|CHANGEME|PLACEHOLDER|XXX)' \"$f\" 2>/dev/null && W=\"${W}placeholders \"; grep -qE 'permissions:\\s*write-all' \"$f\" 2>/dev/null && W=\"${W}write-all \"; grep -qE '^permissions:' \"$f\" 2>/dev/null || W=\"${W}no-permissions \"; [ \"$LINT_AVAIL\" -eq 1 ] && ! actionlint \"$f\" >/dev/null 2>&1 && W=\"${W}actionlint-errors \"; [ -n \"$W\" ] && ISSUES=\"${ISSUES}${FN}: ${W}; \"; done; if [ -n \"$ISSUES\" ]; then ESCAPED=$(printf '%s' \"$ISSUES\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g'); printf '{\"decision\":\"block\",\"reason\":\"Migration quality gate FAILED (attempt %d/3). Fix these workflow issues:\\n%s\"}' \"$COUNT\" \"$ESCAPED\"; else rm -f \"$COUNTER_FILE\"; echo '{}'; fi"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "description": "Append migration scorecard entry",
+        "timeoutSec": 45,
+        "bash": "INPUT=$(cat); CWD=$(echo \"$INPUT\" | jq -r '.cwd // \".\"' 2>/dev/null); REASON=$(echo \"$INPUT\" | jq -r '.reason // \"unknown\"' 2>/dev/null); SESSION=$(echo \"$INPUT\" | jq -r '.sessionId // \"unknown\"' 2>/dev/null); if ! command -v actionlint >/dev/null 2>&1; then if [ \"$(uname)\" = 'Linux' ]; then V='1.7.11'; EXPECTED='900919a84f2229bac68ca9cd4103ea297abc35e9689ebb842c6e34a3d1b01b0a'; TGZ=\"/tmp/actionlint_${V}_linux_amd64.tar.gz\"; curl -fsSL -o \"$TGZ\" \"https://github.com/rhysd/actionlint/releases/download/v${V}/actionlint_${V}_linux_amd64.tar.gz\" 2>/dev/null; ACTUAL=$(sha256sum \"$TGZ\" 2>/dev/null | awk '{print $1}'); if [ \"$ACTUAL\" != \"$EXPECTED\" ]; then rm -f \"$TGZ\"; fi; tar xz -C /tmp -f \"$TGZ\" actionlint 2>/dev/null && install -m 755 /tmp/actionlint /usr/local/bin/actionlint 2>/dev/null; rm -f \"$TGZ\"; elif command -v brew >/dev/null 2>&1; then brew install actionlint 2>/dev/null; fi; fi; LINT_AVAIL=0; command -v actionlint >/dev/null 2>&1 && LINT_AVAIL=1; TOTAL=0; CLEAN=0; BAD=0; DETAILS=''; for f in \"$CWD\"/.github/workflows/*.yml \"$CWD\"/.github/workflows/*.yaml; do [ -f \"$f\" ] || continue; TOTAL=$((TOTAL + 1)); FN=$(basename \"$f\"); W=''; grep -qE 'uses:\\s+[^@]+@v[0-9]' \"$f\" 2>/dev/null && W=\"${W}unpinned-actions, \"; grep -qiE '(TODO|FIXME|CHANGEME|PLACEHOLDER|XXX)' \"$f\" 2>/dev/null && W=\"${W}placeholders, \"; grep -qE 'permissions:\\s*write-all' \"$f\" 2>/dev/null && W=\"${W}write-all, \"; grep -qE '^permissions:' \"$f\" 2>/dev/null || W=\"${W}no-permissions, \"; [ \"$LINT_AVAIL\" -eq 1 ] && ! actionlint \"$f\" >/dev/null 2>&1 && W=\"${W}actionlint-errors, \"; if [ -n \"$W\" ]; then BAD=$((BAD + 1)); W=$(echo \"$W\" | sed 's/, $//'); DETAILS=\"${DETAILS}| ${FN} | ${W} |\\n\"; else CLEAN=$((CLEAN + 1)); DETAILS=\"${DETAILS}| ${FN} | clean |\\n\"; fi; done; rm -f /tmp/.migration-quality-gate; SC=\"$CWD/.github/MIGRATION-SCORECARD.md\"; [ -f \"$SC\" ] || printf '# Migration Scorecard\\n' > \"$SC\" 2>/dev/null; printf '\\n## %s\\n- Session: %s\\n- Reason: %s\\n- Workflows: %d total, %d clean, %d with issues\\n\\n| File | Issues |\\n|------|--------|\\n' \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\" \"$SESSION\" \"$REASON\" \"$TOTAL\" \"$CLEAN\" \"$BAD\" >> \"$SC\" 2>/dev/null; printf \"$DETAILS\" >> \"$SC\" 2>/dev/null; echo '{}'"
+      }
+    ]
+  }
+}
