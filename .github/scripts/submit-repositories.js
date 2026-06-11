@@ -196,85 +196,60 @@ const createIssueSubmitClient = (github, core, process) => {
 }
 
 /**
- * Assigns an issue to copilot-swe-agent
+ * Derives the Copilot custom agent name from a prompt file name
+ * (e.g. "jenkins-migrator.md" -> "jenkins-migrator").
+ * @param {string} promptFileName - Name of the prompt file
+ * @returns {string} Custom agent name
+ */
+const deriveCustomAgentName = (promptFileName) =>
+  promptFileName.replace(/\.md$/i, '')
+
+/**
+ * Creates a migration issue and assigns it to the Copilot cloud agent in a
+ * single REST call using the agent_assignment input.
+ * See: https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/use-cloud-agent-via-the-api
  * @param {object} issueGithub - GitHub client for issue operations
  * @param {object} core - GitHub Actions core utilities
  * @param {string} org - Organization name
  * @param {string} repoName - Repository name
- * @param {number} issueNumber - Issue number
+ * @param {string} baseBranch - Base branch the agent should branch from
+ * @param {string} customAgent - Custom agent name to use for the task
+ * @param {string} issueTitle - Issue title
+ * @param {string} issueBody - Issue body (full migration prompt)
  */
-const assignIssueToCopilot = async (
+const createAndAssignMigrationIssue = async (
   issueGithub,
   core,
   org,
   repoName,
-  issueNumber
+  baseBranch,
+  customAgent,
+  issueTitle,
+  issueBody
 ) => {
-  try {
-    const copilotQuery = `
-      query {
-        repository(owner: "${org}", name: "${repoName}") {
-          suggestedActors(capabilities: [CAN_BE_ASSIGNED], first: 100) {
-            nodes {
-              login
-              __typename
-              ... on Bot {
-                id
-              }
-              ... on User {
-                id
-              }
-            }
-          }
-          issue(number: ${issueNumber}) {
-            id
-            title
-          }
-        }
-      }
-    `
-
-    const queryResult = await issueGithub.graphql(copilotQuery)
-    const copilotBot = queryResult.repository.suggestedActors.nodes.find(
-      (node) => node.login === 'copilot-swe-agent'
-    )
-
-    if (copilotBot && queryResult.repository.issue) {
-      const assignMutation = `
-        mutation {
-          replaceActorsForAssignable(input: {
-            assignableId: "${queryResult.repository.issue.id}",
-            actorIds: ["${copilotBot.id}"]
-          }) {
-            assignable {
-              ... on Issue {
-                id
-                title
-                assignees(first: 10) {
-                  nodes {
-                    login
-                  }
-                }
-              }
-            }
-          }
-        }
-      `
-
-      await issueGithub.graphql(assignMutation)
-      core.info(
-        `Assigned copilot-swe-agent to issue #${issueNumber} in ${org}/${repoName}`
-      )
-    } else {
-      core.warning(
-        `Copilot-swe-agent not available for assignment in ${org}/${repoName} or issue not found`
-      )
+  const createdIssue = await issueGithub.request(
+    'POST /repos/{owner}/{repo}/issues',
+    {
+      owner: org,
+      repo: repoName,
+      title: issueTitle,
+      body: issueBody,
+      assignees: ['copilot-swe-agent[bot]'],
+      agent_assignment: {
+        target_repo: `${org}/${repoName}`,
+        base_branch: baseBranch,
+        custom_agent: customAgent,
+      },
+      headers: {
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
     }
-  } catch (assignError) {
-    core.warning(
-      `Failed to assign copilot-swe-agent to issue #${issueNumber} in ${org}/${repoName}: ${assignError.message}`
-    )
-  }
+  )
+
+  core.info(
+    `Created and assigned migration issue #${createdIssue.data.number} ` +
+    `to copilot-swe-agent (custom agent: ${customAgent}) in ${org}/${repoName}`
+  )
 }
 
 /**
@@ -291,14 +266,6 @@ const updateRepositoryMigrationProperty = async (
   repoName
 ) => {
   try {
-    // Debug: Log available methods in github.rest.repos
-    core.info(
-      `Available repo methods: ${Object.keys(github.rest.repos)
-        .filter((key) => key.includes('Custom'))
-        .join(', ')}`
-    )
-
-    // Try the direct API call approach since the method might not exist
     await github.request('PATCH /repos/{owner}/{repo}/properties/values', {
       owner: org,
       repo: repoName,
@@ -329,6 +296,7 @@ const updateRepositoryMigrationProperty = async (
  * @param {string} org - Organization name
  * @param {object} migrationTypePrompts - Migration type prompts mapping
  * @param {object} github - GitHub API client
+ * @param {object} issueGithub - GitHub client for issue operations
  * @param {object} core - GitHub Actions core utilities
  * @param {object} process - Node.js process object
  */
@@ -337,6 +305,7 @@ const processRepository = async (
   org,
   migrationTypePrompts,
   github,
+  issueGithub,
   core,
   process
 ) => {
@@ -362,28 +331,23 @@ const processRepository = async (
     )
     const issueTitle = `[Actions Migration] ${migrationType}`
 
-    // Create GitHub client for issue operations
-    const issueGithub = createIssueSubmitClient(github, core, process)
+    // Derive the custom agent name from the prompt file name
+    const customAgent = deriveCustomAgentName(promptFileName)
 
-    // Create the migration issue
-    const createdIssue = await issueGithub.rest.issues.create({
-      owner: org,
-      repo: repo.name,
-      title: issueTitle,
-      body: issueBody,
-    })
+    // Base branch the cloud agent should branch from
+    const baseBranch = repo.default_branch || 'main'
 
-    core.info(
-      `Created migration issue for ${org}/${repo.name}: "${issueTitle}"`
-    )
-
-    // Assign issue to Copilot
-    await assignIssueToCopilot(
+    // Create the migration issue and assign it to the Copilot cloud agent
+    // in a single REST call using the agent_assignment input.
+    await createAndAssignMigrationIssue(
       issueGithub,
       core,
       org,
       repo.name,
-      createdIssue.data.number
+      baseBranch,
+      customAgent,
+      issueTitle,
+      issueBody
     )
 
     // Update repository custom property
@@ -435,6 +399,9 @@ module.exports = async ({ github, context, core, process, org, batchSize }) => {
       `Processing ${batchedRepos.length} repositories (batch size: ${batchSize})`
     )
 
+    // Create the GitHub client for issue operations once for all repositories
+    const issueGithub = createIssueSubmitClient(github, core, process)
+
     // Process each repository
     for (const repo of batchedRepos) {
       await processRepository(
@@ -442,6 +409,7 @@ module.exports = async ({ github, context, core, process, org, batchSize }) => {
         org,
         migrationTypePrompts,
         github,
+        issueGithub,
         core,
         process
       )
