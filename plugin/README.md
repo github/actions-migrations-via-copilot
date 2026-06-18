@@ -104,7 +104,9 @@ The plugin includes hooks that run deterministic checks during migrations. Unlik
 | File deletion guard | `preToolUse` | `bash` | Hard-denies `rm` operations outside `.github/ci-archive/`. Prevents accidental deletion of application source code. |
 | Quality check + actionlint | `postToolUse` | `create\|edit` | After any workflow file write, injects `additionalContext` with: unpinned actions (tag vs SHA), placeholder text (TODO/FIXME), over-broad permissions (`write-all`), missing permissions block, and actionlint errors. The agent sees these on the same turn. |
 | **Quality gate** | `agentStop` | — | Scans ALL workflow files when the agent finishes a turn. If any have issues, returns `decision: "block"` forcing the agent to take another turn to fix them. Safety valve releases after 3 attempts to prevent infinite loops. |
-| **Migration scorecard** | `sessionEnd` | — | Appends an entry to `.github/MIGRATION-SCORECARD.md` with session ID, timestamp, completion reason, and workflow counts (total / clean / with-issues). Multiple passes show quality progression. Audit artifact for migration quality tracking. |
+| **Migration scorecard** | `sessionEnd` (CLI) / `Stop` (VS Code) | — | Appends an entry to `.github/MIGRATION-SCORECARD.md` with session ID, timestamp, completion reason, and per-file workflow table (total / clean / with-issues). Multiple passes show quality progression. Audit artifact for migration quality tracking. |
+
+The hooks run on all three Copilot surfaces — **CLI**, **Cloud agent**, and **VS Code Agent Plugins** — from this single `hooks.json`. The surfaces send different payload schemas (e.g. CLI `toolName`/`toolArgs`-string vs VS Code `tool_name`/`tool_input`-object, and CLI `sessionEnd` vs VS Code `Stop`); each hook normalizes its input and emits both output shapes so the same file works everywhere.
 
 ### Why hooks matter
 
@@ -128,6 +130,21 @@ To disable hooks temporarily (e.g., for debugging):
 ```bash
 copilot --disable-hooks
 ```
+
+### Testing the hooks
+
+The hooks are covered by a contract test suite that pins their behavior on **both** the CLI and VS Code payload schemas, so a change that silently breaks one surface fails loudly instead of shipping unnoticed.
+
+```bash
+# from the repo root
+bash plugin/hooks.test.sh
+```
+
+What it checks (22 cases): secret-detection deny/allow, destructive-op guard (rm/mv/git mv/find -delete, path traversal, CI-source archival, shell redirects), workflow quality flags, and scorecard generation including the VS Code `Stop` loop-guard — each exercised against both the CLI (`toolName`/`toolArgs`-string) and VS Code (`tool_name`/`tool_input`-object) shapes.
+
+**Requirements:** `bash` and `jq` only. The suite is self-contained — it does **not** require `actionlint`, network access, `curl`, or `brew` (workflow-quality checks fall back to static `grep` analysis when `actionlint` is unavailable), it writes nothing to the working tree, and it cleans up its own temp files. If `jq` is missing it exits with a clear `FATAL: jq is required` message.
+
+**CI:** [`.github/workflows/hooks-test.yml`](../.github/workflows/hooks-test.yml) runs this suite on every pull request that touches `plugin/hooks.json` or `plugin/hooks.test.sh`, and validates that `hooks.json` parses. A regression blocks the PR.
 
 ---
 
