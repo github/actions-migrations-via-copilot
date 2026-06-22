@@ -6,8 +6,7 @@
         "actions-migrations-via-copilot": {
             "source": {
                 "source": "github",
-                "repo": "github/actions-migrations-via-copilot",
-                "branch": "feature/cca-plugins"
+                "repo": "github/actions-migrations-via-copilot"
             }
         }
     }
