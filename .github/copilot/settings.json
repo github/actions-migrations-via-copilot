@@ -1,0 +1,14 @@
+{
+    "enabledPlugins": {
+        "actions-migrator@actions-migrations-via-copilot": true
+    },
+    "extraKnownMarketplaces": {
+        "actions-migrations-via-copilot": {
+            "source": {
+                "source": "github",
+                "repo": "github/actions-migrations-via-copilot",
+                "branch": "feature/cca-plugins"
+            }
+        }
+    }
+}
