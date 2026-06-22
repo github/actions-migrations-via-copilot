@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout migrations-via-actions Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: npm install
         id: npm-install
