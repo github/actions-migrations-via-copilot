@@ -6,7 +6,7 @@
         "actions-migrations-via-copilot": {
             "source": {
                 "source": "github",
-                "repo": "github/actions-migrations-via-copilot:plugin"
+                "repo": "github/actions-migrations-via-copilot"
             }
         }
     }
