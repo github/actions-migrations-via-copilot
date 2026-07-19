@@ -97,6 +97,50 @@ cd actions-migrations-via-copilot
 copilot plugin install ./plugin
 ```
 
+### Option C — Install via APM (pinned, hashed, auditable) *(experimental)*
+
+Use this when you need reproducible installs with lockfile-pinned versions, content-integrity scanning, SBOM export, or air-gapped operation — typical for regulated industries.
+
+Install the [APM CLI](https://microsoft.github.io/apm/) once:
+
+```bash
+curl -sSL https://aka.ms/apm-unix | sh      # macOS / Linux
+# irm https://aka.ms/apm-windows | iex        # Windows
+```
+
+Add the dependency to your project's `apm.yml`:
+
+```yaml
+dependencies:
+  apm:
+    - github/actions-migrations-via-copilot#v1.2.0
+```
+
+Then run:
+
+```bash
+apm install
+```
+
+APM deploys the agents and skills into your repo, pins the resolved sources and content hashes in `apm.lock.yaml`, and content-scans every primitive before it reaches disk.
+
+#### Why APM complements the plugin
+
+Plugin install and APM install solve different problems and are additive — most enterprises will use both.
+
+| Concern | Plugin (Options A/B) | APM (Option C) |
+| --- | --- | --- |
+| Control plane | GitHub Copilot admin UI + `.github-private` settings | `apm-policy.yml` in a policy repo (tighten-only inheritance) |
+| Version resolution | Whatever `main` (or the marketplace pointer) resolves to at runtime | Semver tag pinned in `apm.yml`, hash pinned in `apm.lock.yaml` |
+| Content integrity | — | Hidden-Unicode / prompt-injection scan on every install |
+| Tampering detection | — | `apm audit --ci` diffs on-disk primitives against lockfile hashes |
+| Audit trail | Enterprise audit log | Lockfile diff on every PR; `apm lock export --format cyclonedx\|spdx` (SBOM) |
+| Air-gapped / restricted network | Depends on marketplace reachability | Files land in the consumer repo — no runtime fetch |
+| Non-Copilot harnesses (Claude, Cursor, Codex, ...) | — | Same manifest deploys to every supported harness |
+| Zero-touch enablement | Admin flips a toggle in the enterprise console | Consumer commits `apm.yml` and runs `apm install` (or CI does) |
+
+**Recommended pattern:** use plugin install as the primary, frictionless path (GitHub-native, admin-toggleable); layer APM on top for regulated or air-gapped repos that need lockfile provenance, content-integrity scanning, or SBOMs. Both paths ship the same agents and skills — only the delivery and governance surface differs.
+
 ---
 
 ## How Migration Works
