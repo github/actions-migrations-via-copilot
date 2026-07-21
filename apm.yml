@@ -22,9 +22,7 @@ keywords:
 - reusable-workflows
 targets:
 - copilot
-includes:
-- plugin/agents
-- plugin/skills
+includes: auto
 dependencies:
   apm: []
   mcp: []
