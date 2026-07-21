@@ -29,12 +29,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: actions/create-github-app-token@v3
         id: app-token
         with:
-          app-id: ${{ vars.GH_APP_ID }}
+          client-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PEM }}
           owner: ${{ matrix.organization }}
 
