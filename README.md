@@ -113,8 +113,10 @@ Add the dependency to your project's `apm.yml`:
 ```yaml
 dependencies:
   apm:
-    - github/actions-migrations-via-copilot#v1.2.0
+    - github/actions-migrations-via-copilot/plugin#v1.2.0
 ```
+
+The `/plugin` suffix is a **virtual path** — it points APM at the [`plugin/`](plugin/) subdirectory where `plugin.json` lives, so APM treats this repo as a *Plugin collection* package type ([APM docs](https://microsoft.github.io/apm/reference/package-types/#plugin-collection-pluginjson)) and dissects `plugin.json` to install the agents and skills.
 
 Then run:
 
