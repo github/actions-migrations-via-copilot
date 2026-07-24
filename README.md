@@ -104,8 +104,13 @@ Use this when you need reproducible installs with lockfile-pinned versions, cont
 Install the [APM CLI](https://microsoft.github.io/apm/) once:
 
 ```bash
-curl -sSL https://aka.ms/apm-unix | sh      # macOS / Linux
-# irm https://aka.ms/apm-windows | iex        # Windows
+# macOS / Linux
+curl -sSL https://aka.ms/apm-unix | sh
+```
+
+```powershell
+# Windows
+irm https://aka.ms/apm-windows | iex
 ```
 
 Add the dependency to your project's `apm.yml`:
