@@ -99,7 +99,7 @@ copilot plugin install ./plugin
 
 ### Option C — Install via APM (pinned, hashed, auditable) *(experimental)*
 
-Use this when you need reproducible installs with lockfile-pinned versions, content-integrity scanning, SBOM export, or air-gapped operation — typical for regulated industries.
+Use this when you need reproducible installs with lockfile-pinned versions, content-integrity scanning, SBOM export, or **offline agent runtime** — typical for regulated industries. Install itself still requires network access to fetch the CLI and the pinned package, but once `apm install` resolves the dependency, all primitives land on disk in your repo — so the agent's runtime never fetches from a marketplace or plugin cache.
 
 Install the [APM CLI](https://microsoft.github.io/apm/) once:
 
