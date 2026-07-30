@@ -69,7 +69,7 @@ Verify at `https://github.com/YOUR-ORG-SLUG/.github-private`
    - Name: `CI/CD Migration Automation`
    - Webhook: Inactive
    - Repository permissions: Contents (R/W), Issues (R/W), Pull requests (R/W), Workflows (R/W)
-   - Organization permissions: Custom properties (Read), Members (Read) 
+   - Organization permissions: Custom properties (Read), Members (Read)
    - Where to install: "This enterprise"
 
 2. **Generate private key** and save the `.pem` file
