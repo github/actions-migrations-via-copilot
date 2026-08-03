@@ -110,11 +110,11 @@ The hooks run on all three Copilot surfaces — **CLI**, **Cloud agent**, and **
 
 ### Why hooks matter
 
-The `migration-core` skill already contains guardrails as agent instructions. Hooks add a **deterministic layer** — the agent can't bypass them. This is the difference between "please don't delete files outside ci-archive" (instruction) and "the system will reject the tool call" (hook).
+The `migration-core` skill already contains guardrails as agent instructions. Hooks add a **deterministic layer** on supported tool/event paths. This is the difference between "please don't delete files outside ci-archive" (instruction) and "the system can reject the tool call" (hook).
 
-**actionlint** runs in three hooks: `postToolUse` (per-file, immediate feedback), `agentStop` (all files, blocks completion), and `sessionEnd` (final scorecard counts). The agent cannot skip or ignore lint errors — the quality gate blocks completion until they're fixed.
+**actionlint** is used opportunistically when available in the environment: `postToolUse` gives per-file feedback, `agentStop`/`Stop` enforce the quality gate, and `sessionEnd`/`Stop` append scorecard entries. If actionlint is unavailable, hooks still run static workflow checks and surface those findings.
 
-**The quality gate** (`agentStop`) is the key enforcement mechanism. Instead of just warning after each file write, it checks all workflows at the end of every agent turn and forces continuation until they pass. This works in both CLI interactive mode and cloud agent jobs.
+**The quality gate** (`agentStop` on CLI/Cloud and `Stop` on VS Code) is the key enforcement mechanism. Instead of only warning after each file write, it scans all workflow files at turn-end and can return a block decision when issues remain. A built-in attempt cap prevents infinite loops.
 
 ### Enabling hooks
 

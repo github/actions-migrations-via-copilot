@@ -31,6 +31,4 @@ Merge precedence in CCA is **enterprise > org > repo**.
 ```bash
 # After a migration session, the consumer repo should have:
 test -s .github/MIGRATION-SCORECARD.md && echo SCORECARD_OK
-jq -r '.tool' .github/ci-archive/migration-audit.jsonl | sort -u
-# Expect: bash, create, edit, view  (NOT "null")
 ```
