@@ -82,6 +82,45 @@ run_case "VSC  allow secrets-ref"            '{"tool_name":"create_file","tool_i
 run_case "VSC  allow no-content"             '{"tool_name":"create_file","tool_input":{"filePath":"x.txt"}}' "$SECRET" allow
 run_case "VSC  deny shell redirect secret"   '{"tool_name":"run_in_terminal","tool_input":{"command":"printf \"token: hardcoded-secret-123\" > .github/workflows/x.yml","mode":"sync"}}' "$SECRET" deny
 
+# --- regression: heredoc with secret + unrelated ${} elsewhere must still be blocked ---
+run_case "CLI  deny heredoc secret w/ \${} nearby" \
+  '{"toolName":"bash","toolArgs":"{\"command\":\"cat <<EOF > .env\\npassword: SuperSecret12345\\nblob: ${{ github.ref }}\\nEOF\"}"}' "$SECRET" deny
+run_case "VSC  deny heredoc secret w/ \${} nearby" \
+  '{"tool_name":"run_in_terminal","tool_input":{"command":"cat <<EOF > .env\npassword: SuperSecret12345\nblob: ${{ github.ref }}\nEOF","mode":"sync"}}' "$SECRET" deny
+
+# --- regression: without jq, preToolUse must fail closed (deny), not silently allow ---
+run_no_jq_case() {
+  local label="$1" hook="$2" expect="$3"
+  local TMPBIN
+  TMPBIN=$(mktemp -d)
+  for cmd in cat echo grep sed awk tr basename dirname bash ls mktemp head tail wc rm mkdir sort uniq date find printf; do
+    local p; p=$(command -v "$cmd" 2>/dev/null)
+    [ -n "$p" ] && ln -sf "$p" "$TMPBIN/$cmd"
+  done
+  local out; out=$(printf '%s' '{"toolName":"create","toolArgs":"{}"}' | PATH="$TMPBIN" bash -c "$hook" 2>/dev/null)
+  rm -rf "$TMPBIN"
+  local decision
+  case "$expect" in
+    deny)
+      decision=$(printf '%s' "$out" | jq -r '.permissionDecision // .hookSpecificOutput.permissionDecision // "none"' 2>/dev/null)
+      [ "$decision" = "deny" ] && { PASS=$((PASS+1)); echo "  ok   $label"; return; }
+      ;;
+    block)
+      decision=$(printf '%s' "$out" | jq -r '.decision // .hookSpecificOutput.decision // "none"' 2>/dev/null)
+      [ "$decision" = "block" ] && { PASS=$((PASS+1)); echo "  ok   $label"; return; }
+      ;;
+    context)
+      decision=$(printf '%s' "$out" | jq -r '.additionalContext // .hookSpecificOutput.additionalContext // "none"' 2>/dev/null)
+      [ "$decision" != "none" ] && { PASS=$((PASS+1)); echo "  ok   $label"; return; }
+      ;;
+  esac
+  FAIL=$((FAIL+1))
+  echo "  FAIL $label"
+  echo "       expected=$expect got=>>>$out<<<"
+}
+run_no_jq_case "no-jq secret hook fails closed (deny)"      "$SECRET"      deny
+run_no_jq_case "no-jq destructive hook fails closed (deny)" "$DESTRUCTIVE" deny
+
 echo "== preToolUse: destructive op guard =="
 run_case "CLI  deny rm README.md"            '{"toolName":"bash","toolArgs":"{\"command\":\"rm README.md\"}"}' "$DESTRUCTIVE" deny
 run_case "CLI  deny rm Jenkinsfile"          '{"toolName":"bash","toolArgs":"{\"command\":\"rm Jenkinsfile\"}"}' "$DESTRUCTIVE" deny
@@ -126,6 +165,8 @@ run_case "CLI  flags dirty workflow"  '{"toolName":"create","toolArgs":"{\"path\
 run_case "VSC  flags dirty workflow"  '{"tool_name":"create_file","tool_input":{"filePath":"'"$WORKDIR"'/.github/workflows/dirty.yml"}}' "$QUALITY" context
 run_case "VSC  clean workflow no-flag" '{"tool_name":"create_file","tool_input":{"filePath":"'"$WORKDIR"'/.github/workflows/clean.yml"}}' "$QUALITY" nocontext
 run_case "VSC  non-workflow file noop" '{"tool_name":"create_file","tool_input":{"filePath":"'"$WORKDIR"'/README.md"}}' "$QUALITY" nocontext
+run_no_jq_case "no-jq quality hook emits advisory (context)"      "$QUALITY"     context
+
 
 echo "== agentStop (CLI): quality gate =="
 GATE=$(get_hook agentStop 0)
@@ -133,6 +174,8 @@ run_case "CLI  agentStop blocks dirty" '{"sessionId":"g1","cwd":"'"$WORKDIR"'"}'
 run_case "CLI  agentStop safety valve after 3 attempts" '{"sessionId":"g1","cwd":"'"$WORKDIR"'"}' "$GATE" block
 run_case "CLI  agentStop safety valve after 3 attempts (2)" '{"sessionId":"g1","cwd":"'"$WORKDIR"'"}' "$GATE" block
 run_case "CLI  agentStop attempt 4 allows" '{"sessionId":"g1","cwd":"'"$WORKDIR"'"}' "$GATE" allow
+run_no_jq_case "no-jq quality gate fails closed (block)"          "$GATE"        block
+
 
 echo "== sessionEnd (CLI) + Stop (VS Code): scorecard =="
 SC_CLI=$(get_hook sessionEnd 0)
