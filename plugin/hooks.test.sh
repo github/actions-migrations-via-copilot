@@ -121,6 +121,12 @@ run_no_jq_case() {
 run_no_jq_case "no-jq secret hook fails closed (deny)"      "$SECRET"      deny
 run_no_jq_case "no-jq destructive hook fails closed (deny)" "$DESTRUCTIVE" deny
 
+# --- regression: same-line ${...} anywhere on line must NOT exempt a hardcoded value ---
+run_case "CLI  deny same-line hardcoded value w/ trailing comment expr" \
+  '{"toolName":"create","toolArgs":"{\"path\":\"c.yml\",\"content\":\"token: hardcoded-secret-123 # ${{ github.ref }}\"}"}' "$SECRET" deny
+run_case "VSC  deny same-line hardcoded value w/ trailing comment expr" \
+  '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"token: hardcoded-secret-123 # ${{ github.ref }}"}}' "$SECRET" deny
+
 echo "== preToolUse: destructive op guard =="
 run_case "CLI  deny rm README.md"            '{"toolName":"bash","toolArgs":"{\"command\":\"rm README.md\"}"}' "$DESTRUCTIVE" deny
 run_case "CLI  deny rm Jenkinsfile"          '{"toolName":"bash","toolArgs":"{\"command\":\"rm Jenkinsfile\"}"}' "$DESTRUCTIVE" deny
@@ -135,6 +141,12 @@ run_case "VSC  deny sudo rm wrapper"         '{"tool_name":"run_in_terminal","to
 run_case "VSC  deny /bin/rm wrapper"         '{"tool_name":"run_in_terminal","tool_input":{"command":"/bin/rm README.md","mode":"sync"}}' "$DESTRUCTIVE" deny
 run_case "VSC  deny command rm wrapper"      '{"tool_name":"run_in_terminal","tool_input":{"command":"command rm README.md","mode":"sync"}}' "$DESTRUCTIVE" deny
 run_case "VSC  allow non-terminal tool noop" '{"tool_name":"create_file","tool_input":{"filePath":"x.txt","content":"hi"}}' "$DESTRUCTIVE" allow
+
+# --- regression: multi-source git mv must validate EVERY source, not just the last ---
+run_case "VSC  deny multi-source git mv w/ unapproved source" \
+  '{"tool_name":"run_in_terminal","tool_input":{"command":"git mv README.md Jenkinsfile .github/ci-archive/","mode":"sync"}}' "$DESTRUCTIVE" deny
+run_case "VSC  allow multi-source git mv all-approved sources" \
+  '{"tool_name":"run_in_terminal","tool_input":{"command":"git mv Jenkinsfile .travis.yml .github/ci-archive/","mode":"sync"}}' "$DESTRUCTIVE" allow
 
 echo "== postToolUse: workflow quality check =="
 WORKDIR=$(mktemp -d)
