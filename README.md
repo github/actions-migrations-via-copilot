@@ -97,6 +97,40 @@ cd actions-migrations-via-copilot
 copilot plugin install ./plugin
 ```
 
+### Option C — Install via APM (pinned, hashed, auditable) *(experimental)*
+
+Use this when you need reproducible installs with lockfile-pinned versions, content-integrity scanning, SBOM export, or **offline agent runtime** — typical for regulated industries. Install itself still requires network access to fetch the CLI and the pinned package, but once `apm install` resolves the dependency, all primitives land on disk in your repo — so the agent's runtime never fetches from a marketplace or plugin cache.
+
+Install the [APM CLI](https://microsoft.github.io/apm/) once:
+
+```bash
+# macOS / Linux
+curl -sSL https://aka.ms/apm-unix | sh
+```
+
+```powershell
+# Windows
+irm https://aka.ms/apm-windows | iex
+```
+
+Add the dependency to your project's `apm.yml`:
+
+```yaml
+dependencies:
+  apm:
+    - github/actions-migrations-via-copilot/plugin#v1.2.0
+```
+
+The `/plugin` suffix is a **virtual path** — it points APM at the [`plugin/`](plugin/) subdirectory where `plugin.json` lives, so APM treats this repo as a *Plugin collection* package type ([APM docs](https://microsoft.github.io/apm/reference/package-types/#plugin-collection-pluginjson)) and dissects `plugin.json` to install the agents and skills.
+
+Then run:
+
+```bash
+apm install
+```
+
+APM deploys the agents and skills into your repo, pins the resolved sources and content hashes in `apm.lock.yaml`, and content-scans every primitive before it reaches disk.
+
 ---
 
 ## How Migration Works
