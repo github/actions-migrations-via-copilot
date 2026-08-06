@@ -160,6 +160,16 @@ run_case "VSC  deny mv to external /tmp/.github/ci-archive" \
 run_case "VSC  deny rm under external .github/ci-archive" \
   '{"tool_name":"run_in_terminal","tool_input":{"command":"rm -rf /tmp/x/.github/ci-archive/blah","mode":"sync"}}' "$DESTRUCTIVE" deny
 
+# --- regression: shell-wrapper (bash -c, sh -c, etc) must be unwrapped before destructive-op scan ---
+run_case "CLI  deny bash -c 'rm README.md'" \
+  '{"toolName":"bash","toolArgs":"{\"command\":\"bash -c \\\"rm README.md\\\"\"}"}' "$DESTRUCTIVE" deny
+run_case "VSC  deny bash -c 'rm README.md'" \
+  '{"tool_name":"run_in_terminal","tool_input":{"command":"bash -c \"rm README.md\"","mode":"sync"}}' "$DESTRUCTIVE" deny
+run_case "VSC  deny sh -c 'rm Jenkinsfile'" \
+  '{"tool_name":"run_in_terminal","tool_input":{"command":"sh -c \"rm Jenkinsfile\"","mode":"sync"}}' "$DESTRUCTIVE" deny
+run_case "VSC  allow bash -c 'git mv Jenkinsfile .github/ci-archive/'" \
+  '{"tool_name":"run_in_terminal","tool_input":{"command":"bash -c \"git mv Jenkinsfile .github/ci-archive/Jenkinsfile\"","mode":"sync"}}' "$DESTRUCTIVE" allow
+
 echo "== postToolUse: workflow quality check =="
 WORKDIR=$(mktemp -d)
 mkdir -p "$WORKDIR/.github/workflows"
