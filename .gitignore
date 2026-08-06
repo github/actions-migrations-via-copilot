@@ -52,3 +52,8 @@ ENV/
 
 # Scratch folder
 scratch/
+# APM: generated / compiled output — produced on demand by `apm install` / `apm pack`.
+# The committed source of truth is the primitives under `plugin/` and `agents/` plus `apm.yml`.
+apm_modules/
+build/
+.agents/

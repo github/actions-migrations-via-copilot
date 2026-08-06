@@ -1,0 +1,31 @@
+name: actions-migrator
+version: 1.2.0
+description: Enterprise-grade GitHub Copilot agents that migrate CI/CD pipelines
+  from Jenkins, Azure DevOps, CircleCI, GitLab, Travis CI, Bamboo, Bitbucket
+  Pipelines, and Drone CI to GitHub Actions.
+author: GitHub Professional Services
+repository: https://github.com/github/actions-migrations-via-copilot
+homepage: https://github.com/github/actions-migrations-via-copilot
+license: MIT
+keywords:
+- github-actions
+- ci-cd
+- migration
+- jenkins
+- azure-devops
+- circleci
+- gitlab
+- travis-ci
+- bamboo
+- bitbucket
+- drone-ci
+- reusable-workflows
+targets:
+- copilot
+includes: auto
+dependencies:
+  apm: []
+  mcp: []
+devDependencies:
+  apm: []
+scripts: {}
