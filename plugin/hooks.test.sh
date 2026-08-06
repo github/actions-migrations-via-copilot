@@ -127,6 +127,12 @@ run_case "CLI  deny same-line hardcoded value w/ trailing comment expr" \
 run_case "VSC  deny same-line hardcoded value w/ trailing comment expr" \
   '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"token: hardcoded-secret-123 # ${{ github.ref }}"}}' "$SECRET" deny
 
+# --- regression: quoted JSON/YAML key with hardcoded value must be blocked ---
+run_case "CLI  deny quoted JSON key \"password\":secret" \
+  '{"toolName":"create","toolArgs":"{\"path\":\"c.yml\",\"content\":\"{\\\"password\\\":\\\"SuperSecret12345\\\"}\"}"}' "$SECRET" deny
+run_case "VSC  deny quoted JSON key \"password\":secret" \
+  '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"{\"password\":\"SuperSecret12345\"}"}}' "$SECRET" deny
+
 echo "== preToolUse: destructive op guard =="
 run_case "CLI  deny rm README.md"            '{"toolName":"bash","toolArgs":"{\"command\":\"rm README.md\"}"}' "$DESTRUCTIVE" deny
 run_case "CLI  deny rm Jenkinsfile"          '{"toolName":"bash","toolArgs":"{\"command\":\"rm Jenkinsfile\"}"}' "$DESTRUCTIVE" deny
@@ -147,6 +153,12 @@ run_case "VSC  deny multi-source git mv w/ unapproved source" \
   '{"tool_name":"run_in_terminal","tool_input":{"command":"git mv README.md Jenkinsfile .github/ci-archive/","mode":"sync"}}' "$DESTRUCTIVE" deny
 run_case "VSC  allow multi-source git mv all-approved sources" \
   '{"tool_name":"run_in_terminal","tool_input":{"command":"git mv Jenkinsfile .travis.yml .github/ci-archive/","mode":"sync"}}' "$DESTRUCTIVE" allow
+
+# --- regression: absolute path ending in .github/ci-archive that ISN'T under $PWD must deny ---
+run_case "VSC  deny mv to external /tmp/.github/ci-archive" \
+  '{"tool_name":"run_in_terminal","tool_input":{"command":"git mv Jenkinsfile /tmp/x/.github/ci-archive/Jenkinsfile","mode":"sync"}}' "$DESTRUCTIVE" deny
+run_case "VSC  deny rm under external .github/ci-archive" \
+  '{"tool_name":"run_in_terminal","tool_input":{"command":"rm -rf /tmp/x/.github/ci-archive/blah","mode":"sync"}}' "$DESTRUCTIVE" deny
 
 echo "== postToolUse: workflow quality check =="
 WORKDIR=$(mktemp -d)
@@ -192,6 +204,9 @@ run_no_jq_case "no-jq quality gate fails closed (block)"          "$GATE"       
 echo "== sessionEnd (CLI) + Stop (VS Code): scorecard =="
 SC_CLI=$(get_hook sessionEnd 0)
 SC_STOP=$(get_hook Stop 0)
+# --- regression: no-jq VS Code Stop hook must fail closed (block) ---
+run_no_jq_case "no-jq VS Code Stop hook fails closed (block)"  "$SC_STOP"  block
+
 # CLI sessionEnd writes a scorecard
 printf '{"sessionId":"t-cli","cwd":"%s","reason":"complete"}' "$WORKDIR" | bash -c "$SC_CLI" >/dev/null 2>&1
 if grep -q "dirty.yml" "$WORKDIR/.github/MIGRATION-SCORECARD.md" 2>/dev/null; then
