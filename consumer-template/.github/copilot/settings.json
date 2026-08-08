@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "actions-migrator@actions-migrations-via-copilot": true
+  }
+}
