@@ -92,6 +92,62 @@ This replaces the previous pattern of agents fetching `knowledge/*.md` files at 
 
 ---
 
+## Hooks — Deterministic Enforcement
+
+The plugin includes hooks that run deterministic checks during migrations. Unlike skills and agent instructions (which the model can choose to ignore), hooks execute as shell commands at specific lifecycle points and can **block** operations or **inject warnings** into the agent's context.
+
+### `hooks.json`
+
+| Hook | Event | Matcher | What it does |
+|------|-------|---------|-------------|
+| Secret detection | `preToolUse` | `create\|edit` | Hard-denies file writes containing hardcoded secrets (passwords, tokens, API keys). Forces use of `${{ secrets.NAME }}`. Uses `permissionDecision: "deny"`. |
+| File deletion guard | `preToolUse` | `bash` | Hard-denies `rm` operations outside `.github/ci-archive/`. Prevents accidental deletion of application source code. |
+| Quality check + actionlint | `postToolUse` | `create\|edit` | After any workflow file write, injects `additionalContext` with: unpinned actions (tag vs SHA), placeholder text (TODO/FIXME), over-broad permissions (`write-all`), missing permissions block, and actionlint errors. The agent sees these on the same turn. |
+| **Quality gate** | `agentStop` | — | Scans ALL workflow files when the agent finishes a turn. If any have issues, returns `decision: "block"` forcing the agent to take another turn to fix them. Safety valve releases after 3 attempts to prevent infinite loops. |
+| **Migration scorecard** | `sessionEnd` (CLI) / `Stop` (VS Code) | — | Appends an entry to `.github/MIGRATION-SCORECARD.md` with session ID, timestamp, completion reason, and per-file workflow table (total / clean / with-issues). Multiple passes show quality progression. Audit artifact for migration quality tracking. |
+
+The hooks run on all three Copilot surfaces — **CLI**, **Cloud agent**, and **VS Code Agent Plugins** — from this single `hooks.json`. The surfaces send different payload schemas (e.g. CLI `toolName`/`toolArgs`-string vs VS Code `tool_name`/`tool_input`-object, and CLI `sessionEnd` vs VS Code `Stop`); each hook normalizes its input and emits both output shapes so the same file works everywhere.
+
+### Why hooks matter
+
+The `migration-core` skill already contains guardrails as agent instructions. Hooks add a **deterministic layer** on supported tool/event paths. This is the difference between "please don't delete files outside ci-archive" (instruction) and "the system can reject the tool call" (hook).
+
+**actionlint** is used opportunistically when available in the environment: `postToolUse` gives per-file feedback, `agentStop`/`Stop` enforce the quality gate, and `sessionEnd`/`Stop` append scorecard entries. If actionlint is unavailable, hooks still run static workflow checks and surface those findings.
+
+**The quality gate** (`agentStop` on CLI/Cloud and `Stop` on VS Code) is the key enforcement mechanism. Instead of only warning after each file write, it scans all workflow files at turn-end and can return a block decision when issues remain. A built-in attempt cap prevents infinite loops.
+
+### Enabling hooks
+
+Hooks are installed automatically with the plugin. To verify:
+
+```bash
+copilot
+/hooks list
+```
+
+To disable hooks temporarily (e.g., for debugging):
+
+```bash
+copilot --disable-hooks
+```
+
+### Testing the hooks
+
+The hooks are covered by a contract test suite that pins their behavior on **both** the CLI and VS Code payload schemas, so a change that silently breaks one surface fails loudly instead of shipping unnoticed.
+
+```bash
+# from the repo root
+bash plugin/hooks.test.sh
+```
+
+What it checks (22 cases): secret-detection deny/allow, destructive-op guard (rm/mv/git mv/find -delete, path traversal, CI-source archival, shell redirects), workflow quality flags, and scorecard generation including the VS Code `Stop` loop-guard — each exercised against both the CLI (`toolName`/`toolArgs`-string) and VS Code (`tool_name`/`tool_input`-object) shapes.
+
+**Requirements:** `bash` and `jq` only. The suite is self-contained — it does **not** require `actionlint`, network access, `curl`, or `brew` (workflow-quality checks fall back to static `grep` analysis when `actionlint` is unavailable), it writes nothing to the working tree, and it cleans up its own temp files. If `jq` is missing it exits with a clear `FATAL: jq is required` message.
+
+**CI:** [`.github/workflows/hooks-test.yml`](../.github/workflows/hooks-test.yml) runs this suite on every pull request that touches `plugin/hooks.json` or `plugin/hooks.test.sh`, and validates that `hooks.json` parses. A regression blocks the PR.
+
+---
+
 ## Customizing Skills
 
 Customizing skills is the CLI plugin's equivalent of editing the `knowledge/` knowledge base in the [cloud-agent deployment](../docs/deployment.md). Because the plugin ships content **locally**, your edits take effect on the next `copilot plugin install ./plugin`—no `.github-private` push, no MCP round-trip.
