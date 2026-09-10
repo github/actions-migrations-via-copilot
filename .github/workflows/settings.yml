@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout migrations-via-actions Repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: npm install
         id: npm-install
@@ -23,7 +23,7 @@ jobs:
 
       - name: Load settings
         id: load-settings
-        uses: actions/github-script@v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs')
@@ -33,7 +33,7 @@ jobs:
 
       - name: Setup Custom Properties
         id: setup-custom-properties
-        uses: actions/github-script@v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
           script: |
@@ -43,7 +43,7 @@ jobs:
 
       - name: Setup Repository Variables
         id: setup-repo-variables
-        uses: actions/github-script@v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ secrets. ISSUE_SUBMIT_TOKEN }}
           script: |
