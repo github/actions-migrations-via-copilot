@@ -84,9 +84,8 @@ gh api repos/actions/checkout/commits/v4.1.7 --jq .sha
 - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 ```
 
-If the probe reports `NETWORK_UNAVAILABLE`, leave the tag in place with a
-`# TODO(migration): pin to commit SHA` comment and record it in the report
-rather than inventing a SHA.
+If the probe reports `NETWORK_UNAVAILABLE`, stop and tell the user which actions
+need pinning rather than inventing a SHA or shipping an unpinned ref.
 
 ### `shellcheck` — shell script issues in `run:` steps
 

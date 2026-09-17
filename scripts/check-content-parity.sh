@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Verifies the plugin ships content consistent with the cloud-agent knowledge
-# base, and that the plugin declares no capabilities it cannot legitimately use.
+# base, and that the plugin instructs no tool it does not declare.
+#
+# Direction: knowledge/ is canonical. plugin/skills/** is derived from it.
+#
+# Note: the mcp_* check below proves the plugin does not *name* MCP tools. It
+# is a declaration-hygiene check, not a capability boundary -- the agents hold
+# `bash`, so their actual reach is whatever bash can reach.
 #
 # Requirements: bash + diff only. No network, no jq, no Node.
 #
@@ -8,7 +14,7 @@
 
 set -uo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 FAILED=0
 CHECKED=0
@@ -44,7 +50,9 @@ check_pair() {
   if diff -q "$src" "$copy" >/dev/null 2>&1; then
     pass "$copy"
   else
-    fail "$copy" "out of sync with $src -- run: cp '$src' '$copy'"
+    fail "$copy" "out of sync with $src"
+    printf '        knowledge/ is canonical. If you edited the plugin copy, move that\n'
+    printf '        change into %s first, then: cp %s %s\n' "$src" "'$src'" "'$copy'"
     diff -u "$src" "$copy" | head -20 | sed 's/^/        /'
   fi
 }
@@ -64,14 +72,21 @@ echo "==> Stray markdown fence wrappers"
 
 # A whole-file ```markdown wrapper makes the copy differ from its source and
 # leaks a code fence into the model's context. This is what drifted on bamboo.
+# Check both ends -- the bamboo bug was a matched open/close pair, and a file
+# carrying only the trailing half would otherwise pass.
+STRAY_FENCES=0
 for f in knowledge/actions-mapping/*.md knowledge/report-template/*.md plugin/skills/*/*.md; do
   [ -f "$f" ] || continue
   CHECKED=$((CHECKED + 1))
   if head -1 "$f" | grep -qE '^`{3,}(markdown)?$'; then
     fail "$f" "file opens with a stray markdown fence -- remove the wrapper"
+    STRAY_FENCES=$((STRAY_FENCES + 1))
+  elif [ "$(tail -1 "$f")" = '```' ] && [ "$(grep -c '^```' "$f")" -eq 1 ]; then
+    fail "$f" "file ends with an unmatched closing fence -- remove the wrapper"
+    STRAY_FENCES=$((STRAY_FENCES + 1))
   fi
 done
-[ "$FAILED" -eq 0 ] && pass "no stray fence wrappers"
+[ "$STRAY_FENCES" -eq 0 ] && pass "no stray fence wrappers"
 
 echo
 echo "==> Declared-capability invariants"

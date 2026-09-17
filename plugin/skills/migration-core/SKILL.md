@@ -97,15 +97,10 @@ If the repository publishes no releases, take the default-branch head:
 gh api "repos/OWNER/REPO/commits?per_page=1" --jq '.[0].sha'
 ```
 
-**Step 2b — if `NETWORK_UNAVAILABLE`.** Pin to the version tag, mark it, and
-report it. Do not guess a SHA:
-
-```yaml
-- uses: actions/checkout@v4.1.7  # TODO(migration): pin to commit SHA
-```
-
-Add a row to the **Requires follow-up** table in the migration report for every
-action left unpinned.
+**Step 2b — if `NETWORK_UNAVAILABLE`.** Do not guess, and do not write a workflow
+step you cannot pin. Stop and tell the user which actions need resolving, so they
+can either grant network access or confirm the pin themselves. An unpinned action
+is a real defect — the quality gate will flag it, and it should.
 
 A fully resolved pin looks like this:
 
