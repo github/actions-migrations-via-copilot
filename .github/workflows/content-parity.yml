@@ -1,0 +1,32 @@
+name: Content Parity
+
+on:
+  pull_request:
+    paths:
+      - 'knowledge/**'
+      - 'plugin/skills/**'
+      - 'agents/**'
+      - 'scripts/check-content-parity.sh'
+      - '.github/workflows/content-parity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'knowledge/**'
+      - 'plugin/skills/**'
+      - 'agents/**'
+      - 'scripts/check-content-parity.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: knowledge/ vs plugin/skills/
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check content parity and capability invariants
+        run: bash scripts/check-content-parity.sh

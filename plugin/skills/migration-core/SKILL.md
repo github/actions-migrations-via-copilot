@@ -69,9 +69,45 @@ Load and follow the `actionlint` skill: install the tool if needed, run it again
 
 ### Action version verification
 
-1. `mcp_github_get_latest_release` — find the current version.
-2. `mcp_github_get_tag` — resolve the commit SHA.
-3. Fallback: `mcp_github_list_commits` if the repo has no releases.
+> **Never emit a commit SHA that is not present verbatim in the output of a
+> command you ran in this session.** A fabricated SHA either fails at dispatch
+> time or resolves to an unintended commit.
+
+**Step 1 — capability probe.** Network access is not guaranteed; offline and
+air-gapped installs are supported. Run this first and branch on the result:
+
+```bash
+gh auth status >/dev/null 2>&1 && echo NETWORK_OK || echo NETWORK_UNAVAILABLE
+```
+
+**Step 2a — if `NETWORK_OK`.** Resolve the latest release tag, then resolve that
+tag to a commit SHA:
+
+```bash
+gh api repos/OWNER/REPO/releases/latest --jq .tag_name
+gh api repos/OWNER/REPO/commits/TAG --jq .sha
+```
+
+Use `commits/TAG` rather than `git/ref/tags/TAG` — for an annotated tag the
+latter returns the tag object SHA, not the commit SHA.
+
+If the repository publishes no releases, take the default-branch head:
+
+```bash
+gh api "repos/OWNER/REPO/commits?per_page=1" --jq '.[0].sha'
+```
+
+**Step 2b — if `NETWORK_UNAVAILABLE`.** Pin to the version tag, mark it, and
+report it. Do not guess a SHA:
+
+```yaml
+- uses: actions/checkout@v4.1.7  # TODO(migration): pin to commit SHA
+```
+
+Add a row to the **Requires follow-up** table in the migration report for every
+action left unpinned.
+
+A fully resolved pin looks like this:
 
 ```yaml
 # actions/checkout v4.1.7
