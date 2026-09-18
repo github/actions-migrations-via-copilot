@@ -81,7 +81,7 @@ Fastest path. Use this when you want the agents with the default knowledgebase.
 
 ```bash
 copilot plugin marketplace add github/actions-migrations-via-copilot
-copilot plugin install actions-migrator
+copilot plugin install actions-migrator@actions-migrations-via-copilot
 ```
 
 The marketplace is defined in [`.github/plugin/marketplace.json`](.github/plugin/marketplace.json).

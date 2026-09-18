@@ -10,7 +10,7 @@ A GitHub Copilot CLI plugin that bundles nine specialized agents for migrating C
 
 ```bash
 copilot plugin marketplace add github/actions-migrations-via-copilot
-copilot plugin install actions-migrator
+copilot plugin install actions-migrator@actions-migrations-via-copilot
 ```
 
 ### Install locally (to customize skills)
@@ -214,7 +214,7 @@ After editing, you have two options:
 - **Internal fork** — fork this repo, push your changes, and have your team install from your fork:
   ```bash
   copilot plugin marketplace add my-org/actions-migrations-via-copilot
-  copilot plugin install actions-migrator
+  copilot plugin install actions-migrator@actions-migrations-via-copilot
   ```
   This is the recommended pattern for org-wide customization. Update your fork's [`.github/plugin/marketplace.json`](../.github/plugin/marketplace.json) if you rename the plugin or its `source` path.
 - **Local-only** — keep changes on your machine and `copilot plugin install ./plugin` from your clone. Best for personal experimentation.
