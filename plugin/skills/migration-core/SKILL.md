@@ -69,13 +69,57 @@ Load and follow the `actionlint` skill: install the tool if needed, run it again
 
 ### Action version verification
 
-1. `mcp_github_get_latest_release` — find the current version.
-2. `mcp_github_get_tag` — resolve the commit SHA.
-3. Fallback: `mcp_github_list_commits` if the repo has no releases.
+> **Never emit a commit SHA that is not present verbatim in the output of a
+> command you ran in this session.** A fabricated SHA either fails at dispatch
+> time or resolves to an unintended commit.
+
+**Step 1 — check the shipped catalog first.** `pinned-actions.json` in this skill
+directory holds verified SHAs for the actions this product emits most often. It
+ships with the plugin, so it works with no network at all:
+
+```bash
+grep -A2 '"actions/checkout"' plugin/skills/migration-core/pinned-actions.json
+```
+
+If the action is in the catalog, use that SHA and move on. Check `resolved_on`
+in the file — if it is more than about six months old, say so in the report so
+the user knows the pins are due a refresh.
+
+**Step 2 — capability probe.** Only for actions the catalog does not cover.
+Network access is not guaranteed; offline and air-gapped installs are supported.
+Run this and branch on the result:
+
+```bash
+gh auth status >/dev/null 2>&1 && echo NETWORK_OK || echo NETWORK_UNAVAILABLE
+```
+
+**Step 3a — if `NETWORK_OK`.** Resolve the latest release tag, then resolve that
+tag to a commit SHA:
+
+```bash
+gh api repos/OWNER/REPO/releases/latest --jq .tag_name
+gh api repos/OWNER/REPO/commits/TAG --jq .sha
+```
+
+Use `commits/TAG` rather than `git/ref/tags/TAG` — for an annotated tag the
+latter returns the tag object SHA, not the commit SHA.
+
+If the repository publishes no releases, take the default-branch head:
+
+```bash
+gh api "repos/OWNER/REPO/commits?per_page=1" --jq '.[0].sha'
+```
+
+**Step 3b — if `NETWORK_UNAVAILABLE`.** Do not guess, and do not write a workflow
+step you cannot pin. Stop and tell the user which actions need resolving, so they
+can either grant network access or confirm the pin themselves. An unpinned action
+is a real defect — the quality gate will flag it, and it should.
+
+A fully resolved pin looks like this:
 
 ```yaml
-# actions/checkout v4.1.7
-- uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+# actions/checkout v7.0.1
+- uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 ```
 
 ### Secrets and variables
