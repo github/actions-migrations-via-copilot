@@ -92,13 +92,18 @@ echo
 echo "==> Declared-capability invariants"
 
 # apm.yml declares `mcp: []` and the plugin agents declare only local tools
-# (bash/edit/view/create/grep/glob). A skill instructing an mcp_* call asks the
+# (bash/edit/view/create/grep/glob). A skill instructing an MCP call asks the
 # agent to reach outside that boundary.
+#
+# Both naming conventions are matched: mcp_github_* as written in the cloud
+# agent prompts, and github-mcp-server-* as the tools surface on the coding
+# agent. Scoped to skills/ and agents/ because plugin/README.md legitimately
+# discusses MCP in prose to explain that the plugin does not use it.
 CHECKED=$((CHECKED + 1))
-if grep -rn 'mcp_[a-z_]*' plugin/ 2>/dev/null; then
-  fail "plugin/" "plugin declares 'mcp: []' but a skill instructs an MCP tool call"
+if grep -rnE 'mcp_[a-z_]+|github-mcp-server-[a-z_]+' plugin/skills/ plugin/agents/ 2>/dev/null; then
+  fail "plugin/" "plugin declares 'mcp: []' but a skill or agent instructs an MCP tool call"
 else
-  pass "no mcp_* references in plugin/"
+  pass "no MCP tool instructions in plugin/skills/ or plugin/agents/"
 fi
 
 # The org placeholder is substituted at cloud deploy time. It has no meaning in
