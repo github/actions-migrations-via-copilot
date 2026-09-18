@@ -10,7 +10,7 @@ A GitHub Copilot CLI plugin that bundles nine specialized agents for migrating C
 
 ```bash
 copilot plugin marketplace add github/actions-migrations-via-copilot
-copilot plugin install actions-migrator
+copilot plugin install actions-migrator@actions-migrations-via-copilot
 ```
 
 ### Install locally (to customize skills)
