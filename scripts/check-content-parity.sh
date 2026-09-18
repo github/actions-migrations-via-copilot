@@ -127,6 +127,29 @@ done
 [ "$MISSING_PLACEHOLDER" -eq 0 ] && pass "all knowledge-fetching agents carry the placeholder"
 
 echo
+echo "==> Package version coherence"
+
+# apm.yml, plugin.json and marketplace.json all describe the same package. They
+# are bumped by hand with no release automation, which is how they drifted apart
+# (apm.yml sat at 1.2.0 while the other two said 1.4.0).
+#
+# The README's APM pin is deliberately NOT checked here: it references the last
+# *published* tag, which legitimately lags the in-development version on main.
+# Keeping it current is a release-time step.
+CHECKED=$((CHECKED + 1))
+APM_V=$(sed -n 's/^version:[[:space:]]*//p' apm.yml | head -1)
+PLUGIN_V=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' plugin/plugin.json | head -1)
+MARKET_VS=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .github/plugin/marketplace.json | sort -u)
+
+if [ "$(printf '%s\n' "$MARKET_VS" | wc -l | tr -d ' ')" -ne 1 ]; then
+  fail ".github/plugin/marketplace.json" "marketplace.json declares more than one version: $(printf '%s ' $MARKET_VS)"
+elif [ "$APM_V" = "$PLUGIN_V" ] && [ "$PLUGIN_V" = "$MARKET_VS" ]; then
+  pass "apm.yml, plugin.json and marketplace.json all declare $APM_V"
+else
+  fail "apm.yml" "version mismatch -- apm.yml=$APM_V plugin.json=$PLUGIN_V marketplace.json=$MARKET_VS"
+fi
+
+echo
 if [ "$FAILED" -gt 0 ]; then
   echo "FAILED: $FAILED of $CHECKED checks"
   exit 1
