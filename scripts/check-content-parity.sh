@@ -132,6 +132,30 @@ done
 [ "$MISSING_PLACEHOLDER" -eq 0 ] && pass "all knowledge-fetching agents carry the placeholder"
 
 echo
+echo "==> Pinned actions catalog"
+
+# The catalog is what makes offline pinning possible, so a malformed entry is
+# worse than no entry -- it would ship a broken ref into a customer workflow.
+# Regenerate with: bash scripts/refresh-pinned-actions.sh
+CHECKED=$((CHECKED + 1))
+CATALOG="plugin/skills/migration-core/pinned-actions.json"
+if [ ! -f "$CATALOG" ]; then
+  fail "$CATALOG" "pinned actions catalog is missing"
+elif ! grep -q '"resolved_on"' "$CATALOG"; then
+  fail "$CATALOG" "catalog has no resolved_on date, so staleness cannot be judged"
+else
+  TOTAL_SHAS=$(grep -c '"sha"' "$CATALOG")
+  VALID_SHAS=$(grep -coE '"sha"[[:space:]]*:[[:space:]]*"[0-9a-f]{40}"' "$CATALOG")
+  if [ "$TOTAL_SHAS" -eq 0 ]; then
+    fail "$CATALOG" "catalog contains no action entries"
+  elif [ "$TOTAL_SHAS" -ne "$VALID_SHAS" ]; then
+    fail "$CATALOG" "catalog has $((TOTAL_SHAS - VALID_SHAS)) entr(ies) whose sha is not a 40-char commit hash"
+  else
+    pass "$TOTAL_SHAS pinned actions, all full commit SHAs"
+  fi
+fi
+
+echo
 echo "==> Package version coherence"
 
 # apm.yml, plugin.json and marketplace.json all describe the same package. They
