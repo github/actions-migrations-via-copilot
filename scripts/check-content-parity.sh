@@ -8,13 +8,23 @@
 # is a declaration-hygiene check, not a capability boundary -- the agents hold
 # `bash`, so their actual reach is whatever bash can reach.
 #
-# Requirements: bash + diff only. No network, no jq, no Node.
+# Requirements: bash, diff, grep, sed, head, tail, sort. No network, no jq, no
+# Node. The preflight below fails closed if any are missing -- without it an
+# absent grep would make the capability checks silently take their pass branch.
 #
 # Usage: bash scripts/check-content-parity.sh
 
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
+
+for cmd in diff grep sed head tail sort; do
+  command -v "$cmd" >/dev/null 2>&1 || {
+    printf '::error::required command not found: %s\n' "$cmd"
+    printf 'FAILED: missing dependency %s\n' "$cmd"
+    exit 1
+  }
+done
 
 FAILED=0
 CHECKED=0
