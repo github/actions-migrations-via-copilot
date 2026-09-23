@@ -1,0 +1,87 @@
+name: Draft release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - plugin/plugin.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  draft:
+    name: Draft release for current version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve and verify version
+        id: version
+        run: |
+          set -euo pipefail
+
+          plugin_version=$(jq -er '.version' plugin/plugin.json)
+          marketplace_meta=$(jq -er '.metadata.version' .github/plugin/marketplace.json)
+          marketplace_entry=$(jq -er '.plugins[0].version' .github/plugin/marketplace.json)
+          apm_version=$(sed -n 's/^version:[[:space:]]*//p' apm.yml | head -1)
+
+          echo "plugin.json         $plugin_version"
+          echo "marketplace (meta)  $marketplace_meta"
+          echo "marketplace (entry) $marketplace_entry"
+          echo "apm.yml             $apm_version"
+
+          # A release that ships disagreeing version numbers is worse than no release.
+          for other in "$marketplace_meta" "$marketplace_entry" "$apm_version"; do
+            if [ "$other" != "$plugin_version" ]; then
+              echo "::error::Version mismatch. plugin.json says '$plugin_version'. Align all version fields before releasing."
+              exit 1
+            fi
+          done
+
+          if ! printf '%s' "$plugin_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '$plugin_version' is not semantic versioning (MAJOR.MINOR.PATCH)."
+            exit 1
+          fi
+
+          echo "tag=v$plugin_version" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if already released or drafted
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "$TAG already exists as a release or draft. Nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create draft release
+        if: steps.existing.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --draft \
+            --generate-notes
+
+          {
+            echo "### Draft release $TAG created"
+            echo ""
+            echo "A maintainer must review and publish it. The tag is created on publish, not now."
+            echo ""
+            echo "Before publishing, update the APM install pin in \`README.md\` to \`#$TAG\`."
+          } >> "$GITHUB_STEP_SUMMARY"

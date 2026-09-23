@@ -165,9 +165,16 @@ Not ready? Open a draft PR to get early feedback.
 
 If you are a maintainer:
 
-1. Create a [tag](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) following semantic versioning
-2. Draft a [release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) document explaining the changes
-3. Obtain approval from [CODEOWNERS](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
+1. Bump the version in **all four places** — they must match or the release is blocked:
+   - `plugin/plugin.json` → `version`
+   - `apm.yml` → `version`
+   - `.github/plugin/marketplace.json` → `metadata.version` and `plugins[0].version`
+2. Update the APM install pin in [`README.md`](README.md) to the new tag
+3. Merge to `main`. The [Draft release](.github/workflows/draft-release.yml) workflow verifies the versions agree and opens a **draft** release
+4. Review the generated notes and obtain approval from [CODEOWNERS](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
+5. Publish the draft. Publishing creates the [tag](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
+
+Only the APM install path resolves a tag, so an unpublished version is uninstallable via APM.
 
 ## Resources
 
