@@ -6,6 +6,8 @@ on:
     paths:
       - plugin/plugin.json
   workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -13,6 +15,7 @@ permissions:
 jobs:
   draft:
     name: Draft release for current version
+    if: github.event_name != 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -83,5 +86,26 @@ jobs:
             echo ""
             echo "A maintainer must review and publish it. The tag is created on publish, not now."
             echo ""
-            echo "Before publishing, update the APM install pin in \`README.md\` to \`#$TAG\`."
+            echo "After publishing, open a documentation PR updating the APM install pin in \`README.md\` to \`#$TAG\`. Keep the existing pin until the tag exists."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  documentation-reminder:
+    name: Post-release maintainer reminder
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remind maintainer to update install instructions
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Maintainer checklist after publication"
+            echo ""
+            echo "Published release: $RELEASE_URL"
+            echo ""
+            echo "- [ ] Open a documentation PR updating the APM install pin in \`README.md\` to \`#$TAG\`."
+            echo "- [ ] Verify the documented APM install in a clean project before merging the documentation PR."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice::Release $TAG is published. Update the README.md APM install pin to #$TAG in a documentation PR."

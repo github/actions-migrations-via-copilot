@@ -169,12 +169,12 @@ If you are a maintainer:
    - `plugin/plugin.json` → `version`
    - `apm.yml` → `version`
    - `.github/plugin/marketplace.json` → `metadata.version` and `plugins[0].version`
-2. Update the APM install pin in [`README.md`](README.md) to the new tag
-3. Merge to `main`. The [Draft release](.github/workflows/draft-release.yml) workflow verifies the versions agree and opens a **draft** release
-4. Review the generated notes and obtain approval from [CODEOWNERS](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
-5. Publish the draft. Publishing creates the [tag](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
+2. Merge to `main`. The [Draft release](.github/workflows/draft-release.yml) workflow verifies the versions agree and opens a **draft** release
+3. Review the generated notes and obtain approval from [CODEOWNERS](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
+4. Publish the draft. Publishing creates the [tag](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) if it does not already exist
+5. After publishing, open a documentation PR updating the APM install pin in [`README.md`](README.md) to the new tag. Verify the documented APM install in a clean project before merging that PR
 
-Only the APM install path resolves a tag, so an unpublished version is uninstallable via APM.
+A tag-pinned APM install requires the tag to exist. Keep the current README pin until the new tag is available. Publishing a non-prerelease release triggers a maintainer checklist in the Actions run summary and a log notice; it does not update the README automatically.
 
 ## Resources
 
