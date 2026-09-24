@@ -10,6 +10,8 @@ on:
       - 'plugin/plugin.json'
       - '.github/plugin/marketplace.json'
       - 'scripts/check-content-parity.sh'
+      - 'scripts/refresh-pinned-actions.sh'
+      - 'scripts/refresh-pinned-actions.test.sh'
       - '.github/workflows/content-parity.yml'
   push:
     branches: [main]
@@ -21,6 +23,8 @@ on:
       - 'plugin/plugin.json'
       - '.github/plugin/marketplace.json'
       - 'scripts/check-content-parity.sh'
+      - 'scripts/refresh-pinned-actions.sh'
+      - 'scripts/refresh-pinned-actions.test.sh'
       - '.github/workflows/content-parity.yml'
   workflow_dispatch:
 
@@ -37,3 +41,6 @@ jobs:
 
       - name: Check content parity and capability invariants
         run: bash scripts/check-content-parity.sh
+
+      - name: Test pinned-action catalog generation offline
+        run: bash scripts/refresh-pinned-actions.test.sh
