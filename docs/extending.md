@@ -23,6 +23,24 @@ When you add a new platform, mirror the content into [`plugin/`](../plugin/READM
 
 The skill's `mapping.md` and `report-template.md` are copies of the corresponding files under `knowledge/`. The `SKILL.md` adds the YAML frontmatter (`name`, `description`) so the plugin runtime can index it. Pattern: see `plugin/skills/jenkins-migration/`. Cross-platform secrets/credentials guidance lives in the shared `migration-core` skill, so no per-platform `secrets.md` is needed in the plugin.
 
+### Review migration-core source changes
+
+The shared `migration-workflow.md`, `migration-standards.md`, and
+`migration-guardrails.md` under `knowledge/` are summarized in the plugin's
+`migration-core/SKILL.md`. Review both sides whenever either changes, update
+the skill as needed, then refresh the recorded content hashes:
+
+```bash
+bash scripts/check-migration-core-sources.sh --refresh
+./scripts/check-content-parity.sh
+```
+
+Commit `plugin/skills/migration-core/sources.json` with the reviewed changes.
+The hash check works in shallow checkouts and detects unacknowledged edits or
+missing sources. Refreshing hashes records review; it does not prove the two
+documents mean the same thing. The **Safe Migration Reports** section is checked
+for exact equality as an additional safety rule.
+
 ## Adding a New Migration Agent
 
 ### 1. Create Agent File

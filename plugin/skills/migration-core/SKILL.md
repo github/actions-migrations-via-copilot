@@ -41,6 +41,10 @@ Load and follow the `actionlint` skill: install the tool if needed, run it again
 
 ### Phase 5 — Document
 
+Before writing or publishing any report, follow **Safe Migration Reports** below.
+Review validation output and examples for credential values; report only names
+and references, not values.
+
 1. Write `.github/ci-archive/MIGRATION-README.md` using the platform skill's `report-template.md`, filled with real data — no placeholders, real actionlint output.
 2. **MOVE** original CI/CD files into `.github/ci-archive/` and **DELETE** them from their original locations (see Archival below).
 3. Deliver the report via PR: update an existing PR on the branch if present; otherwise create a new one. If PR creation/update is unavailable, the `MIGRATION-README.md` is the sole report.
@@ -128,6 +132,14 @@ A fully resolved pin looks like this:
 - `${{ vars.NAME }}` — non-sensitive configuration.
 - Org-level for shared values; repo-level for project-specific values.
 - Platform-specific secret syntax mappings live in the platform skill's `mapping.md`.
+
+### Safe Migration Reports
+
+- Document secret and variable names, purpose, scope, and `${{ secrets.NAME }}` / `${{ vars.NAME }}` references, never credential values.
+- Before writing the report, review all prose, tables, examples, and validation output. Remove credential values and use `[REDACTED]` when an omission must be shown; redaction is not an unfinished placeholder.
+- Use the same reviewed content for the report file, PR body, comments, and final response. Do not paste raw source files or logs containing credentials.
+- If a suspected credential cannot be safely removed, stop report publication and warn without repeating the value. Do not claim the migration is complete while publication is blocked.
+- Never disable secret scanning or push protection to deliver a report. If a value may already have been exposed, advise revocation or rotation and follow the repository's incident process.
 
 ---
 

@@ -133,6 +133,36 @@ run_case "CLI  deny quoted JSON key \"password\":secret" \
 run_case "VSC  deny quoted JSON key \"password\":secret" \
   '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"{\"password\":\"SuperSecret12345\"}"}}' "$SECRET" deny
 
+echo "== preToolUse: report and PR secret protection =="
+REPORT_TOKEN="ghp_$(printf '%036d' 0)"
+REPORT_TEXT="| SERVICE_TOKEN | $REPORT_TOKEN |"
+payload=$(jq -cn --arg text "$REPORT_TEXT" '{toolName:"create",toolArgs:{path:"report.md",file_text:$text}}')
+run_case "CLI file_text report is scanned" "$payload" "$SECRET" deny
+for tool in create_file apply_patch github-mcp-server-pull_request_write; do
+  payload=$(jq -cn --arg tool "$tool" --arg text "$REPORT_TEXT" '{tool_name:$tool,tool_input:{body:$text,newText:$text,input:$text}}')
+  run_case "report blocks token via $tool" "$payload" "$SECRET" deny
+done
+run_case "report blocks generic Markdown secret value" \
+  '{"toolName":"create","toolArgs":{"path":".github/ci-archive/MIGRATION-README.md","content":"| SERVICE_TOKEN | example-secret-12345 |"}}' "$SECRET" deny
+run_case "report permits names scopes and references" \
+  '{"toolName":"create","toolArgs":{"content":"| SERVICE_TOKEN | Repository | ${{ secrets.SERVICE_TOKEN }} |\n| ENVIRONMENT | Organization | ${{ vars.ENVIRONMENT }} |"}}' "$SECRET" allow
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{toolName:"bash",toolArgs:{command:("gh pr create --body " + $token)}}')
+run_case "report blocks secret in shell PR body" "$payload" "$SECRET" deny
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"replace_string_in_file",tool_input:{oldString:$token,newString:"${{ secrets.SERVICE_TOKEN }}"}}')
+run_case "report permits removing existing secret" "$payload" "$SECRET" allow
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"apply_patch",tool_input:{input:("*** Update File: report.md\n+" + $token)}}')
+run_case "report blocks added patch content" "$payload" "$SECRET" deny
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"apply_patch",tool_input:{input:("*** Update File: report.md\n-" + $token + "\n+[REDACTED]")}}')
+run_case "report permits patch removing existing secret" "$payload" "$SECRET" allow
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"github-mcp-server-push_files",tool_input:{files:[{path:"report.md",content:$token}]}}')
+run_case "report blocks nested file content" "$payload" "$SECRET" deny
+output=$(printf '%s' "$payload" | bash -c "$SECRET")
+if printf '%s' "$output" | grep -qF "$REPORT_TOKEN"; then
+  FAIL=$((FAIL+1)); echo "  FAIL denial echoed credential value"
+else
+  PASS=$((PASS+1)); echo "  ok   denial does not echo credential value"
+fi
+
 echo "== preToolUse: destructive op guard =="
 run_case "CLI  deny rm README.md"            '{"toolName":"bash","toolArgs":"{\"command\":\"rm README.md\"}"}' "$DESTRUCTIVE" deny
 run_case "CLI  deny rm Jenkinsfile"          '{"toolName":"bash","toolArgs":"{\"command\":\"rm Jenkinsfile\"}"}' "$DESTRUCTIVE" deny
@@ -263,6 +293,32 @@ if [ "$AFTER" -eq "$BEFORE" ]; then
   PASS=$((PASS+1)); echo "  ok   VSC  Stop no-ops when stop_hook_active=true"
 else
   FAIL=$((FAIL+1)); echo "  FAIL VSC  Stop no-ops when stop_hook_active=true"
+fi
+
+echo "== scorecard deduplication =="
+BEFORE=$(grep -c '^## ' "$WORKDIR/.github/MIGRATION-SCORECARD.md")
+printf '{"sessionId":"t-dedup","cwd":"%s","reason":"complete"}' "$WORKDIR" | bash -c "$SC_CLI" >/dev/null 2>&1
+printf '{"session_id":"t-dedup","cwd":"%s","reason":"complete"}' "$WORKDIR" | bash -c "$SC_STOP" >/dev/null 2>&1
+AFTER=$(grep -c '^## ' "$WORKDIR/.github/MIGRATION-SCORECARD.md")
+if [ "$AFTER" -eq "$((BEFORE + 1))" ]; then
+  PASS=$((PASS+1)); echo "  ok   duplicate completion events append once"
+else
+  FAIL=$((FAIL+1)); echo "  FAIL duplicate completion events append once"
+fi
+printf '{"session_id":"t-dedup","cwd":"%s","reason":"cancelled"}' "$WORKDIR" | bash -c "$SC_STOP" >/dev/null 2>&1
+printf '{"sessionId":"t-dedup","cwd":"%s","reason":"cancelled"}' "$WORKDIR" | bash -c "$SC_CLI" >/dev/null 2>&1
+AFTER=$(grep -c '^## ' "$WORKDIR/.github/MIGRATION-SCORECARD.md")
+if [ "$AFTER" -eq "$((BEFORE + 2))" ]; then
+  PASS=$((PASS+1)); echo "  ok   distinct reason appends once in reverse event order"
+else
+  FAIL=$((FAIL+1)); echo "  FAIL distinct reason appends once in reverse event order"
+fi
+printf '{"sessionId":"t-other","cwd":"%s","reason":"complete"}' "$WORKDIR" | bash -c "$SC_CLI" >/dev/null 2>&1
+AFTER=$(grep -c '^## ' "$WORKDIR/.github/MIGRATION-SCORECARD.md")
+if [ "$AFTER" -eq "$((BEFORE + 3))" ]; then
+  PASS=$((PASS+1)); echo "  ok   distinct session still appends"
+else
+  FAIL=$((FAIL+1)); echo "  FAIL distinct session still appends"
 fi
 
 rm -rf "$WORKDIR"
