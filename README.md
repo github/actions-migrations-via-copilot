@@ -131,6 +131,36 @@ apm install
 
 APM deploys the agents and skills into your repo, pins the resolved sources and content hashes in `apm.lock.yaml`, and content-scans every primitive before it reaches disk.
 
+#### Release pins
+
+The `#v1.2.0` above selects that exact Git tag, not the version declared in the
+current plugin manifest. Cloning the default branch gets the current merged code.
+For a newer pinned install, choose an existing tag from
+[Releases](https://github.com/github/actions-migrations-via-copilot/releases).
+Maintainers should update this example only after the new tag is published and
+the documented install has been verified in a clean project. Do not move an
+existing release tag to deliver newer code.
+
+#### Optional GitHub MCP configuration
+
+This package deliberately keeps `dependencies.mcp: []`. Its agents use the
+shipped action catalog first and authenticated `gh` commands when needed.
+Adding an MCP tool allowlist would not restrict the shell access these agents
+already have, and a remote MCP server does not solve offline access.
+
+Teams that want a GitHub MCP server should configure it explicitly in their
+consumer project using the [APM MCP guide](https://microsoft.github.io/apm/consumer/install-mcp-servers/).
+Choose only the read tools required for the task and verify they are exposed by
+the installed server and permitted by the chosen agent. Merely installing a
+server does not give this package's agents new tools.
+
+Check the APM version and target before installing. Earlier testing with APM
+0.26.0 wrote Copilot MCP configuration globally to `~/.copilot/mcp-config.json`.
+Current APM documentation describes project-scoped `.github/mcp.json` for
+Copilot CLI and `.vscode/mcp.json` for VS Code; global installs use user-level
+configuration. Review the actual file changes and credential handling before
+sharing them. Do not commit tokens or overwrite unrelated MCP settings.
+
 ---
 
 ## How Migration Works
