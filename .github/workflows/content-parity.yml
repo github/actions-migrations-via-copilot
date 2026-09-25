@@ -5,6 +5,7 @@ on:
     paths:
       - 'knowledge/**'
       - 'plugin/skills/**'
+      - 'plugin/agents/**'
       - 'agents/**'
       - 'apm.yml'
       - 'plugin/plugin.json'
@@ -18,6 +19,7 @@ on:
     paths:
       - 'knowledge/**'
       - 'plugin/skills/**'
+      - 'plugin/agents/**'
       - 'agents/**'
       - 'apm.yml'
       - 'plugin/plugin.json'
@@ -40,7 +42,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check content parity and capability invariants
-        run: bash scripts/check-content-parity.sh
+        run: ./scripts/check-content-parity.sh
 
       - name: Test pinned-action catalog generation offline
-        run: bash scripts/refresh-pinned-actions.test.sh
+        run: ./scripts/refresh-pinned-actions.test.sh

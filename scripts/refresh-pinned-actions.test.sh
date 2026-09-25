@@ -44,3 +44,26 @@ printf 'PASS: JSON injection stays literal; catalog entries, fallback and skippe
 TEST_ALL_UNRESOLVED=1 bash "$TEST_DIR/scripts/refresh-pinned-actions.sh" 2>"$TEST_DIR/run.log"
 jq -e '.actions == {}' "$TEST_DIR/plugin/skills/migration-core/pinned-actions.json" >/dev/null
 printf 'PASS: unresolved actions produce an empty object, not invalid JSON.\n'
+
+cp -R "$ROOT/knowledge" "$ROOT/agents" "$ROOT/plugin" "$ROOT/.github" "$TEST_DIR/"
+cp "$ROOT/apm.yml" "$TEST_DIR/"
+cp "$ROOT/scripts/check-content-parity.sh" "$TEST_DIR/scripts/"
+"$TEST_DIR/scripts/check-content-parity.sh" >"$TEST_DIR/check.log" 2>&1
+printf 'PASS: committed catalog passes the content checker.\n'
+
+CATALOG="$TEST_DIR/plugin/skills/migration-core/pinned-actions.json"
+for invalid_case in trailing-text empty multiple-objects array; do
+  cp "$ROOT/plugin/skills/migration-core/pinned-actions.json" "$CATALOG"
+  case "$invalid_case" in
+    trailing-text) printf '\nnot JSON\n' >>"$CATALOG" ;;
+    empty) : >"$CATALOG" ;;
+    multiple-objects) printf '\n{}\n' >>"$CATALOG" ;;
+    array) printf '[]\n' >"$CATALOG" ;;
+  esac
+  if "$TEST_DIR/scripts/check-content-parity.sh" >"$TEST_DIR/check.log" 2>&1; then
+    printf 'FAIL: content checker accepted %s catalog\n' "$invalid_case" >&2
+    exit 1
+  fi
+  grep -q 'catalog must contain exactly one valid JSON object' "$TEST_DIR/check.log"
+  printf 'PASS: content checker rejects %s catalog.\n' "$invalid_case"
+done

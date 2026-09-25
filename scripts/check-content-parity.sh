@@ -8,17 +8,17 @@
 # is a declaration-hygiene check, not a capability boundary -- the agents hold
 # `bash`, so their actual reach is whatever bash can reach.
 #
-# Requirements: bash, diff, grep, sed, head, tail, sort. No network, no jq, no
-# Node. The preflight below fails closed if any are missing -- without it an
+# Requirements: bash, diff, grep, sed, head, tail, sort, wc, tr, jq. No network
+# or Node. The preflight below fails closed if any are missing -- without it an
 # absent grep would make the capability checks silently take their pass branch.
 #
-# Usage: bash scripts/check-content-parity.sh
+# Usage: ./scripts/check-content-parity.sh
 
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
 
-for cmd in diff grep sed head tail sort; do
+for cmd in diff grep sed head tail sort wc tr jq; do
   command -v "$cmd" >/dev/null 2>&1 || {
     printf '::error::required command not found: %s\n' "$cmd"
     printf 'FAILED: missing dependency %s\n' "$cmd"
@@ -151,6 +151,8 @@ CHECKED=$((CHECKED + 1))
 CATALOG="plugin/skills/migration-core/pinned-actions.json"
 if [ ! -f "$CATALOG" ]; then
   fail "$CATALOG" "pinned actions catalog is missing"
+elif ! jq -e -s 'length == 1 and (.[0] | type == "object")' "$CATALOG" >/dev/null 2>&1; then
+  fail "$CATALOG" "catalog must contain exactly one valid JSON object"
 elif ! grep -q '"resolved_on"' "$CATALOG"; then
   fail "$CATALOG" "catalog has no resolved_on date, so staleness cannot be judged"
 else
