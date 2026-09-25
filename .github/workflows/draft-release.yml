@@ -1,0 +1,121 @@
+name: Draft release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - plugin/plugin.json
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  draft:
+    name: Draft release for current version
+    if: github.event_name != 'release' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve and verify version
+        id: version
+        run: |
+          set -euo pipefail
+
+          plugin_version=$(jq -er '.version' plugin/plugin.json)
+          marketplace_meta=$(jq -er '.metadata.version' .github/plugin/marketplace.json)
+          marketplace_entry=$(jq -er '.plugins[0].version' .github/plugin/marketplace.json)
+          apm_version=$(sed -n 's/^version:[[:space:]]*//p' apm.yml | head -1)
+
+          echo "plugin.json         $plugin_version"
+          echo "marketplace (meta)  $marketplace_meta"
+          echo "marketplace (entry) $marketplace_entry"
+          echo "apm.yml             $apm_version"
+
+          # A release that ships disagreeing version numbers is worse than no release.
+          for other in "$marketplace_meta" "$marketplace_entry" "$apm_version"; do
+            if [ "$other" != "$plugin_version" ]; then
+              echo "::error::Version mismatch. plugin.json says '$plugin_version'. Align all version fields before releasing."
+              exit 1
+            fi
+          done
+
+          if ! printf '%s' "$plugin_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '$plugin_version' is not semantic versioning (MAJOR.MINOR.PATCH)."
+            exit 1
+          fi
+
+          echo "tag=v$plugin_version" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if already released or drafted
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "$TAG already exists as a release or draft. Nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create draft release
+        if: steps.existing.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          tag_refs=$(git ls-remote --tags origin "refs/tags/$TAG" "refs/tags/$TAG^{}")
+          if [ -n "$tag_refs" ]; then
+            git fetch --no-tags origin "refs/tags/$TAG"
+            tag_commit=$(git rev-parse 'FETCH_HEAD^{commit}')
+            if [ "$tag_commit" != "$GITHUB_SHA" ]; then
+              echo "::error::Tag $TAG points to $tag_commit, not the validated commit $GITHUB_SHA. Refusing to create a draft."
+              exit 1
+            fi
+          fi
+
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --draft \
+            --generate-notes
+
+          {
+            echo "### Draft release $TAG created"
+            echo ""
+            echo "A maintainer must review and publish it. If the tag does not already exist, it is created on publish."
+            echo ""
+            echo "After publishing, open a documentation PR updating the APM install pin in \`README.md\` to \`#$TAG\`. Keep the existing pin until the tag exists."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  documentation-reminder:
+    name: Post-release maintainer reminder
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remind maintainer to update install instructions
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Maintainer checklist after publication"
+            echo ""
+            echo "Published release: $RELEASE_URL"
+            echo ""
+            echo "- [ ] Open a documentation PR updating the APM install pin in \`README.md\` to \`#$TAG\`."
+            echo "- [ ] Verify the documented APM install in a clean project before merging the documentation PR."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice::Release $TAG is published. Update the README.md APM install pin to #$TAG in a documentation PR."
