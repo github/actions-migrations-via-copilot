@@ -68,16 +68,24 @@ Each finding shows the file, line/column, a human-readable message, the rule nam
 workflow.yml:10:9: action "actions/checkout@v4" is not pinned to a commit SHA [pin-actions]
 ```
 
-Fix: resolve the SHA for the version tag and pin to it. Use `mcp_github_get_tag` to get the SHA, then:
+Fix: resolve the tag to a commit SHA and pin to it. Follow the capability probe
+and resolution order in the `migration-core` skill:
+
+```bash
+gh api repos/actions/checkout/commits/v4.1.7 --jq .sha
+```
 
 ```yaml
 # Before
 - uses: actions/checkout@v4
 
-# After — SHA for v4.1.7, from mcp_github_get_tag on actions/checkout
+# After — SHA for v4.1.7, from the gh api call above
 # actions/checkout v4.1.7
 - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 ```
+
+If the probe reports `NETWORK_UNAVAILABLE`, stop and tell the user which actions
+need pinning rather than inventing a SHA or shipping an unpinned ref.
 
 ### `shellcheck` — shell script issues in `run:` steps
 

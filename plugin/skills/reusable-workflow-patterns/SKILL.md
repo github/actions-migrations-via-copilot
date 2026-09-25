@@ -11,7 +11,7 @@ This skill provides the catalog, template, and documentation standards used by t
 
 | System         | File patterns                                   |
 | -------------- | ----------------------------------------------- |
-| GitHub Actions | `.github/workflows/*.yml`                       |
+| GitHub Actions | `.github/workflows/*.yml`, `*.yaml`             |
 | GitLab CI/CD   | `.gitlab-ci.yml`                                |
 | Azure DevOps   | `azure-pipelines.yml`, `.azure-pipelines/*.yml` |
 | Jenkins        | `Jenkinsfile`, `.jenkins/*.groovy`              |
@@ -53,10 +53,26 @@ The user controls the scope of analysis. Three modes are supported and can be fr
 
 Adapt these steps to the input scope:
 
-1. **Scope resolution**
-   - For each `org-name` entry: use `mcp_github_search_repositories` to enumerate all repos in that org.
-   - For each `org-name/repo-name` entry: use that repo directly — no enumeration needed.
+1. **Scope resolution** — never guess a scope. Resolve in this order:
+   - **Local paths** — if the user supplied directories of checked-out repos,
+     use `glob`/`grep` over `**/.github/workflows/*.yml` and `*.yaml`. Actions
+     accepts both, so searching only one silently misses workflows. This is the
+     only fully offline path; prefer it in regulated environments.
+   - **Explicit `org-name/repo-name` entries** — use directly, no enumeration.
+   - **`org-name` entries** — enumerate only after the capability probe in
+     `migration-core` reports `NETWORK_OK`:
+
+     ```bash
+     gh api "orgs/ORG/repos?per_page=100" --paginate --jq '.[] | select(.archived|not) | .full_name'
+     ```
+
+     `--paginate` walks every page, so the result is the complete visible set.
+     Do not substitute `gh repo list --limit N` — it stops at N, and a truncated
+     list makes the frequency analysis below wrong in a way that looks right.
+     If pagination fails partway, stop and report it rather than analysing a
+     partial set.
    - Deduplicate if a repo appears both via org scan and explicit reference.
+   - If no scope can be resolved, **stop and ask** — do not invent one.
 
 2. **Universal pipeline discovery** — search each repo for CI/CD files across all supported systems (see table above).
 

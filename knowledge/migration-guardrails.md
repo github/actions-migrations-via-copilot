@@ -74,11 +74,21 @@ The [GitHub Marketplace](https://github.com/marketplace) is the primary source f
 
 ### Action Version Verification
 
+**Never emit a commit SHA that is not present verbatim in the output of a tool
+call you made in this session.** A fabricated SHA either fails at dispatch time
+or resolves to an unintended commit.
+
 **Process:**
 
 1. Use `mcp_github_get_latest_release` for current version
 2. Use `mcp_github_get_tag` for commit SHA
 3. Fallback: `mcp_github_list_commits` if no releases
+
+When resolving a tag to a SHA, be aware that an **annotated** tag resolves to a
+tag object, not a commit. Pin to the commit SHA, not the tag object SHA.
+
+If a SHA cannot be resolved, stop and tell the user which actions need pinning.
+Do not guess, and do not ship an unpinned reference silently.
 
 **Example Format:**
 

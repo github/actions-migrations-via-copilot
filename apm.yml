@@ -1,5 +1,5 @@
 name: actions-migrator
-version: 1.2.0
+version: 1.4.0
 description: Enterprise-grade GitHub Copilot agents that migrate CI/CD pipelines
   from Jenkins, Azure DevOps, CircleCI, GitLab, Travis CI, Bamboo, Bitbucket
   Pipelines, and Drone CI to GitHub Actions.

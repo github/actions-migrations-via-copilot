@@ -1,0 +1,48 @@
+name: Content Parity
+
+on:
+  pull_request:
+    paths:
+      - 'knowledge/**'
+      - 'plugin/skills/**'
+      - 'plugin/agents/**'
+      - 'agents/**'
+      - 'apm.yml'
+      - 'plugin/plugin.json'
+      - '.github/plugin/marketplace.json'
+      - 'scripts/check-content-parity.sh'
+      - 'scripts/refresh-pinned-actions.sh'
+      - 'scripts/refresh-pinned-actions.test.sh'
+      - '.github/workflows/content-parity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'knowledge/**'
+      - 'plugin/skills/**'
+      - 'plugin/agents/**'
+      - 'agents/**'
+      - 'apm.yml'
+      - 'plugin/plugin.json'
+      - '.github/plugin/marketplace.json'
+      - 'scripts/check-content-parity.sh'
+      - 'scripts/refresh-pinned-actions.sh'
+      - 'scripts/refresh-pinned-actions.test.sh'
+      - '.github/workflows/content-parity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: knowledge/ vs plugin/skills/
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check content parity and capability invariants
+        run: ./scripts/check-content-parity.sh
+
+      - name: Test pinned-action catalog generation offline
+        run: ./scripts/refresh-pinned-actions.test.sh
