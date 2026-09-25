@@ -154,6 +154,12 @@ payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"apply_patch",tool_inpu
 run_case "report blocks added patch content" "$payload" "$SECRET" deny
 payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"apply_patch",tool_input:{input:("*** Update File: report.md\n-" + $token + "\n+[REDACTED]")}}')
 run_case "report permits patch removing existing secret" "$payload" "$SECRET" allow
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{toolName:"apply_patch",toolArgs:("*** Begin Patch\n*** Add File: unsafe-report.md\n+" + $token + "\n*** End Patch\n")}')
+run_case "cloud raw patch addition is scanned" "$payload" "$SECRET" deny
+payload=$(jq -cn '{toolName:"apply_patch",toolArgs:"*** Begin Patch\n*** Add File: safe-report.md\n+${{ secrets.SERVICE_TOKEN }}\n*** End Patch\n"}')
+run_case "cloud raw patch permits safe reference" "$payload" "$SECRET" allow
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{toolName:"apply_patch",toolArgs:("*** Begin Patch\n*** Update File: report.md\n-" + $token + "\n+[REDACTED]\n*** End Patch\n")}')
+run_case "cloud raw patch permits credential removal" "$payload" "$SECRET" allow
 payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"github-mcp-server-push_files",tool_input:{files:[{path:"report.md",content:$token}]}}')
 run_case "report blocks nested file content" "$payload" "$SECRET" deny
 output=$(printf '%s' "$payload" | bash -c "$SECRET")
