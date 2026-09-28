@@ -144,6 +144,15 @@ for tool in create_file apply_patch github-mcp-server-pull_request_write; do
 done
 run_case "report blocks generic Markdown secret value" \
   '{"toolName":"create","toolArgs":{"path":".github/ci-archive/MIGRATION-README.md","content":"| SERVICE_TOKEN | example-secret-12345 |"}}' "$SECRET" deny
+# Regression: the value is not always the cell right after the name (name | scope | value layout).
+run_case "report blocks secret in a later table column" \
+  '{"toolName":"create","toolArgs":{"path":".github/ci-archive/MIGRATION-README.md","content":"| SERVICE_TOKEN | Repository | example-secret-12345 |"}}' "$SECRET" deny
+run_case "VSC report blocks secret in a later table column" \
+  '{"tool_name":"create_file","tool_input":{"filePath":"MIGRATION-README.md","content":"| SERVICE_TOKEN | Repository | example-secret-12345 |"}}' "$SECRET" deny
+run_case "patch report blocks secret in a later table column" \
+  '{"toolName":"apply_patch","toolArgs":"*** Begin Patch\n*** Add File: report.md\n+| SERVICE_TOKEN | Repository | example-secret-12345 |\n*** End Patch\n"}' "$SECRET" deny
+run_case "report blocks secret after a reference cell" \
+  '{"toolName":"create","toolArgs":{"content":"| SERVICE_TOKEN | ${{ secrets.SERVICE_TOKEN }} | example-secret-12345 |"}}' "$SECRET" deny
 run_case "report permits names scopes and references" \
   '{"toolName":"create","toolArgs":{"content":"| SERVICE_TOKEN | Repository | ${{ secrets.SERVICE_TOKEN }} |\n| ENVIRONMENT | Organization | ${{ vars.ENVIRONMENT }} |"}}' "$SECRET" allow
 payload=$(jq -cn --arg token "$REPORT_TOKEN" '{toolName:"bash",toolArgs:{command:("gh pr create --body " + $token)}}')
