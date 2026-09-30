@@ -53,14 +53,26 @@ jobs:
 
           echo "tag=v$plugin_version" >> "$GITHUB_OUTPUT"
 
-      - name: Skip if already released or drafted
+      - name: Check existing release or draft
         id: existing
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if release=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,targetCommitish); then
+            if [ "$(jq -r '.isDraft' <<< "$release")" = "true" ]; then
+              draft_target=$(jq -er '.targetCommitish' <<< "$release")
+              target_ref=$(jq -r '.targetCommitish | @uri' <<< "$release")
+              if ! draft_commit=$(gh api "repos/$GITHUB_REPOSITORY/commits/$target_ref" --jq '.sha'); then
+                echo "::error::Cannot resolve the target of draft $TAG ($draft_target). Verify the target and access, then recreate or deliberately retarget the draft to the validated commit $GITHUB_SHA before rerunning. The draft was not changed."
+                exit 1
+              fi
+              if [ "$draft_commit" != "$GITHUB_SHA" ]; then
+                echo "::error::Draft $TAG targets $draft_target ($draft_commit), not the validated commit $GITHUB_SHA. Recreate or deliberately retarget the draft before rerunning. The draft was not changed."
+                exit 1
+              fi
+            fi
             echo "$TAG already exists as a release or draft. Nothing to do."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else

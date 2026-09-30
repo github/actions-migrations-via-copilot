@@ -176,6 +176,8 @@ If you are a maintainer:
 
 For a manual run, select `main` under **Run workflow**. Draft creation is skipped on other branches or tags. If the version tag already exists without a release, it must point to the commit checked by the workflow; a different target blocks draft creation without changing the tag.
 
+If a draft already exists, its target must resolve to the commit checked by the workflow. A stale or unresolvable target fails the run without changing the draft. Recreate or deliberately retarget the draft to the validated commit, then rerun the workflow. Published releases are left unchanged.
+
 A tag-pinned APM install requires the tag to exist. Keep the current README pin until the new tag is available. Publishing a non-prerelease release triggers a maintainer checklist in the Actions run summary and a log notice; it does not update the README automatically.
 
 ## Resources
