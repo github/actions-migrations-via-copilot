@@ -127,11 +127,73 @@ run_case "CLI  deny same-line hardcoded value w/ trailing comment expr" \
 run_case "VSC  deny same-line hardcoded value w/ trailing comment expr" \
   '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"token: hardcoded-secret-123 # ${{ github.ref }}"}}' "$SECRET" deny
 
+run_case "CLI  deny secret before comment delimiter and reference" \
+  '{"toolName":"create","toolArgs":{"path":"c.yml","file_text":"token: SuperSecret12345 # reference: ${{ secrets.SERVICE_TOKEN }}"}}' "$SECRET" deny
+run_case "VSC  deny secret before comment delimiter and reference" \
+  '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"token: SuperSecret12345 # reference: ${{ secrets.SERVICE_TOKEN }}"}}' "$SECRET" deny
+run_case "CLI  deny heredoc secret before comment delimiter and reference" \
+  '{"toolName":"bash","toolArgs":{"command":"cat <<EOF > c.yml\ntoken: SuperSecret12345 # reference: ${{ secrets.SERVICE_TOKEN }}\nEOF"}}' "$SECRET" deny
+run_case "VSC  deny heredoc secret before comment delimiter and reference" \
+  '{"tool_name":"run_in_terminal","tool_input":{"command":"cat <<EOF > c.yml\ntoken: SuperSecret12345 # reference: ${{ secrets.SERVICE_TOKEN }}\nEOF","mode":"sync"}}' "$SECRET" deny
+run_case "CLI  deny assignment after unrelated delimiter" \
+  '{"toolName":"create","toolArgs":{"path":"c.yml","file_text":"note: value; API_KEY=SuperSecret12345 # reference: ${{ secrets.SERVICE_TOKEN }}"}}' "$SECRET" deny
+run_case "VSC  allow reference before a comment delimiter" \
+  '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"token: ${{ secrets.SERVICE_TOKEN }} # reference: stored safely"}}' "$SECRET" allow
+run_case "CLI  allow shell reference before a comment delimiter" \
+  '{"toolName":"bash","toolArgs":{"command":"cat <<EOF > c.yml\ntoken: ${{ secrets.SERVICE_TOKEN }} # reference: stored safely\nEOF"}}' "$SECRET" allow
+
 # --- regression: quoted JSON/YAML key with hardcoded value must be blocked ---
 run_case "CLI  deny quoted JSON key \"password\":secret" \
   '{"toolName":"create","toolArgs":"{\"path\":\"c.yml\",\"content\":\"{\\\"password\\\":\\\"SuperSecret12345\\\"}\"}"}' "$SECRET" deny
 run_case "VSC  deny quoted JSON key \"password\":secret" \
   '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"{\"password\":\"SuperSecret12345\"}"}}' "$SECRET" deny
+
+echo "== preToolUse: report and PR secret protection =="
+REPORT_TOKEN="ghp_$(printf '%036d' 0)"
+REPORT_TEXT="| SERVICE_TOKEN | $REPORT_TOKEN |"
+payload=$(jq -cn --arg text "$REPORT_TEXT" '{toolName:"create",toolArgs:{path:"report.md",file_text:$text}}')
+run_case "CLI file_text report is scanned" "$payload" "$SECRET" deny
+payload=$(jq -cn --arg text "$REPORT_TEXT" '{tool_name:"create_file",tool_input:{filePath:"report.md",content:$text}}')
+run_case "VSC create_file content report is scanned" "$payload" "$SECRET" deny
+payload=$(jq -cn --arg text "$REPORT_TEXT" '{tool_name:"apply_patch",tool_input:{input:("*** Begin Patch\n*** Add File: report.md\n+" + $text + "\n*** End Patch\n")}}')
+run_case "VSC apply_patch input report is scanned" "$payload" "$SECRET" deny
+payload=$(jq -cn --arg text "$REPORT_TEXT" '{tool_name:"github-mcp-server-pull_request_write",tool_input:{method:"create",owner:"example",repo:"migration-test",head:"migration",base:"main",title:"Migration report",body:$text}}')
+run_case "MCP pull_request_write body report is scanned" "$payload" "$SECRET" deny
+run_case "report blocks generic Markdown secret value" \
+  '{"toolName":"create","toolArgs":{"path":".github/ci-archive/MIGRATION-README.md","content":"| SERVICE_TOKEN | example-secret-12345 |"}}' "$SECRET" deny
+# Regression: the value is not always the cell right after the name (name | scope | value layout).
+run_case "report blocks secret in a later table column" \
+  '{"toolName":"create","toolArgs":{"path":".github/ci-archive/MIGRATION-README.md","content":"| SERVICE_TOKEN | Repository | example-secret-12345 |"}}' "$SECRET" deny
+run_case "VSC report blocks secret in a later table column" \
+  '{"tool_name":"create_file","tool_input":{"filePath":"MIGRATION-README.md","content":"| SERVICE_TOKEN | Repository | example-secret-12345 |"}}' "$SECRET" deny
+run_case "patch report blocks secret in a later table column" \
+  '{"toolName":"apply_patch","toolArgs":"*** Begin Patch\n*** Add File: report.md\n+| SERVICE_TOKEN | Repository | example-secret-12345 |\n*** End Patch\n"}' "$SECRET" deny
+run_case "report blocks secret after a reference cell" \
+  '{"toolName":"create","toolArgs":{"content":"| SERVICE_TOKEN | ${{ secrets.SERVICE_TOKEN }} | example-secret-12345 |"}}' "$SECRET" deny
+run_case "report permits names scopes and references" \
+  '{"toolName":"create","toolArgs":{"content":"| SERVICE_TOKEN | Repository | ${{ secrets.SERVICE_TOKEN }} |\n| ENVIRONMENT | Organization | ${{ vars.ENVIRONMENT }} |"}}' "$SECRET" allow
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{toolName:"bash",toolArgs:{command:("gh pr create --body " + $token)}}')
+run_case "report blocks secret in shell PR body" "$payload" "$SECRET" deny
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"replace_string_in_file",tool_input:{oldString:$token,newString:"${{ secrets.SERVICE_TOKEN }}"}}')
+run_case "report permits removing existing secret" "$payload" "$SECRET" allow
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"apply_patch",tool_input:{input:("*** Update File: report.md\n+" + $token)}}')
+run_case "report blocks added patch content" "$payload" "$SECRET" deny
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"apply_patch",tool_input:{input:("*** Update File: report.md\n-" + $token + "\n+[REDACTED]")}}')
+run_case "report permits patch removing existing secret" "$payload" "$SECRET" allow
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{toolName:"apply_patch",toolArgs:("*** Begin Patch\n*** Add File: unsafe-report.md\n+" + $token + "\n*** End Patch\n")}')
+run_case "cloud raw patch addition is scanned" "$payload" "$SECRET" deny
+payload=$(jq -cn '{toolName:"apply_patch",toolArgs:"*** Begin Patch\n*** Add File: safe-report.md\n+${{ secrets.SERVICE_TOKEN }}\n*** End Patch\n"}')
+run_case "cloud raw patch permits safe reference" "$payload" "$SECRET" allow
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{toolName:"apply_patch",toolArgs:("*** Begin Patch\n*** Update File: report.md\n-" + $token + "\n+[REDACTED]\n*** End Patch\n")}')
+run_case "cloud raw patch permits credential removal" "$payload" "$SECRET" allow
+payload=$(jq -cn --arg token "$REPORT_TOKEN" '{tool_name:"github-mcp-server-push_files",tool_input:{files:[{path:"report.md",content:$token}]}}')
+run_case "report blocks nested file content" "$payload" "$SECRET" deny
+output=$(printf '%s' "$payload" | bash -c "$SECRET")
+if printf '%s' "$output" | grep -qF "$REPORT_TOKEN"; then
+  FAIL=$((FAIL+1)); echo "  FAIL denial echoed credential value"
+else
+  PASS=$((PASS+1)); echo "  ok   denial does not echo credential value"
+fi
 
 echo "== preToolUse: destructive op guard =="
 run_case "CLI  deny rm README.md"            '{"toolName":"bash","toolArgs":"{\"command\":\"rm README.md\"}"}' "$DESTRUCTIVE" deny
@@ -263,6 +325,32 @@ if [ "$AFTER" -eq "$BEFORE" ]; then
   PASS=$((PASS+1)); echo "  ok   VSC  Stop no-ops when stop_hook_active=true"
 else
   FAIL=$((FAIL+1)); echo "  FAIL VSC  Stop no-ops when stop_hook_active=true"
+fi
+
+echo "== scorecard deduplication =="
+BEFORE=$(grep -c '^## ' "$WORKDIR/.github/MIGRATION-SCORECARD.md")
+printf '{"sessionId":"t-dedup","cwd":"%s","reason":"complete"}' "$WORKDIR" | bash -c "$SC_CLI" >/dev/null 2>&1
+printf '{"session_id":"t-dedup","cwd":"%s","reason":"complete"}' "$WORKDIR" | bash -c "$SC_STOP" >/dev/null 2>&1
+AFTER=$(grep -c '^## ' "$WORKDIR/.github/MIGRATION-SCORECARD.md")
+if [ "$AFTER" -eq "$((BEFORE + 1))" ]; then
+  PASS=$((PASS+1)); echo "  ok   duplicate completion events append once"
+else
+  FAIL=$((FAIL+1)); echo "  FAIL duplicate completion events append once"
+fi
+printf '{"session_id":"t-dedup","cwd":"%s","reason":"cancelled"}' "$WORKDIR" | bash -c "$SC_STOP" >/dev/null 2>&1
+printf '{"sessionId":"t-dedup","cwd":"%s","reason":"cancelled"}' "$WORKDIR" | bash -c "$SC_CLI" >/dev/null 2>&1
+AFTER=$(grep -c '^## ' "$WORKDIR/.github/MIGRATION-SCORECARD.md")
+if [ "$AFTER" -eq "$((BEFORE + 2))" ]; then
+  PASS=$((PASS+1)); echo "  ok   distinct reason appends once in reverse event order"
+else
+  FAIL=$((FAIL+1)); echo "  FAIL distinct reason appends once in reverse event order"
+fi
+printf '{"sessionId":"t-other","cwd":"%s","reason":"complete"}' "$WORKDIR" | bash -c "$SC_CLI" >/dev/null 2>&1
+AFTER=$(grep -c '^## ' "$WORKDIR/.github/MIGRATION-SCORECARD.md")
+if [ "$AFTER" -eq "$((BEFORE + 3))" ]; then
+  PASS=$((PASS+1)); echo "  ok   distinct session still appends"
+else
+  FAIL=$((FAIL+1)); echo "  FAIL distinct session still appends"
 fi
 
 rm -rf "$WORKDIR"

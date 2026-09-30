@@ -168,6 +168,16 @@ else
 fi
 
 echo
+echo "==> Migration-core source review"
+
+CHECKED=$((CHECKED + 1))
+if bash scripts/check-migration-core-sources.sh; then
+  pass "migration-core source review record"
+else
+  fail "plugin/skills/migration-core/sources.json" "migration-core source review required"
+fi
+
+echo
 echo "==> Package version coherence"
 
 # apm.yml, plugin.json and marketplace.json all describe the same package. They

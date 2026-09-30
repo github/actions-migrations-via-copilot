@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "files": {
+    "knowledge/migration-workflow.md": "ac20049fb4c6ec3540b8bad0927e99b9148b148fada469a482271eafa278c9a6",
+    "knowledge/migration-standards.md": "fa28d864ee0bfcd9bb3659a1ad79d3a153adac25aba5a607be41fb0e6ab4c995",
+    "knowledge/migration-guardrails.md": "76f0607955cb592f3fac7c77192d54ee26491ade87ccde0f7a92bf3e8ad04957",
+    "plugin/skills/migration-core/SKILL.md": "83bd5c3156cb5e72ee60e5f1438b3fbcc918fb106b9a96969ab24abefe5d09a2"
+  }
+}

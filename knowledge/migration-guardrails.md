@@ -130,6 +130,14 @@ jobs:
 - **Never** log or expose secret values in workflow outputs
 - **Always** reference secrets only in secure contexts
 
+### Safe Migration Reports
+
+- Document secret and variable names, purpose, scope, and `${{ secrets.NAME }}` / `${{ vars.NAME }}` references, never credential values.
+- Before writing the report, review all prose, tables, examples, and validation output. Remove credential values and use `[REDACTED]` when an omission must be shown; redaction is not an unfinished placeholder.
+- Use the same reviewed content for the report file, PR body, comments, and final response. Do not paste raw source files or logs containing credentials.
+- If a suspected credential cannot be safely removed, stop report publication and warn without repeating the value. Do not claim the migration is complete while publication is blocked.
+- Never disable secret scanning or push protection to deliver a report. If a value may already have been exposed, advise revocation or rotation and follow the repository's incident process.
+
 ### Action Security
 
 - **Only** use existing verified GitHub Actions from verified creators on GitHub Marketplace
