@@ -127,6 +127,21 @@ run_case "CLI  deny same-line hardcoded value w/ trailing comment expr" \
 run_case "VSC  deny same-line hardcoded value w/ trailing comment expr" \
   '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"token: hardcoded-secret-123 # ${{ github.ref }}"}}' "$SECRET" deny
 
+run_case "CLI  deny secret before comment delimiter and reference" \
+  '{"toolName":"create","toolArgs":{"path":"c.yml","file_text":"token: SuperSecret12345 # reference: ${{ secrets.SERVICE_TOKEN }}"}}' "$SECRET" deny
+run_case "VSC  deny secret before comment delimiter and reference" \
+  '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"token: SuperSecret12345 # reference: ${{ secrets.SERVICE_TOKEN }}"}}' "$SECRET" deny
+run_case "CLI  deny heredoc secret before comment delimiter and reference" \
+  '{"toolName":"bash","toolArgs":{"command":"cat <<EOF > c.yml\ntoken: SuperSecret12345 # reference: ${{ secrets.SERVICE_TOKEN }}\nEOF"}}' "$SECRET" deny
+run_case "VSC  deny heredoc secret before comment delimiter and reference" \
+  '{"tool_name":"run_in_terminal","tool_input":{"command":"cat <<EOF > c.yml\ntoken: SuperSecret12345 # reference: ${{ secrets.SERVICE_TOKEN }}\nEOF","mode":"sync"}}' "$SECRET" deny
+run_case "CLI  deny assignment after unrelated delimiter" \
+  '{"toolName":"create","toolArgs":{"path":"c.yml","file_text":"note: value; API_KEY=SuperSecret12345 # reference: ${{ secrets.SERVICE_TOKEN }}"}}' "$SECRET" deny
+run_case "VSC  allow reference before a comment delimiter" \
+  '{"tool_name":"create_file","tool_input":{"filePath":"c.yml","content":"token: ${{ secrets.SERVICE_TOKEN }} # reference: stored safely"}}' "$SECRET" allow
+run_case "CLI  allow shell reference before a comment delimiter" \
+  '{"toolName":"bash","toolArgs":{"command":"cat <<EOF > c.yml\ntoken: ${{ secrets.SERVICE_TOKEN }} # reference: stored safely\nEOF"}}' "$SECRET" allow
+
 # --- regression: quoted JSON/YAML key with hardcoded value must be blocked ---
 run_case "CLI  deny quoted JSON key \"password\":secret" \
   '{"toolName":"create","toolArgs":"{\"path\":\"c.yml\",\"content\":\"{\\\"password\\\":\\\"SuperSecret12345\\\"}\"}"}' "$SECRET" deny
@@ -138,10 +153,12 @@ REPORT_TOKEN="ghp_$(printf '%036d' 0)"
 REPORT_TEXT="| SERVICE_TOKEN | $REPORT_TOKEN |"
 payload=$(jq -cn --arg text "$REPORT_TEXT" '{toolName:"create",toolArgs:{path:"report.md",file_text:$text}}')
 run_case "CLI file_text report is scanned" "$payload" "$SECRET" deny
-for tool in create_file apply_patch github-mcp-server-pull_request_write; do
-  payload=$(jq -cn --arg tool "$tool" --arg text "$REPORT_TEXT" '{tool_name:$tool,tool_input:{body:$text,newText:$text,input:$text}}')
-  run_case "report blocks token via $tool" "$payload" "$SECRET" deny
-done
+payload=$(jq -cn --arg text "$REPORT_TEXT" '{tool_name:"create_file",tool_input:{filePath:"report.md",content:$text}}')
+run_case "VSC create_file content report is scanned" "$payload" "$SECRET" deny
+payload=$(jq -cn --arg text "$REPORT_TEXT" '{tool_name:"apply_patch",tool_input:{input:("*** Begin Patch\n*** Add File: report.md\n+" + $text + "\n*** End Patch\n")}}')
+run_case "VSC apply_patch input report is scanned" "$payload" "$SECRET" deny
+payload=$(jq -cn --arg text "$REPORT_TEXT" '{tool_name:"github-mcp-server-pull_request_write",tool_input:{method:"create",owner:"example",repo:"migration-test",head:"migration",base:"main",title:"Migration report",body:$text}}')
+run_case "MCP pull_request_write body report is scanned" "$payload" "$SECRET" deny
 run_case "report blocks generic Markdown secret value" \
   '{"toolName":"create","toolArgs":{"path":".github/ci-archive/MIGRATION-README.md","content":"| SERVICE_TOKEN | example-secret-12345 |"}}' "$SECRET" deny
 # Regression: the value is not always the cell right after the name (name | scope | value layout).
