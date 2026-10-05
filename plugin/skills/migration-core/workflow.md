@@ -85,14 +85,14 @@ This document outlines the standard 5-phase workflow for migrating CI/CD pipelin
 - [ ] Conditional expressions are syntactically correct
 - [ ] Workflow triggers match original behavior
 
-For complete validation requirements and tool setup, see [Workflow Validation Requirements](docs/README.md#workflow-validation-requirements).
+For validation requirements and tool setup, load the bundled [actionlint skill](../actionlint/SKILL.md).
 
 ## Phase 5: Documentation Phase (FINAL)
 
 **Complete Migration Documentation:**
 
-Before writing or publishing any report, follow **Safe Migration Reports** in
-`knowledge/migration-guardrails.md`. Review validation output and examples for
+Before writing or publishing any report, follow [Safe Migration Reports](SKILL.md#safe-migration-reports).
+Review validation output and examples for
 credential values; report only names and references, not values.
 
 1. **MANDATORY**: Create `.github/ci-archive/MIGRATION-README.md` with the completed report
@@ -108,10 +108,10 @@ credential values; report only names and references, not values.
 
 The `MIGRATION-README.md` file is **always created** in `.github/ci-archive/` as a permanent reference. Additionally, deliver the report via Pull Request:
 
-1. **Check for an existing Pull Request** on the current branch using the GitHub MCP tool
+1. **Check for an existing Pull Request** on the current branch using authenticated `gh` when available
 2. **If a PR already exists** → update the PR body with the completed report template
 3. **If no PR exists** → create a new Pull Request using the completed report template as the PR body
-4. **If the PR cannot be created or updated** (e.g., MCP tool unavailable, insufficient permissions, no remote branch) → the `MIGRATION-README.md` file already created in step 1 above serves as the report
+4. **If the PR cannot be created or updated** (e.g., `gh` unavailable, insufficient permissions, no remote branch) → the `MIGRATION-README.md` file already created in step 1 above serves as the report
 
 **Documentation Standards:**
 
@@ -122,7 +122,7 @@ The `MIGRATION-README.md` file is **always created** in `.github/ci-archive/` as
 - Document project-specific secrets and variables
 - Capture migration notes, decisions, and considerations
 
-See the [Report Templates](knowledge/report-template/) for CI-system-specific templates.
+Use `report-template.md` in the selected installed platform skill.
 
 ## Workflow Completion
 

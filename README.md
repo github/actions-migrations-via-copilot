@@ -38,12 +38,14 @@ The **Reusable Workflow Builder** scans multiple GitHub organizations, detects c
 
 ## Choose Your Surface
 
-This project ships the same agents for two GitHub Copilot surfaces. Pick the one that matches how your team works.
+This project ships one plugin package for local and cloud sessions. The plugin
+contains the agents, migration guides, skills, and hooks. Batch automation submits
+short tasks that refer to installed skills instead of copying migration guides.
 
 | Surface                   | Best For                                                                      | How agents are delivered                                                                                                                                                                             |
 | ------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **🌐 Copilot cloud agent** | Org-wide rollout, batch migrations across many repos, central governance      | Deployed to your enterprise's `.github-private` repository. Agents fetch the knowledgebase from `knowledge/` at runtime via the GitHub MCP server. → [Jump to setup](#using-the-copilot-cloud-agent) |
-| **💻 Copilot CLI**         | Local/interactive use, individual developers, customizing skills for your org | Installed as a Copilot CLI plugin. The knowledgebase ships pre-split into composable skills under `plugin/`—no runtime fetch required. → [Jump to setup](#using-the-copilot-cli)                     |
+| **🌐 Copilot cloud agent** | Individual or batch migrations on GitHub | Loads the plugin from repository or central plugin configuration. [Setup](docs/deployment.md). |
+| **💻 Copilot CLI / VS Code** | Interactive migrations and local customization | Installs the same plugin package. [Plugin setup](plugin/README.md). |
 
 Both surfaces produce the same deliverables:
 
@@ -55,11 +57,14 @@ Both surfaces produce the same deliverables:
 
 ## 🌐 Using the Copilot Cloud Agent
 
-Agents live in [`agents/`](agents/) and reference the knowledgebase in [`knowledge/`](knowledge/) at runtime. They are deployed to your enterprise's `.github-private` repository so they're available to all internal repos.
+Configure the plugin using the [consumer template](consumer-template/README.md),
+either in the target repository or the selected central configuration repository.
+The cloud runtime loads it; mentioning a skill in an issue does not install it.
+No separate knowledge repository or knowledge-fetch token is required.
 
 ### Getting started
 
-1. **Deploy** — Follow the [Deployment Guide](docs/deployment.md) to set up the agents in your enterprise's `.github-private` repo.
+1. **Configure** — Follow the [Deployment Guide](docs/deployment.md) to enable the plugin and, optionally, batch automation.
 2. **Migrate** — Run migrations using the [Operations Guide](docs/operations.md).
 
 ### Two ways to migrate
@@ -73,7 +78,8 @@ Agents live in [`agents/`](agents/) and reference the knowledgebase in [`knowled
 
 ## 💻 Using the Copilot CLI
 
-The same nine agents are packaged as a Copilot CLI plugin under [`plugin/`](plugin/README.md), with the knowledgebase pre-split into composable skills. See [`plugin/README.md`](plugin/README.md) for the composition model and full skill catalog.
+The nine agents and their guides are maintained under [`plugin/`](plugin/README.md).
+See the plugin README for the composition model and skill catalog.
 
 ### Option A — Install from the marketplace (use as-is)
 
@@ -168,7 +174,7 @@ sharing them. Do not commit tokens or overwrite unrelated MCP settings.
 Whichever surface you choose, each agent follows the same five-phase process:
 
 1. **Reads** source CI/CD configuration files
-2. **References** the knowledgebase for conversion patterns
+2. **Loads** the installed migration skills and bundled conversion guides
 3. **Generates** GitHub Actions workflows
 4. **Validates** with actionlint
 5. **Documents** all changes in a migration report
@@ -187,16 +193,13 @@ Whichever surface you choose, each agent follows the same five-phase process:
 
 ```
 .
-├── agents/                    # Agent definitions (9 migration agents) — cloud agent / .github-private deployment
 ├── docs/                      # Deployment, operations, and extending guides
-├── knowledge/                 # Migration knowledgebase (source of truth for cloud agent)
-│   ├── actions-mapping/       # CI/CD → Actions mappings
-│   ├── patterns/              # Platform-specific conversion patterns
-│   └── report-template/       # Migration report templates
-├── plugin/                    # Copilot CLI plugin (agents + composable skills, derived from knowledge/)
+├── plugin/                    # Single maintained package for local and cloud use
 │   ├── plugin.json
 │   ├── agents/                # 9 thin agent composers
-│   └── skills/                # 11 skills (3 core + 8 platform)
+│   ├── skills/                # 11 skills and their reference guides
+│   └── hooks.json             # Deterministic checks
+├── scripts/                   # Package validation and action catalog refresh
 └── .github/
     └── plugin/
         └── marketplace.json   # Copilot CLI plugin marketplace manifest

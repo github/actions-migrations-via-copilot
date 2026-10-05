@@ -67,13 +67,13 @@ Contributions are welcome — whether that's fixing a typo, improving an agent p
 
 This project follows a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you agree to abide by its terms.
 
-### Migration agents (`agents/`)
+### Migration agents (`plugin/agents/`)
 
 - Improve existing agent prompts for better accuracy
 - Add support for new CI/CD platforms
 - Update agent instructions based on real migration feedback
 
-### Knowledgebase (`knowledge/`)
+### Migration knowledge (`plugin/skills/`)
 
 - Add or update action mappings for CI/CD plugins and tasks
 - Document new migration patterns and best practices
@@ -96,11 +96,11 @@ This project follows a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, 
 
 To add support for a new platform:
 
-1. Create a new agent file in `agents/` (follow existing agent structure)
-2. Add action mappings in `knowledge/actions-mapping/`
-3. Add security patterns in `knowledge/patterns/<platform>/`
-4. Add a report template in `knowledge/report-template/`
-5. Update README.md to include the new platform
+1. Create a thin entry point in `plugin/agents/` that uses installed skills
+2. Add a platform skill under `plugin/skills/` with mappings, credential guidance, and a report template
+3. Register batch mappings and validation requirements as described in [Extending the Project](docs/extending.md)
+4. Run plugin, catalog, hook, and submission tests
+5. Update README.md and verify the new platform on supported runtimes
 
 ## AI contributions
 
