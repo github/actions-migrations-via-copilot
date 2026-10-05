@@ -200,6 +200,10 @@ run_case "CLI  deny rm README.md"            '{"toolName":"bash","toolArgs":"{\"
 run_case "CLI  deny rm Jenkinsfile"          '{"toolName":"bash","toolArgs":"{\"command\":\"rm Jenkinsfile\"}"}' "$DESTRUCTIVE" deny
 run_case "VSC  deny rm README.md"            '{"tool_name":"run_in_terminal","tool_input":{"command":"rm README.md","mode":"sync"}}' "$DESTRUCTIVE" deny
 run_case "VSC  allow git mv to ci-archive"   '{"tool_name":"run_in_terminal","tool_input":{"command":"git mv Jenkinsfile .github/ci-archive/Jenkinsfile","mode":"sync"}}' "$DESTRUCTIVE" allow
+run_case "CLI  allow root Bamboo specs archival" '{"toolName":"bash","toolArgs":{"command":"git mv bamboo-specs.yml .github/ci-archive/bamboo-specs.yml"}}' "$DESTRUCTIVE" allow
+run_case "VSC  allow root Bamboo YAML specs archival" '{"tool_name":"run_in_terminal","tool_input":{"command":"mv bamboo-specs.yaml .github/ci-archive/bamboo-specs.yaml","mode":"sync"}}' "$DESTRUCTIVE" allow
+run_case "CLI  deny Bamboo move outside archive" '{"toolName":"bash","toolArgs":{"command":"git mv bamboo-specs.yml backup.yml"}}' "$DESTRUCTIVE" deny
+run_case "CLI  deny unrelated Bamboo-like filename" '{"toolName":"bash","toolArgs":{"command":"git mv bamboo-specs.py .github/ci-archive/bamboo-specs.py"}}' "$DESTRUCTIVE" deny
 run_case "VSC  deny rm Jenkinsfile w/redir"  '{"tool_name":"run_in_terminal","tool_input":{"command":"rm Jenkinsfile 2>&1","mode":"sync"}}' "$DESTRUCTIVE" deny
 run_case "VSC  deny git mv README.md"        '{"tool_name":"run_in_terminal","tool_input":{"command":"git mv README.md .github/ci-archive/README.md","mode":"sync"}}' "$DESTRUCTIVE" deny
 run_case "VSC  deny path traversal"          '{"tool_name":"run_in_terminal","tool_input":{"command":"rm -f .github/ci-archive/../../README.md","mode":"sync"}}' "$DESTRUCTIVE" deny
