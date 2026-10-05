@@ -7,6 +7,7 @@ description: Jenkins migration to GitHub Actions — syntax mappings and the mig
 
 ## Files in this skill
 
+- `secrets.md` - detailed credential mappings and examples; read when migrating credentials.
 - `mapping.md` — syntax/command mappings from Jenkins to GitHub Actions, including how this platform's secret/credential references translate to `${{ secrets.* }}` / `${{ vars.* }}`.
 - `pipeline.md` — declarative and scripted pipeline conversion patterns.
 - `groovy.md` — Groovy script and shared-library expansion patterns.

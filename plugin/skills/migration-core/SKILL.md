@@ -5,6 +5,11 @@ description: 5-phase migration process, security guardrails, deliverables, archi
 
 # Migration Core
 
+Before migration, read the bundled [workflow](workflow.md), [standards](standards.md),
+and [guardrails](guardrails.md). This skill owns action-version verification and
+report-safety policy; the references provide the detailed process and examples.
+Resolve all bundled files relative to this installed skill, not the user's repository.
+
 ## 5-Phase Workflow
 
 All migrations follow these phases **in order** — skipping any phase is a completion failure.
@@ -81,9 +86,8 @@ and references, not values.
 directory holds verified SHAs for the actions this product emits most often. It
 ships with the plugin, so it works with no network at all:
 
-```bash
-grep -A2 '"actions/checkout"' plugin/skills/migration-core/pinned-actions.json
-```
+Read `pinned-actions.json` beside this installed `SKILL.md`. Do not assume the
+consumer repository contains a `plugin/` directory.
 
 If the action is in the catalog, use that SHA and move on. Check `resolved_on`
 in the file — if it is more than about six months old, say so in the report so

@@ -39,7 +39,7 @@ Every migration must produce the following deliverables:
 - Maintain original functionality while enhancing security
 - Implement least-privilege permissions
 - Use verified marketplace actions only
-- Pin actions to commit SHAs when required
+- Pin all actions to commit SHAs
 - Separate sensitive credentials using appropriate storage types
 
 ### 6. Performance Optimizations
@@ -102,21 +102,21 @@ Files must be **MOVED** (not copied) to the archive. Files must be **REMOVED** f
 
 **Always** create `.github/ci-archive/MIGRATION-README.md` with the completed report. Additionally, deliver the report via Pull Request:
 
-1. **Check for an existing Pull Request** on the current branch using the GitHub MCP tool
+1. **Check for an existing Pull Request** on the current branch using authenticated `gh` when available
 2. **If a PR already exists** → update the PR body with the completed report template
 3. **If no PR exists** → create a new Pull Request using the completed report template as the PR body
-4. **If the PR cannot be created or updated** (e.g., MCP tool unavailable, insufficient permissions, no remote branch) → the `MIGRATION-README.md` already created above serves as the report
+4. **If the PR cannot be created or updated** (e.g., `gh` unavailable, insufficient permissions, no remote branch) → the `MIGRATION-README.md` already created above serves as the report
 
 Use the appropriate report template for your CI system:
 
-- [Azure DevOps Migration Report Template](knowledge/report-template/azure-devops.md)
-- [Bamboo Migration Report Template](knowledge/report-template/bamboo.md)
-- [Bitbucket Migration Report Template](knowledge/report-template/bitbucket.md)
-- [CircleCI Migration Report Template](knowledge/report-template/circleci.md)
-- [Drone CI Migration Report Template](knowledge/report-template/droneci.md)
-- [GitLab Migration Report Template](knowledge/report-template/gitlab.md)
-- [Jenkins Migration Report Template](knowledge/report-template/jenkins.md)
-- [Travis CI Migration Report Template](knowledge/report-template/travisci.md)
+- [Azure DevOps Migration Report Template](../azure-devops-migration/report-template.md)
+- [Bamboo Migration Report Template](../bamboo-migration/report-template.md)
+- [Bitbucket Migration Report Template](../bitbucket-migration/report-template.md)
+- [CircleCI Migration Report Template](../circleci-migration/report-template.md)
+- [Drone CI Migration Report Template](../droneci-migration/report-template.md)
+- [GitLab Migration Report Template](../gitlab-migration/report-template.md)
+- [Jenkins Migration Report Template](../jenkins-migration/report-template.md)
+- [Travis CI Migration Report Template](../travisci-migration/report-template.md)
 
 #### Step 5: Execute Validation
 

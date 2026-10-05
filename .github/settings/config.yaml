@@ -27,17 +27,17 @@ gh_migration_type:
     - "None"
     - "Travis CI"
 
-## Migration Type Prompts
-## The following maps the migration type to the prompt that wil be used for the GitHub Coding Agent.
-migration_type_prompts:
-  "Azure DevOps": "azure-devops-migrator.md"
-  "Bamboo": "bamboo-migrator.md"
-  "Bitbucket": "bitbucket-migrator.md"
-  "CircleCI": "circleci-migrator.md"
-  "DroneCI": "droneci-migrator.md"
-  "GitLab": "gitlab-migrator.md"
-  "Jenkins": "jenkins-migrator.md"
-  "Travis CI": "travisci-migrator.md"
+## Migration Type Skills
+## Map each source platform to a skill from the installed actions-migrator plugin.
+migration_type_skills:
+  "Azure DevOps": "azure-devops-migration"
+  "Bamboo": "bamboo-migration"
+  "Bitbucket": "bitbucket-migration"
+  "CircleCI": "circleci-migration"
+  "DroneCI": "droneci-migration"
+  "GitLab": "gitlab-migration"
+  "Jenkins": "jenkins-migration"
+  "Travis CI": "travisci-migration"
 
 ## Organizations
 ## This property is used to store the list of organizations that the GitHub App has access to.

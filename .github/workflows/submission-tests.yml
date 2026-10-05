@@ -1,0 +1,31 @@
+name: Migration Submission Tests
+
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/**'
+      - '.github/settings/config.yaml'
+      - '.github/workflows/settings.yml'
+      - '.github/workflows/submit-repos.yml'
+      - '.github/workflows/submission-tests.yml'
+      - 'plugin/skills/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/**'
+      - '.github/settings/config.yaml'
+      - '.github/workflows/settings.yml'
+      - '.github/workflows/submit-repos.yml'
+      - '.github/workflows/submission-tests.yml'
+      - 'plugin/skills/**'
+
+permissions:
+  contents: read
+
+jobs:
+  submission-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Test configuration and issue dispatch
+        run: node --test .github/scripts/submit-repositories.test.js

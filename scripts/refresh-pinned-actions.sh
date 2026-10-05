@@ -17,9 +17,9 @@ cd "$(dirname "$0")/.." || exit 1
 
 OUT="plugin/skills/migration-core/pinned-actions.json"
 
-# Sourced from actual `uses:` occurrences across knowledge/ and plugin/skills/.
+# Sourced from actual `uses:` occurrences across plugin/skills/.
 # Regenerate the list with:
-#   grep -rhoE 'uses:[[:space:]]*[^ ]+/[^ @]+' knowledge/ plugin/skills/ | sort -u
+#   grep -rhoE 'uses:[[:space:]]*[^ ]+/[^ @]+' plugin/skills/ | sort -u
 ACTIONS=(
   actions/checkout
   actions/setup-node
