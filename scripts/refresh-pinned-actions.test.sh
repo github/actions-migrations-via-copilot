@@ -103,6 +103,35 @@ for version_file in apm.yml plugin/plugin.json .github/plugin/marketplace.json; 
   cp "$ROOT/$version_file" "$TEST_DIR/$version_file"
 done
 
+MARKETPLACE="$TEST_DIR/.github/plugin/marketplace.json"
+for invalid_case in trailing-text empty multiple-valid-objects conflicting-then-valid array; do
+  cp "$ROOT/.github/plugin/marketplace.json" "$MARKETPLACE"
+  case "$invalid_case" in
+    trailing-text) printf '\nnot JSON\n' >>"$MARKETPLACE" ;;
+    empty) : >"$MARKETPLACE" ;;
+    multiple-valid-objects) cat "$ROOT/.github/plugin/marketplace.json" >>"$MARKETPLACE" ;;
+    conflicting-then-valid)
+      jq '.metadata.version = "0.0.0" | .plugins[].version = "0.0.0"' \
+        "$ROOT/.github/plugin/marketplace.json" >"$MARKETPLACE"
+      cat "$ROOT/.github/plugin/marketplace.json" >>"$MARKETPLACE"
+      ;;
+    array) jq -s '.' "$ROOT/.github/plugin/marketplace.json" >"$MARKETPLACE" ;;
+  esac
+  expect_invalid "$invalid_case marketplace" 'package version mismatch'
+done
+cp "$ROOT/.github/plugin/marketplace.json" "$MARKETPLACE"
+
+find() { return 2; }
+export -f find
+expect_invalid 'failed Markdown enumeration' 'unable to enumerate plugin Markdown files'
+find() {
+  printf '%s\n' 'plugin/skills/jenkins-migration/SKILL.md'
+  return 2
+}
+export -f find
+expect_invalid 'partial Markdown enumeration' 'unable to enumerate plugin Markdown files'
+unset -f find
+
 jq '.hooks = "../outside.json"' "$ROOT/plugin/plugin.json" >"$TEST_DIR/plugin/plugin.json"
 expect_invalid 'hook path outside package' 'invalid hooks path'
 cp "$ROOT/plugin/plugin.json" "$TEST_DIR/plugin/plugin.json"
