@@ -6,46 +6,37 @@ Add support for new CI/CD platforms by creating migration agents and knowledgeba
 
 | Task                  | Files to Create                                               |
 | --------------------- | ------------------------------------------------------------- |
-| **New Agent**         | `agents/<platform>-migrator.md`                               |
-| **Action Mappings**   | `knowledge/actions-mapping/<platform>.md`                     |
-| **Security Patterns** | `knowledge/patterns/<platform>/secrets.md`                    |
-| **Report Template**   | `knowledge/report-template/<platform>.md`                     |
-| **Optional Patterns** | `knowledge/patterns/<platform>/{pipeline,plugins,scripts}.md` |
+| **New Agent** | `plugin/agents/<platform>-migrator.agent.md` |
+| **Skill Entry** | `plugin/skills/<platform>-migration/SKILL.md` |
+| **Action Mappings** | `plugin/skills/<platform>-migration/mapping.md` |
+| **Security Patterns** | `plugin/skills/<platform>-migration/secrets.md` |
+| **Report Template** | `plugin/skills/<platform>-migration/report-template.md` |
+| **Optional Patterns** | Reference files beside the platform skill |
 
-### Also extend the Copilot CLI plugin
+### One maintained package
 
-When you add a new platform, mirror the content into [`plugin/`](../plugin/README.md):
-
-| Task                      | Files to Create                                                                                                       |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **Plugin agent**          | `plugin/agents/<platform>-migrator.agent.md` (slim composer — see existing files for the template)                    |
-| **Plugin platform skill** | `plugin/skills/<platform>-migration/SKILL.md` + `mapping.md` + `report-template.md` (+ any extras like `pipeline.md`) |
-
-The skill's `mapping.md` and `report-template.md` are copies of the corresponding files under `knowledge/`. The `SKILL.md` adds the YAML frontmatter (`name`, `description`) so the plugin runtime can index it. Pattern: see `plugin/skills/jenkins-migration/`. Cross-platform secrets/credentials guidance lives in the shared `migration-core` skill, so no per-platform `secrets.md` is needed in the plugin.
-
-### Review migration-core source changes
-
-The shared `migration-workflow.md`, `migration-standards.md`, and
-`migration-guardrails.md` under `knowledge/` are summarized in the plugin's
-`migration-core/SKILL.md`. Review both sides whenever either changes, update
-the skill as needed, then refresh the recorded content hashes:
+Edit the plugin files directly. The same installed skills serve local and cloud
+sessions; do not recreate separate cloud content or a fingerprint refresh step.
+Shared process references belong in `plugin/skills/migration-core/`.
+Keep each guide referenced by its owning skill and resolve paths relative to the
+installed skill, not the consumer repository.
 
 ```bash
-bash scripts/check-migration-core-sources.sh --refresh
-./scripts/check-content-parity.sh
+bash scripts/check-plugin-content.sh
+bash scripts/refresh-pinned-actions.test.sh
+bash plugin/hooks.test.sh
+node --test .github/scripts/submit-repositories.test.js
 ```
 
-Commit `plugin/skills/migration-core/sources.json` with the reviewed changes.
-The hash check works in shallow checkouts and detects unacknowledged edits or
-missing sources. Refreshing hashes records review; it does not prove the two
-documents mean the same thing. The **Safe Migration Reports** section is checked
-for exact equality as an additional safety rule.
+When adding a batch-supported platform, update the explicit mapping in
+`.github/scripts/migration-targets.js`, `.github/settings/config.yaml`, the
+required-file list in the plugin checker, and their tests together.
 
 ## Adding a New Migration Agent
 
 ### 1. Create Agent File
 
-**Location:** `agents/<platform>-migrator.md`
+**Location:** `plugin/agents/<platform>-migrator.agent.md`
 
 **Required sections:**
 - YAML frontmatter (name, description)
@@ -55,19 +46,19 @@ for exact equality as an additional safety rule.
 - Key conversions
 - Security requirements
 
-**Template:** Copy `agents/jenkins-migrator.md` and adapt for your platform.
+**Template:** Follow `plugin/agents/jenkins-migrator.agent.md` and reference installed skills.
 
 ### 2. Create Knowledgebase Files
 
 **Required:**
-- `knowledge/actions-mapping/<platform>.md` - Command/task → Actions mappings
-- `knowledge/patterns/<platform>/secrets.md` - Credential migration patterns
-- `knowledge/report-template/<platform>.md` - Migration report structure
+- `plugin/skills/<platform>-migration/mapping.md` - Command/task mappings
+- `plugin/skills/<platform>-migration/secrets.md` - Credential migration patterns
+- `plugin/skills/<platform>-migration/report-template.md` - Migration report structure
 
 **Optional (create if needed):**
-- `knowledge/patterns/<platform>/pipeline.md` - Complex pipeline patterns
-- `knowledge/patterns/<platform>/plugins.md` - Plugin conversions
-- `knowledge/patterns/<platform>/scripts.md` - Script conversion patterns
+- `plugin/skills/<platform>-migration/pipeline.md` - Complex pipeline patterns
+- `plugin/skills/<platform>-migration/plugins.md` - Plugin conversions
+- `plugin/skills/<platform>-migration/scripts.md` - Script conversion patterns
 
 ### 3. Update Documentation
 
@@ -77,7 +68,7 @@ Add your agent to:
 
 ## Knowledgebase File Templates
 
-### Action Mappings (`knowledge/actions-mapping/<platform>.md`)
+### Action Mappings (`plugin/skills/<platform>-migration/mapping.md`)
 
 Maps platform syntax to GitHub Actions equivalents.
 
@@ -88,9 +79,9 @@ Maps platform syntax to GitHub Actions equivalents.
 - Environment variable handling
 - Basic secret patterns
 
-**Example:** `knowledge/actions-mapping/jenkins.md`
+**Example:** `plugin/skills/jenkins-migration/mapping.md`
 
-### Security Patterns (`knowledge/patterns/<platform>/secrets.md`)
+### Security Patterns (`plugin/skills/<platform>-migration/secrets.md`)
 
 Documents credential migration.
 
@@ -101,9 +92,9 @@ Documents credential migration.
 - Security best practices
 - Examples
 
-**Example:** `knowledge/patterns/jenkins/secrets.md`
+**Example:** `plugin/skills/jenkins-migration/secrets.md`
 
-### Report Template (`knowledge/report-template/<platform>.md`)
+### Report Template (`plugin/skills/<platform>-migration/report-template.md`)
 
 Defines migration report structure.
 
@@ -114,7 +105,7 @@ Defines migration report structure.
 - Validation results
 - Next steps
 
-**Example:** `knowledge/report-template/jenkins.md`
+**Example:** `plugin/skills/jenkins-migration/report-template.md`
 
 ### Optional Pattern Files
 
@@ -137,9 +128,9 @@ Create when patterns are too complex for action mappings:
    - Check markdown and YAML syntax
    - Confirm all knowledgebase file paths exist
 
-2. **Deploy to `.github-private`**
-   - Push changes to your organization's `.github-private` repository
-   - Verify repository visibility is **Internal**
+2. **Install the candidate plugin**
+   - Use an isolated local plugin path or an approved cloud test marketplace
+   - Verify the loaded revision; a feature-branch edit is not automatically available through a default-branch marketplace
 
 3. **Test migration**
    - Create test repo with sample CI/CD config

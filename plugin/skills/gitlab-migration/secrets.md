@@ -548,4 +548,4 @@ jobs:
 
 ---
 
-*For security best practices, migration checklists, troubleshooting guidance, and additional resources, refer to [Migration Guardrails](docs/migration-guardrails.md) and [Migration Standards](docs/migration-standards.md) in the knowledge base.*
+*For security best practices, migration checklists, troubleshooting guidance, and additional resources, refer to [Migration Guardrails](../migration-core/guardrails.md) and [Migration Standards](../migration-core/standards.md) in the installed plugin.*

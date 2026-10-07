@@ -24,15 +24,8 @@ git push -u origin migrate/to-actions
 
 1. Go to [github.com/copilot/agents](https://github.com/copilot/agents)
 2. Select your repository and branch
-3. Choose the appropriate migration agent:
-   - Jenkins Migrator
-   - Azure DevOps Migrator
-   - CircleCI Migrator
-   - GitLab Migrator
-   - Travis CI Migrator
-   - Bamboo Migrator
-   - Bitbucket Migrator
-   - Drone CI Migrator
+3. Use the default cloud agent with the migration plugin configured for this repository.
+  Local CLI/VS Code sessions may also select the plugin's agent entry point.
 
 4. Provide clear instructions:
 
@@ -40,6 +33,8 @@ git push -u origin migrate/to-actions
 
 ```
 Migrate our Jenkins pipeline to GitHub Actions.
+Use the installed actions-migrator plugin's migration-core, jenkins-migration,
+and actionlint skills. Stop without migration edits if any required skill is unavailable.
 
 Files:
 - Jenkinsfile (main build)
@@ -82,8 +77,14 @@ Automate migrations across multiple repositories using custom properties.
 
 1. Set `GH_MIGRATION_TYPE` custom property on repositories
 2. Run "Submit Repositories for Migration" workflow
-3. Workflow creates issues assigned to Copilot with agent prompts
-4. Copilot processes migrations using the appropriate agent
+3. Workflow validates skill mappings and creates short issues assigned to the default cloud agent
+4. Copilot loads the installed migration-core, platform, and actionlint skills
+
+Configure the plugin before submitting tasks. The task instructs Copilot to stop
+if skills are missing, but assignment success does not prove plugin readiness or
+migration completion. The script marks a repository as submitted only after the
+issue assignment succeeds. Existing search/property-update warnings still require
+operator attention; a failed property update can leave the repository queued.
 
 ### Supported Migration Types
 
@@ -122,8 +123,8 @@ Check workflow logs to see repositories being processed:
 ```
 Found 15 repositories with GH_MIGRATION_TYPE property
 Processing batch 1 of 1 (15 repositories)
-- Assigning jenkins-migrator to repo: frontend-app
-- Assigning circleci-migrator to repo: mobile-app
+- Submitting task using jenkins-migration for frontend-app
+- Submitting task using circleci-migration for mobile-app
 ```
 
 Review migration results in each repository's pull requests.
@@ -133,6 +134,10 @@ Review migration results in each repository's pull requests.
 Edit `.github/settings/config.yaml` in `.github-private`:
 
 ```yaml
+migration_type_skills:
+  Jenkins: jenkins-migration
+  CircleCI: circleci-migration
+
 gh_migration_type:
   default_value: 'Jenkins'
   other_values:
@@ -156,7 +161,8 @@ batch_size: 100
 | Issue                                          | Solution                                                                               |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------- |
 | **Repository not picked up by batch workflow** | Verify `GH_MIGRATION_TYPE` property is set: `gh api /repos/ORG/REPO/properties/values` |
-| **Wrong agent assigned**                       | Check property value matches config.yaml mappings                                      |
+| **Wrong platform skill requested** | Check the property value and `migration_type_skills` mappings. |
+| **Missing skill** | Check plugin configuration and loaded revision; do not use a generic migration instead. |
 | **Workflow fails after migration**             | Review migration report for required secrets, check workflow logs                      |
 | **Agent can't access source files**            | Verify files exist on correct branch, check file paths (case-sensitive)                |
 | **Missing validation results**                 | Re-run migration with explicit validation request                                      |
@@ -185,7 +191,7 @@ batch_size: 100
 ## Getting Help
 
 - **Migration Reports**: Review the Pull Request created at migration completion
-- **Knowledgebase**: Review `knowledge/` in `.github-private`
+- **Migration guides**: Review the installed platform skill and its bundled references
 - **Discussions**: [github.com/copilot/agents discussions](https://github.com/github/actions-migrations-via-copilot/discussions)
 - **Issues**: Report problems or request improvements
 
