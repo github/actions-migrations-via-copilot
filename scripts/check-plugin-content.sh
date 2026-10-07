@@ -52,6 +52,11 @@ required_file plugin/skills/actionlint/SKILL.md
 required_file plugin/skills/jenkins-migration/pipeline.md
 required_file plugin/skills/jenkins-migration/groovy.md
 
+if ! markdown_files=$(find plugin/skills plugin/agents -type f -name '*.md'); then
+  fail plugin/ 'unable to enumerate plugin Markdown files'
+  exit 1
+fi
+
 while IFS= read -r file; do
   CHECKED=$((CHECKED + 1))
   if head -1 "$file" | grep -qE '^`{3,}(markdown)?$'; then
@@ -59,7 +64,7 @@ while IFS= read -r file; do
   elif [ "$(tail -1 "$file")" = '```' ] && [ "$(grep -c '^```' "$file")" -eq 1 ]; then
     fail "$file" 'file ends with an unmatched closing fence'
   fi
-done < <(find plugin/skills plugin/agents -type f -name '*.md')
+done <<< "$markdown_files"
 
 CHECKED=$((CHECKED + 1))
 if grep -rnE 'mcp_[a-z_]+|github-mcp-server-[a-z_]+|\{MY_ORGANIZATION\}|knowledge/' plugin/skills/ plugin/agents/; then
@@ -82,10 +87,12 @@ CHECKED=$((CHECKED + 1))
 APM_VERSION=$(sed -n 's/^version:[[:space:]]*//p' apm.yml | head -1)
 PLUGIN_VERSION=$(jq -er '.version | select(type == "string")' plugin/plugin.json)
 if [ -z "$PLUGIN_VERSION" ] || [ "$APM_VERSION" != "$PLUGIN_VERSION" ] ||
-   ! jq -e --arg version "$PLUGIN_VERSION" '
-     .metadata.version == $version and
-     (.plugins | length > 0) and
-     ([.plugins[].version == $version] | all)
+   ! jq -e -s --arg version "$PLUGIN_VERSION" '
+     length == 1 and
+     (.[0] | type == "object" and
+       .metadata.version == $version and
+       (.plugins | length > 0) and
+       ([.plugins[].version == $version] | all))
    ' .github/plugin/marketplace.json >/dev/null 2>&1; then
   fail apm.yml 'package version mismatch between APM, plugin, and marketplace'
 fi
