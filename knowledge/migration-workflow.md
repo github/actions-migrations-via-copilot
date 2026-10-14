@@ -91,6 +91,10 @@ For complete validation requirements and tool setup, see [Workflow Validation Re
 
 **Complete Migration Documentation:**
 
+Before writing or publishing any report, follow **Safe Migration Reports** in
+`knowledge/migration-guardrails.md`. Review validation output and examples for
+credential values; report only names and references, not values.
+
 1. **MANDATORY**: Create `.github/ci-archive/MIGRATION-README.md` with the completed report
 2. **MANDATORY**: Deliver the migration report via the Pull Request workflow below
 3. Include actual validation output, not placeholders
