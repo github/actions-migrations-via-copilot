@@ -1,0 +1,32 @@
+name: Plugin Validation
+
+on:
+  pull_request:
+    paths:
+      - 'plugin/**'
+      - 'apm.yml'
+      - '.github/plugin/marketplace.json'
+      - 'scripts/**'
+      - '.github/workflows/plugin-validation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'plugin/**'
+      - 'apm.yml'
+      - '.github/plugin/marketplace.json'
+      - 'scripts/**'
+      - '.github/workflows/plugin-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plugin-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate the installed plugin package
+        run: bash scripts/check-plugin-content.sh
+      - name: Test catalog generation and plugin validation
+        run: bash scripts/refresh-pinned-actions.test.sh

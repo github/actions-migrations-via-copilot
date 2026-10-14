@@ -200,6 +200,10 @@ run_case "CLI  deny rm README.md"            '{"toolName":"bash","toolArgs":"{\"
 run_case "CLI  deny rm Jenkinsfile"          '{"toolName":"bash","toolArgs":"{\"command\":\"rm Jenkinsfile\"}"}' "$DESTRUCTIVE" deny
 run_case "VSC  deny rm README.md"            '{"tool_name":"run_in_terminal","tool_input":{"command":"rm README.md","mode":"sync"}}' "$DESTRUCTIVE" deny
 run_case "VSC  allow git mv to ci-archive"   '{"tool_name":"run_in_terminal","tool_input":{"command":"git mv Jenkinsfile .github/ci-archive/Jenkinsfile","mode":"sync"}}' "$DESTRUCTIVE" allow
+run_case "CLI  allow root Bamboo specs archival" '{"toolName":"bash","toolArgs":{"command":"git mv bamboo-specs.yml .github/ci-archive/bamboo-specs.yml"}}' "$DESTRUCTIVE" allow
+run_case "VSC  allow root Bamboo YAML specs archival" '{"tool_name":"run_in_terminal","tool_input":{"command":"mv bamboo-specs.yaml .github/ci-archive/bamboo-specs.yaml","mode":"sync"}}' "$DESTRUCTIVE" allow
+run_case "CLI  deny Bamboo move outside archive" '{"toolName":"bash","toolArgs":{"command":"git mv bamboo-specs.yml backup.yml"}}' "$DESTRUCTIVE" deny
+run_case "CLI  deny unrelated Bamboo-like filename" '{"toolName":"bash","toolArgs":{"command":"git mv bamboo-specs.py .github/ci-archive/bamboo-specs.py"}}' "$DESTRUCTIVE" deny
 run_case "VSC  deny rm Jenkinsfile w/redir"  '{"tool_name":"run_in_terminal","tool_input":{"command":"rm Jenkinsfile 2>&1","mode":"sync"}}' "$DESTRUCTIVE" deny
 run_case "VSC  deny git mv README.md"        '{"tool_name":"run_in_terminal","tool_input":{"command":"git mv README.md .github/ci-archive/README.md","mode":"sync"}}' "$DESTRUCTIVE" deny
 run_case "VSC  deny path traversal"          '{"tool_name":"run_in_terminal","tool_input":{"command":"rm -f .github/ci-archive/../../README.md","mode":"sync"}}' "$DESTRUCTIVE" deny
@@ -262,6 +266,45 @@ run_case "VSC  flags dirty workflow"  '{"tool_name":"create_file","tool_input":{
 run_case "VSC  clean workflow no-flag" '{"tool_name":"create_file","tool_input":{"filePath":"'"$WORKDIR"'/.github/workflows/clean.yml"}}' "$QUALITY" nocontext
 run_case "VSC  non-workflow file noop" '{"tool_name":"create_file","tool_input":{"filePath":"'"$WORKDIR"'/README.md"}}' "$QUALITY" nocontext
 run_no_jq_case "no-jq quality hook emits advisory (context)"      "$QUALITY"     context
+
+QUALITY_MATCHER=$(jq -r '.hooks.postToolUse[0].matcher' "$HOOKS_JSON")
+run_quality_case() {
+  local label="$1" payload="$2" expect="$3" tool hook
+  tool=$(printf '%s' "$payload" | jq -r '.toolName // .tool_name')
+  hook="printf '{}'"
+  if [[ "$tool" =~ $QUALITY_MATCHER ]]; then
+    hook="$QUALITY"
+  fi
+  run_case "$label" "$payload" "$hook" "$expect"
+}
+
+payload=$(jq -cn --arg cwd "$WORKDIR" '{cwd:$cwd,toolName:"apply_patch",toolArgs:"*** Begin Patch\n*** Update File: .github/workflows/dirty.yml\n@@\n+name: CD\n*** End Patch\n"}')
+run_quality_case "Agent Host raw patch reaches workflow quality check" "$payload" context
+
+for tool in create edit; do
+  payload=$(jq -cn --arg tool "$tool" --arg cwd "$WORKDIR" '{cwd:$cwd,toolName:$tool,toolArgs:{path:".github/workflows/dirty.yml"}}')
+  run_quality_case "$tool still reaches workflow quality check" "$payload" context
+done
+payload=$(jq -cn --arg cwd "$WORKDIR" '{cwd:$cwd,tool_name:"apply_patch",tool_input:{input:"*** Begin Patch\n*** Add File: .github/workflows/dirty.yml\n+name: CD\n*** End Patch\n"}}')
+run_quality_case "VSC object patch flags added workflow" "$payload" context
+payload=$(jq -cn --arg cwd "$WORKDIR" '{workingDirectory:$cwd,toolName:"apply_patch",toolArgs:({patch:"*** Begin Patch\n*** Update File: .github/workflows/dirty.yml\n@@\n+name: CD\n*** End Patch\n"}|tojson)}')
+run_quality_case "CLI JSON-string patch uses workspace directory" "$payload" context
+payload=$(jq -cn --arg cwd "$WORKDIR" '{cwd:$cwd,toolName:"apply_patch",toolArgs:{patch:"*** Begin Patch\n*** Update File: .github/workflows/clean.yml\n@@\n+name: CI\n*** End Patch\n"}}')
+run_quality_case "CLI object patch permits clean workflow" "$payload" nocontext
+payload=$(jq -cn --arg cwd "$WORKDIR" '{cwd:$cwd,toolName:"apply_patch",toolArgs:"*** Begin Patch\n*** Delete File: .github/workflows/dirty.yml\n*** Update File: .github/workflows/missing.yml\n@@\n+name: Missing\n*** Add File: README.md\n+*** Update File: .github/workflows/dirty.yml\n*** End Patch\n"}')
+run_quality_case "patch ignores deletions missing files and header-like content" "$payload" nocontext
+payload=$(jq -cn --arg cwd "$WORKDIR" '{cwd:$cwd,toolName:"view",toolArgs:{path:".github/workflows/dirty.yml"}}')
+run_quality_case "quality matcher skips read-only tools" "$payload" nocontext
+
+cp "$WORKDIR/.github/workflows/dirty.yml" "$WORKDIR/.github/workflows/dirty two.yml"
+payload=$(jq -cn --arg cwd "$WORKDIR" '{cwd:$cwd,toolName:"apply_patch",toolArgs:"*** Begin Patch\n*** Update File: .github/workflows/clean.yml\n@@\n+name: CI\n*** Update File: .github/workflows/dirty.yml\n@@\n+name: CD\n*** Update File: old.yml\n*** Move to: .github/workflows/dirty two.yml\n@@\n+name: CD\n*** End Patch\n"}')
+output=$(printf '%s' "$payload" | bash -c "$QUALITY")
+if printf '%s' "$output" | jq -es 'length == 1 and (.[0].additionalContext | contains("dirty.yml") and contains("dirty two.yml") and (contains("clean.yml") | not))' >/dev/null; then
+  PASS=$((PASS+1)); echo "  ok   patch checks every workflow including renamed paths with spaces"
+else
+  FAIL=$((FAIL+1)); echo "  FAIL patch checks every workflow including renamed paths with spaces"
+fi
+rm -f "$WORKDIR/.github/workflows/dirty two.yml"
 
 
 echo "== agentStop (CLI): quality gate =="

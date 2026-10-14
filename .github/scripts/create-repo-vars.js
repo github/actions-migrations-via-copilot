@@ -1,3 +1,5 @@
+const { resolveMigrationSkills } = require('./migration-targets')
+
 /**
  * Creates or updates repository variables based on configuration
  */
@@ -7,7 +9,11 @@ module.exports = async ({ github, context, core, config }) => {
     const parsedConfig = typeof config === 'string' ? JSON.parse(config) : config
 
     const ghAppId = parsedConfig.gh_app_id
-    const migrationTypePrompts = parsedConfig.migration_type_prompts
+    const migrationSkills = resolveMigrationSkills({
+      skills: parsedConfig.migration_type_skills,
+      prompts: parsedConfig.migration_type_prompts,
+      warn: (message) => core.warning(message),
+    })
     const organizations = parsedConfig.organizations
     const batchSize = parsedConfig.batch_size || 100
 
@@ -38,29 +44,29 @@ module.exports = async ({ github, context, core, config }) => {
       }
     }
 
-    // 2. Create or update repository variable for migration_type_prompts as JSON string
+    // 2. Create or update repository variable for migration_type_skills as JSON string
     core.info(
-      'Creating/updating repository variable for migration type prompts...'
+      'Creating/updating repository variable for migration type skills...'
     )
-    const migrationTypePromptsJson = JSON.stringify(migrationTypePrompts)
+    const migrationSkillsJson = JSON.stringify(migrationSkills)
     try {
       await github.rest.actions.createRepoVariable({
         owner: context.repo.owner,
         repo: context.repo.repo,
-        name: 'MIGRATION_TYPE_PROMPTS',
-        value: migrationTypePromptsJson,
+        name: 'MIGRATION_TYPE_SKILLS',
+        value: migrationSkillsJson,
       })
-      core.info('✅ Created MIGRATION_TYPE_PROMPTS repository variable')
+      core.info('✅ Created MIGRATION_TYPE_SKILLS repository variable')
     } catch (error) {
       if (error.status === 409) {
         // Variable already exists, update it
         await github.rest.actions.updateRepoVariable({
           owner: context.repo.owner,
           repo: context.repo.repo,
-          name: 'MIGRATION_TYPE_PROMPTS',
-          value: migrationTypePromptsJson,
+          name: 'MIGRATION_TYPE_SKILLS',
+          value: migrationSkillsJson,
         })
-        core.info('✅ Updated MIGRATION_TYPE_PROMPTS repository variable')
+        core.info('✅ Updated MIGRATION_TYPE_SKILLS repository variable')
       } else {
         throw error
       }
