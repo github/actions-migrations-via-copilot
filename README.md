@@ -116,10 +116,15 @@ irm https://aka.ms/apm-windows | iex
 Add the dependency to your project's `apm.yml`:
 
 ```yaml
+targets:
+  - copilot
 dependencies:
   apm:
-    - github/actions-migrations-via-copilot/plugin#v1.3.0
+    - github/actions-migrations-via-copilot/plugin#v1.4.0
 ```
+
+APM 0.26 and later need `targets` in a project that has no existing agent
+folders; without it, `apm install` stops before installing anything.
 
 The `/plugin` suffix is a **virtual path** — it points APM at the [`plugin/`](plugin/) subdirectory where `plugin.json` lives, so APM treats this repo as a *Plugin collection* package type ([APM docs](https://microsoft.github.io/apm/reference/package-types/#plugin-collection-pluginjson)) and dissects `plugin.json` to install the agents and skills.
 
@@ -133,7 +138,7 @@ APM deploys the agents and skills into your repo, pins the resolved sources and 
 
 #### Release pins
 
-The `#v1.3.0` above selects that exact Git tag, not the version declared in the
+The `#v1.4.0` above selects that exact Git tag, not the version declared in the
 current plugin manifest. Cloning the default branch gets the current merged code.
 For a newer pinned install, choose an existing tag from
 [Releases](https://github.com/github/actions-migrations-via-copilot/releases).
