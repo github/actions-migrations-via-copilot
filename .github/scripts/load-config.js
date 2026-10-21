@@ -1,3 +1,5 @@
+const { resolveMigrationSkills } = require('./migration-targets')
+
 /**
  * Loads and parses the config.yaml file
  * Returns the configuration as a JSON string for use by other steps
@@ -13,13 +15,19 @@ module.exports = async ({ core, process, fs, yaml }) => {
 
         // Validate required fields
         if (
+            !config ||
             !config.gh_app_id ||
             !config.gh_migration_type ||
-            !config.migration_type_prompts ||
             !config.organizations
         ) {
             throw new Error('Missing required configuration fields')
         }
+
+        config.migration_type_skills = resolveMigrationSkills({
+            skills: config.migration_type_skills,
+            prompts: config.migration_type_prompts,
+            warn: (message) => core.warning(message),
+        })
 
         // Output the configuration as JSON for other steps
         const configJson = JSON.stringify(config)

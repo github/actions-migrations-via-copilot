@@ -7,6 +7,7 @@ description: Drone CI migration to GitHub Actions — syntax mappings and the mi
 
 ## Files in this skill
 
+- `secrets.md` - detailed credential mappings and examples; read when migrating credentials.
 - `mapping.md` — syntax/command mappings from Drone CI to GitHub Actions, including how this platform's secret/credential references translate to `${{ secrets.* }}` / `${{ vars.* }}`.
 - `report-template.md` — migration report template (fill placeholders, deliver as PR body and `.github/ci-archive/MIGRATION-README.md`).
 

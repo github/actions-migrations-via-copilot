@@ -1,55 +1,4 @@
-/**
- * Parses and validates migration type prompts from environment variable
- * @param {object} core - GitHub Actions core utilities
- * @param {object} process - Node.js process object
- * @returns {object} Parsed migration type prompts mapping
- */
-const parseMigrationTypePrompts = (core, process) => {
-  core.info('Fetching available migration types from environment variable...')
-
-  const migrationTypePromptsEnv = process.env.MIGRATION_TYPE_PROMPTS
-
-  if (!migrationTypePromptsEnv) {
-    const error = new Error(
-      'MIGRATION_TYPE_PROMPTS environment variable is missing'
-    )
-    core.setFailed(
-      'Environment variable MIGRATION_TYPE_PROMPTS is required but not found'
-    )
-    throw error
-  }
-
-  try {
-    const migrationTypePrompts = JSON.parse(migrationTypePromptsEnv)
-    const migrationTypes = Object.keys(migrationTypePrompts)
-
-    if (migrationTypes.length === 0) {
-      const error = new Error(
-        'No migration types found in MIGRATION_TYPE_PROMPTS'
-      )
-      core.setFailed(
-        'MIGRATION_TYPE_PROMPTS environment variable is empty or contains no migration types'
-      )
-      throw error
-    }
-
-    core.info(`Found migration types: ${migrationTypes.join(', ')}`)
-    core.info(
-      `Migration type mappings: ${JSON.stringify(
-        migrationTypePrompts,
-        null,
-        2
-      )}`
-    )
-
-    return { migrationTypePrompts, migrationTypes }
-  } catch (parseError) {
-    core.setFailed(
-      `Failed to parse MIGRATION_TYPE_PROMPTS JSON: ${parseError.message}`
-    )
-    throw parseError
-  }
-}
+const { resolveMigrationSkills } = require('./migration-targets')
 
 /**
  * Searches for repositories with specific migration types
@@ -114,28 +63,28 @@ const searchRepositoriesForMigration = async (
 /**
  * Validates repositories and filters those with valid migration types
  * @param {object[]} repositories - Array of repositories to validate
- * @param {object} migrationTypePrompts - Migration type prompts mapping
+ * @param {object} migrationSkills - Migration type skills mapping
  * @param {object} core - GitHub Actions core utilities
  * @param {string} org - Organization name
  * @returns {object[]} Array of valid repositories
  */
 const validateRepositories = (
   repositories,
-  migrationTypePrompts,
+  migrationSkills,
   core,
   org
 ) => {
   const validRepos = []
 
   for (const repo of repositories) {
-    if (repo.migrationType && migrationTypePrompts[repo.migrationType]) {
+    if (repo.migrationType && migrationSkills[repo.migrationType]) {
       validRepos.push(repo)
       core.info(
         `Repository ${org}/${repo.name} needs migration from ${repo.migrationType}`
       )
     } else {
       core.info(
-        `Repository ${org}/${repo.name} has migration type "${repo.migrationType}" but no corresponding prompt file found`
+        `Repository ${org}/${repo.name} has migration type "${repo.migrationType}" but no corresponding skill configured`
       )
     }
   }
@@ -143,34 +92,14 @@ const validateRepositories = (
   return validRepos
 }
 
-/**
- * Reads prompt file content for a specific migration type
- * @param {string} promptFileName - Name of the prompt file
- * @param {string} migrationType - Migration type for fallback message
- * @param {object} core - GitHub Actions core utilities
- * @param {object} process - Node.js process object
- * @returns {string} Prompt file content or fallback message
- */
-const readPromptFile = (promptFileName, migrationType, core, process) => {
-  try {
-    const fs = require('fs')
-    const path = require('path')
-
-    const promptFilePath = path.join(
-      process.cwd(),
-      'agents',
-      promptFileName
-    )
-
-    core.info(`Reading prompt file: ${promptFilePath}`)
-    return fs.readFileSync(promptFilePath, 'utf8')
-  } catch (fileError) {
-    core.warning(
-      `Failed to read prompt file ${promptFileName}: ${fileError.message}`
-    )
-    return `This repository has been identified for migration from ${migrationType} to GitHub Actions.`
-  }
-}
+const buildMigrationTask = (migrationType, skill) => [
+  `Migrate this repository from ${migrationType} to GitHub Actions.`,
+  '',
+  `Use the installed actions-migrator plugin's migration-core, ${skill}, and actionlint skills.`,
+  'Before changing files, locate and load those installed skills. If the plugin or any required skill is unavailable, stop without migration edits and report the missing prerequisite.',
+  'Do not install a plugin, change plugin settings, fetch another copy of the migration guides, or substitute generic migration instructions.',
+  'Follow the skills for conversion, validation, source archival, and the migration report. Keep secret scanning and push protection enabled. Never include credential values in files, reports, or PR text.',
+].join('\n')
 
 /**
  * Creates a GitHub client with issue submit token
@@ -196,15 +125,6 @@ const createIssueSubmitClient = (github, core, process) => {
 }
 
 /**
- * Derives the Copilot custom agent name from a prompt file name
- * (e.g. "jenkins-migrator.md" -> "jenkins-migrator").
- * @param {string} promptFileName - Name of the prompt file
- * @returns {string} Custom agent name
- */
-const deriveCustomAgentName = (promptFileName) =>
-  promptFileName.replace(/\.md$/i, '')
-
-/**
  * Creates a migration issue and assigns it to the Copilot cloud agent in a
  * single REST call using the agent_assignment input.
  * See: https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/use-cloud-agent-via-the-api
@@ -213,9 +133,8 @@ const deriveCustomAgentName = (promptFileName) =>
  * @param {string} org - Organization name
  * @param {string} repoName - Repository name
  * @param {string} baseBranch - Base branch the agent should branch from
- * @param {string} customAgent - Custom agent name to use for the task
  * @param {string} issueTitle - Issue title
- * @param {string} issueBody - Issue body (full migration prompt)
+ * @param {string} issueBody - Short task referencing installed migration skills
  */
 const createAndAssignMigrationIssue = async (
   issueGithub,
@@ -223,7 +142,6 @@ const createAndAssignMigrationIssue = async (
   org,
   repoName,
   baseBranch,
-  customAgent,
   issueTitle,
   issueBody
 ) => {
@@ -238,7 +156,6 @@ const createAndAssignMigrationIssue = async (
       agent_assignment: {
         target_repo: `${org}/${repoName}`,
         base_branch: baseBranch,
-        custom_agent: customAgent,
       },
       headers: {
         'X-GitHub-Api-Version': '2022-11-28',
@@ -248,7 +165,7 @@ const createAndAssignMigrationIssue = async (
 
   core.info(
     `Created and assigned migration issue #${createdIssue.data.number} ` +
-    `to copilot-swe-agent (custom agent: ${customAgent}) in ${org}/${repoName}`
+    `to copilot-swe-agent using installed plugin skills in ${org}/${repoName}`
   )
 }
 
@@ -294,7 +211,7 @@ const updateRepositoryMigrationProperty = async (
  * Processes a single repository for migration
  * @param {object} repo - Repository object
  * @param {string} org - Organization name
- * @param {object} migrationTypePrompts - Migration type prompts mapping
+ * @param {object} migrationSkills - Migration type skills mapping
  * @param {object} github - GitHub API client
  * @param {object} issueGithub - GitHub client for issue operations
  * @param {object} core - GitHub Actions core utilities
@@ -303,7 +220,7 @@ const updateRepositoryMigrationProperty = async (
 const processRepository = async (
   repo,
   org,
-  migrationTypePrompts,
+  migrationSkills,
   github,
   issueGithub,
   core,
@@ -315,24 +232,14 @@ const processRepository = async (
 
   try {
     const { migrationType } = repo
-    const promptFileName = migrationTypePrompts[migrationType]
+    const skill = migrationSkills[migrationType]
 
-    if (!promptFileName) {
-      core.warning(`No prompt file found for migration type: ${migrationType}`)
-      return
+    if (!skill) {
+      throw new Error(`No skill configured for migration type: ${migrationType}`)
     }
 
-    // Read prompt file and create issue
-    const issueBody = readPromptFile(
-      promptFileName,
-      migrationType,
-      core,
-      process
-    )
+    const issueBody = buildMigrationTask(migrationType, skill)
     const issueTitle = `[Actions Migration] ${migrationType}`
-
-    // Derive the custom agent name from the prompt file name
-    const customAgent = deriveCustomAgentName(promptFileName)
 
     // Base branch the cloud agent should branch from
     const baseBranch = repo.default_branch || 'main'
@@ -345,7 +252,6 @@ const processRepository = async (
       org,
       repo.name,
       baseBranch,
-      customAgent,
       issueTitle,
       issueBody
     )
@@ -354,10 +260,12 @@ const processRepository = async (
     await updateRepositoryMigrationProperty(github, core, org, repo.name)
 
     core.info(`Repository ${org}/${repo.name} processed successfully`)
+    return true
   } catch (error) {
     core.warning(
       `Failed to process repository ${org}/${repo.name}: ${error.message}`
     )
+    return false
   }
 }
 
@@ -365,11 +273,15 @@ module.exports = async ({ github, context, core, process, org, batchSize }) => {
   try {
     core.info(`Starting migration process for organization: ${org}`)
 
-    // Parse migration types from environment variable
-    const { migrationTypePrompts, migrationTypes } = parseMigrationTypePrompts(
-      core,
-      process
-    )
+    const migrationSkills = resolveMigrationSkills({
+      skills: process.env.MIGRATION_TYPE_SKILLS || undefined,
+      prompts: process.env.MIGRATION_TYPE_PROMPTS || undefined,
+      warn: (message) => core.warning(message),
+    })
+    const migrationTypes = Object.keys(migrationSkills)
+    if (!Number.isInteger(batchSize) || batchSize < 1) {
+      throw new Error('Batch size must be a positive integer')
+    }
 
     // Search for repositories requiring migration
     const foundRepos = await searchRepositoriesForMigration(
@@ -385,7 +297,7 @@ module.exports = async ({ github, context, core, process, org, batchSize }) => {
     // Validate repositories and filter by valid migration types
     const validRepos = validateRepositories(
       foundRepos,
-      migrationTypePrompts,
+      migrationSkills,
       core,
       org
     )
@@ -402,27 +314,33 @@ module.exports = async ({ github, context, core, process, org, batchSize }) => {
     // Create the GitHub client for issue operations once for all repositories
     const issueGithub = createIssueSubmitClient(github, core, process)
 
-    // Process each repository
+    const submittedRepositories = []
     for (const repo of batchedRepos) {
-      await processRepository(
+      const submitted = await processRepository(
         repo,
         org,
-        migrationTypePrompts,
+        migrationSkills,
         github,
         issueGithub,
         core,
         process
       )
+      if (submitted) submittedRepositories.push(repo.name)
     }
 
+    const failedRepositories = batchedRepos.length - submittedRepositories.length
+    if (failedRepositories > 0) {
+      core.setFailed(`${failedRepositories} migration issue assignment(s) failed`)
+    }
     core.info(`Completed processing repositories for organization: ${org}`)
 
     return {
       organization: org,
       totalRepositoriesSearched: foundRepos.length,
       repositoriesRequiringMigration: validRepos.length,
-      processedRepositories: batchedRepos.length,
-      repositoryNames: batchedRepos.map((repo) => repo.name),
+      processedRepositories: submittedRepositories.length,
+      failedRepositories,
+      repositoryNames: submittedRepositories,
     }
   } catch (error) {
     core.setFailed(

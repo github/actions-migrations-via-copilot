@@ -74,6 +74,7 @@ plugin/
     └── <platform>-migration/       # 8 platform skills
         ├── SKILL.md
         ├── mapping.md
+        ├── secrets.md
         ├── report-template.md
         └── (jenkins only) pipeline.md, groovy.md
 ```
@@ -88,7 +89,11 @@ Every migration agent loads:
 
 The Reusable Workflow Builder loads `reusable-workflow-patterns` + `migration-core` + `actionlint`.
 
-This replaces the previous pattern of agents fetching `knowledge/*.md` files at runtime from a private `.github-private` repo via the GitHub MCP server — everything now ships locally with the plugin.
+The plugin is the maintained content package for local and cloud use. Shared
+workflow, standards, and guardrail references live beside `migration-core/SKILL.md`;
+platform references live beside their owning skills. No separate remote knowledge
+fetch is required. Batch jobs reference the installed skills without copying guides
+into issues or assuming plugin agents are registered in GitHub's custom-agent picker.
 
 ---
 
@@ -112,7 +117,7 @@ Secret detection is a best-effort check of supported tool payloads, not a comple
 credential scanner. It cannot inspect arbitrary files read by shell commands,
 encoded content, or text sent outside hooked tools. Review the final report and
 keep repository secret scanning and push protection enabled. Cloud deployments
-using only `agents/` and `knowledge/` receive guidance, not these plugin hooks.
+using a historical agent-only release receive guidance, not these plugin hooks.
 If a credential may already have been exposed, revoke or rotate it.
 
 ### Why hooks matter
@@ -157,21 +162,18 @@ What it checks: secret-detection deny/allow including report tables, PR bodies, 
 
 ## Customizing Skills
 
-Customizing skills is the CLI plugin's equivalent of editing the `knowledge/` knowledge base in the [cloud-agent deployment](../docs/deployment.md). Because the plugin ships content **locally**, your edits take effect on the next `copilot plugin install ./plugin`—no `.github-private` push, no MCP round-trip.
+Edit the files in this package for both local and cloud use. Reinstall local
+plugins after edits and verify the loaded revision for cloud jobs. See the
+[deployment guide](../docs/deployment.md) for runtime configuration.
 
-### What maps to what
+### Content ownership
 
-If you've worked with the cloud-agent version, this table shows where the same content lives in the plugin:
-
-| Cloud agent (knowledge base)                      | CLI plugin (skill)                                              | Purpose                                                      |
-| ------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------ |
-| `knowledge/migration-workflow.md`                 | `plugin/skills/migration-core/SKILL.md` (+ workflow files)      | 5-phase migration process                                    |
-| `knowledge/migration-guardrails.md`               | `plugin/skills/migration-core/` (guardrails section)            | Security/quality guardrails                                  |
-| `knowledge/migration-standards.md`                | `plugin/skills/migration-core/` (deliverables + checklist)      | Completion standards                                         |
-| `knowledge/actions-mapping/<platform>.md`         | `plugin/skills/<platform>-migration/mapping.md`                 | Source-syntax → Actions mappings                             |
-| `knowledge/report-template/<platform>.md`         | `plugin/skills/<platform>-migration/report-template.md`         | PR body / `MIGRATION-README.md` structure                    |
-| `knowledge/patterns/<platform>/secrets.md`        | (consolidated) `plugin/skills/migration-core/` secrets guidance | Credential migration (shared across platforms in the plugin) |
-| `knowledge/patterns/jenkins/{pipeline,groovy}.md` | `plugin/skills/jenkins-migration/{pipeline,groovy}.md`          | Platform-specific deep dives                                 |
+| Content | Maintained location |
+|---|---|
+| Shared process, guardrails, standards, and action catalog | `plugin/skills/migration-core/` |
+| Platform mappings, credential guides, and report templates | `plugin/skills/<platform>-migration/` |
+| Jenkins pipeline and Groovy references | `plugin/skills/jenkins-migration/` |
+| Validation guidance | `plugin/skills/actionlint/` |
 
 ### Common customization tasks
 
@@ -234,22 +236,21 @@ To add a new source CI system to the plugin:
 2. Create `plugin/skills/<platform>-migration/` with:
    - `SKILL.md` — YAML frontmatter (`name`, `description`) plus a short orientation. Copy from `plugin/skills/jenkins-migration/SKILL.md`.
    - `mapping.md` — source syntax → Actions mappings.
+  - `secrets.md` - credential mappings and security examples.
    - `report-template.md` — migration report structure for the PR body.
    - Optional extras (e.g., `pipeline.md`) for deeper subtopics.
 3. Re-install: `copilot plugin install ./plugin`.
-4. Mirror the entry in the top-level [`agents/`](../agents/) and [`knowledge/`](../knowledge/) trees if you also want cloud-agent support. See the [Extending Guide](../docs/extending.md) for full details.
+4. Update the batch skill mapping and package validation checks. See the [Extending Guide](../docs/extending.md); do not create another content tree.
 
 ---
 
-## Relationship to `knowledge/` and Top-Level `agents/`
+## Cloud Batch Use
 
-The repo root still contains the original `agents/` directory and `knowledge/` knowledge base. Those continue to work for the existing `.github-private` cloud-agent deployment pattern. The plugin in this directory is a **parallel** packaging that:
-
-- Inlines the knowledge into composable skills.
-- Removes the runtime MCP dependency on `.github-private`.
-- Lets users install everything with a single `copilot plugin install` (or via the marketplace).
-
-Source-of-truth for content currently lives in the root `knowledge/` tree; skill files were derived from it. When customizing for personal/team use, edit the skill files directly. When contributing back upstream, update the root `knowledge/` tree as well so both surfaces stay in sync.
+Batch tasks reference `migration-core`, the selected platform skill, and `actionlint`.
+They use the default cloud agent, not a plugin name passed as a registered custom
+agent. The installed plugin is the content source. Keep an approved legacy release
+checkout when migrating an existing deployment; no second content copy is maintained
+in this version.
 
 ## Reference
 
