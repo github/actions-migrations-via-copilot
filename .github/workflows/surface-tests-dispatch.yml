@@ -1,6 +1,6 @@
 name: Surface Tests (dispatch)
 
-# Asks the EMU testing repo to run the cross-surface plugin suite (tests/surfaces/)
+# Asks the private testing repo to run the cross-surface plugin suite (tests/surfaces/)
 # against this commit. Results are recorded in that repo.
 
 on:
@@ -20,10 +20,6 @@ on:
 permissions:
   contents: read
 
-env:
-  TESTING_OWNER: alexdemichieli-migrations
-  TESTING_REPO: actions-migrations-via-copilot-testing
-
 jobs:
   dispatch:
     # Copies of this repo and fork PRs have no access to the testing repo.
@@ -36,11 +32,14 @@ jobs:
         id: check
         env:
           APP_KEY: ${{ secrets.SURFACE_TESTS_APP_KEY }}
+          TESTING_REPO: ${{ vars.SURFACE_TESTS_REPO }}
         run: |
-          if [ -z "$APP_KEY" ]; then
-            echo "::warning::SURFACE_TESTS_APP_KEY secret is not set; not requesting surface tests."
+          if [ -z "$APP_KEY" ] || [ -z "$TESTING_REPO" ]; then
+            echo "::warning::SURFACE_TESTS_APP_KEY or SURFACE_TESTS_REPO is not set; not requesting surface tests."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
+            # This repo's Actions logs are public; keep the testing repo's name out of them.
+            echo "::add-mask::$TESTING_REPO"
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -51,8 +50,8 @@ jobs:
         with:
           app-id: ${{ vars.SURFACE_TESTS_APP_ID }}
           private-key: ${{ secrets.SURFACE_TESTS_APP_KEY }}
-          owner: ${{ env.TESTING_OWNER }}
-          repositories: ${{ env.TESTING_REPO }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ vars.SURFACE_TESTS_REPO }}
 
       - name: Request a test run
         if: steps.check.outputs.ready == 'true'
@@ -61,8 +60,9 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           KIND: ${{ github.event_name == 'pull_request' && 'pr' || 'main' }}
           PR: ${{ github.event.pull_request.number }}
+          TESTING_REPO: ${{ vars.SURFACE_TESTS_REPO }}
         run: |
           jq -n --arg sha "$SHA" --arg kind "$KIND" --arg pr "$PR" \
             '{event_type: "plugin-changed", client_payload: {sha: $sha, kind: $kind, pr: $pr}}' \
-            | gh api "repos/$TESTING_OWNER/$TESTING_REPO/dispatches" --input -
-          echo "Requested surface tests for $KIND commit \`$SHA\` in $TESTING_OWNER/$TESTING_REPO." >> "$GITHUB_STEP_SUMMARY"
+            | gh api "repos/$GITHUB_REPOSITORY_OWNER/$TESTING_REPO/dispatches" --input -
+          echo "Requested surface tests for $KIND commit \`$SHA\`." >> "$GITHUB_STEP_SUMMARY"
