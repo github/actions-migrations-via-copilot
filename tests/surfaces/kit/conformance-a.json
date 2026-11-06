@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" sessionStart"
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" userPromptSubmitted"
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" pre1"
+      },
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" pre2"
+      },
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" pre3-matcher-bash",
+        "matcher": "bash"
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" post1"
+      },
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" post2"
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" agentStop"
+      }
+    ],
+    "subagentStop": [
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" subagentStop"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" sessionEnd"
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" Stop"
+      }
+    ]
+  }
+}
