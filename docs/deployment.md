@@ -1,35 +1,36 @@
 # Deployment Guide
 
-Deploy GitHub Actions Migration Agents to your GitHub Enterprise environment.
+Install the migration plugin for local or cloud use. Batch orchestration is
+optional and still runs as a GitHub Actions workflow.
 
 ## Quick Setup
 
-1. Create `.github-private` repository (Internal visibility)
-2. Clone and configure this repository
-3. Push to `.github-private`
-4. Configure secrets and variables for automation
-5. Create the `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN` Copilot Agents secret in each target organization (manual)
-6. Enable agents in Enterprise settings
+1. Enable the plugin using repository or selected central configuration.
+2. Start a test session and confirm the required skills are available.
+3. For batch work, configure the orchestration repository's secrets and skill mappings.
+4. Run a small migration and inspect the resulting workflow, report, and runtime logs.
 
 ## Prerequisites
 
-- GitHub Enterprise Cloud with Copilot Business/Enterprise
-- Enterprise Owner permissions
-- Organization Admin permissions
-- Git client
+- Copilot access for the runtime you intend to use; plugins are not enterprise-only.
+- Permission to configure the target repository, or the selected central organization/enterprise configuration.
+- For batch work, GitHub App access for repository discovery and a user token for cloud-agent issue assignment.
 
-## Step 1: Create .github-private Repository
+## Step 1: Enable the Plugin
 
-1. **Create repository** in your organization:
-   - Name: `.github-private` (exact name required)
-   - Visibility: **Internal** (required for agent access to knowledgebase)
-   - Do not initialize with README
+For cloud jobs, use the settings in the [consumer template](../consumer-template/README.md).
+They belong in `.github/copilot/settings.json` in the target repository, or the
+selected central configuration repository. Review existing settings before merging
+the plugin entry; do not overwrite unrelated plugins or user configuration.
 
-2. **Note the repository URL** for later steps
+The settings register a marketplace and enable `actions-migrator` from it. The
+runtime obtains the package and loads its skills and hooks. Configuration alone is
+not proof it loaded: confirm the resolved package revision and skill invocation in
+the cloud logs. Organization or enterprise settings may affect repository choices.
 
-> **Why Internal?** Agents use GitHub MCP to access knowledgebase files. Internal visibility enables this while keeping content private to your enterprise.
+For CLI and VS Code, use the [plugin installation guide](../plugin/README.md).
 
-## Step 2: Configure and Deploy
+## Step 2: Prepare Batch Orchestration (Optional)
 
 ### Clone Repository
 
@@ -38,28 +39,21 @@ git clone https://github.com/github/actions-migrations-via-copilot.git
 cd actions-migrations-via-copilot
 ```
 
-### Update Organization References
+No organization substitution in migration guides is needed. All guides are bundled
+in `plugin/skills/`. Keep the plugin configuration source and batch workflow checkout
+clear: having plugin files in the orchestration checkout does not install them in
+the target cloud job.
 
-Replace `{MY_ORGANIZATION}` with your organization slug:
-
-```bash
-# macOS/Linux
-find agents -name "*.md" -type f -exec sed -i '' 's/{MY_ORGANIZATION}/YOUR-ORG-SLUG/g' {} +
-
-# Verify
-grep -r "{MY_ORGANIZATION}" agents/
-```
-
-Should return no results.
-
-### Push to .github-private
+### Choose an Orchestration Repository
 
 ```bash
 git remote add enterprise https://github.com/YOUR-ORG-SLUG/.github-private.git
 git push enterprise main
 ```
 
-Verify at `https://github.com/YOUR-ORG-SLUG/.github-private`
+The example uses `.github-private` for continuity with existing deployments. Do
+not overwrite an existing central configuration repository. Use your approved
+deployment/update process to bring in the automation and preserve existing settings.
 
 ## Step 3: Configure Repository Settings
 
@@ -102,6 +96,9 @@ Edit `.github/settings/config.yaml`:
 ```yaml
 gh_app_id: '123456'  # Your GitHub App ID
 
+migration_type_skills:
+   Jenkins: jenkins-migration
+
 gh_migration_type:
   default_value: 'Jenkins'
   description: 'The type of migration for this repository'
@@ -139,64 +136,36 @@ Run the Settings workflow to create variables from config:
 4. Verify success (green checkmark)
 5. Check variables at `https://github.com/YOUR-ORG-SLUG/.github-private/settings/variables/actions`
 
-Expected variables: `GH_APP_ID`, `GH_MIGRATION_TYPE_DEFAULT`, `ORGANIZATIONS`, `BATCH_SIZE`
+Expected variables include `GH_APP_ID`, `MIGRATION_TYPE_SKILLS`, `ORGANIZATIONS`, and `BATCH_SIZE`.
 
-### Create Copilot Agents Secret (Manual)
+The sample configuration contains mappings for all eight migration platforms.
+`MIGRATION_TYPE_SKILLS` maps platform labels to installed skills, not filenames.
+Recognized old `migration_type_prompts` / `MIGRATION_TYPE_PROMPTS` values still
+work as aliases and emit a warning; the script never reads the old prompt files.
+If both mappings exist, they must describe the same platform/skill pairs. Resolve
+conflicts by updating or removing the old variable before running the batch.
 
-The migration agents use the GitHub MCP server, which requires a Personal Access Token exposed as the `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN` secret. This must be created as a **Copilot Agents secret** at the organization level. There is no API for this, so it must be configured manually for each organization listed in `.github/settings/config.yaml`.
+### Runtime Credentials
 
-First, create a dedicated PAT for MCP knowledgebase access:
+The bundled guides do not require a knowledge-fetch MCP token. Keep authentication
+needed for the actual migration: issue assignment uses `ISSUE_SUBMIT_TOKEN`, and
+runtime GitHub operations or action-version resolution may need separately approved
+access. Do not remove credentials used by unrelated integrations.
 
-1. Generate a **fine-grained PAT** (recommended) scoped only to the `.github-private` repository:
-   - **Resource owner**: Your organization
-   - **Repository access**: Only select repositories → `.github-private`
-   - **Repository permissions**: Contents (Read-only), Metadata (Read-only)
-   - **Expiration**: Per your organization policy
-   - **SSO authorization**: Enable for the organization
-2. If your organization requires classic PATs, generate one with the minimum scope `repo` and authorize SSO for the organization. Prefer the fine-grained option above.
+## Step 4: Verify Plugin Loading
 
-> **Why a dedicated token?** Scoping this PAT to `.github-private` with read-only access limits the blast radius if it is ever exposed. Do not reuse `ISSUE_SUBMIT_TOKEN`, which has broader privileges needed for the automation workflows.
-
-Then, for each organization:
-
-1. Navigate to `https://github.com/organizations/YOUR-ORG-SLUG/settings/secrets/agents`
-2. Click **New organization secret**
-3. Configure the secret:
-   - **Name**: `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN`
-   - **Value**: The dedicated PAT created above
-4. Click **Add secret**
-
-> **Note:** Repeat this step for every organization in the `organizations` list of `config.yaml`. The secret must be available to Copilot coding agent runs in repositories belonging to those organizations.
-
-## Step 4: Enable Agents in Enterprise Settings
-
-1. **Navigate to Enterprise AI controls**:
-   - Click profile photo → Your enterprises → [Your Enterprise]
-   - Click **AI controls**
-
-2. **Enable custom agents**:
-   - Find **"Custom agents"** section
-   - Select your organization from dropdown
-   - Verify agents appear:
-     - Jenkins Migrator
-     - Azure DevOps Migrator
-     - CircleCI Migrator
-     - GitLab Migrator
-     - Travis CI Migrator
-     - Bamboo Migrator
-     - Bitbucket Migrator
-     - Drone CI Migrator
-     - Reusable Workflow Builder
-
-3. **Wait 5-10 minutes** for agent registration to propagate
+Start a new session after configuring the plugin. Confirm the resolved plugin
+revision and the expected skill names in runtime logs. A plugin is not the same as
+a registered custom agent: this batch workflow uses the default cloud agent and
+does not assume the plugin's agents appear in the GitHub picker.
 
 ## Step 5: Test Your Deployment
 
-1. Navigate to [github.com/copilot/agents](https://github.com/copilot/agents)
-2. Verify your migration agents appear
-3. Open a test repository with CI/CD configuration
-4. Invoke an agent through Copilot Chat
-5. Verify agent can access knowledgebase
+1. Choose a small test repository with real source CI configuration.
+2. Ask Copilot to use the installed `migration-core`, platform migration, and `actionlint` skills.
+3. Verify actual skill invocation, hook execution, generated workflow, archival, and safe report content.
+4. Test unavailable-plugin behavior in an isolated environment with no inherited plugin. The task instructs the agent to stop; this is not a deterministic runtime availability check.
+5. Do not equate successful issue assignment or workflow status with successful migration. Review the output before accepting it.
 
 ## Maintaining Your Deployment
 
@@ -204,35 +173,38 @@ Then, for each organization:
 
 When adding new agents (see [extending.md](extending.md)):
 
-1. Add agent file to `agents/` directory
-2. Create knowledgebase files in `knowledge/`
-3. Update organization references
-4. Commit and push to `.github-private`
+1. Edit agent entry files in `plugin/agents/` and guidance in `plugin/skills/`.
+2. Run plugin validation and hook tests.
+3. Review and publish changes through your approved plugin distribution process.
+4. Start a new test session and verify the loaded revision before rollout.
 
 ```bash
 # After adding new agent
-git add agents/ knowledge/
+git add plugin/
 git commit -m "Add <platform> migration agent"
-git push enterprise main
+git push
 ```
 
-Changes are live immediately.
+Do not assume caches refresh immediately or that an unmerged branch is used by the marketplace.
 
 ### Update Knowledgebase
 
 Update mappings and patterns as Actions evolves:
 
 ```bash
-# Edit files in knowledge/
-nano knowledge/actions-mapping/jenkins.md
+# Edit the single maintained plugin guide
+nano plugin/skills/jenkins-migration/mapping.md
 
 # Commit and push
-git add knowledge/
+git add plugin/skills/
 git commit -m "Update action mappings"
-git push enterprise main
+git push
 ```
 
-Agents automatically use latest knowledgebase content.
+New sessions use the package revision resolved by their runtime. Existing published
+tags remain immutable. Before upgrading a legacy deployment, record its working
+release or commit and retain that checkout for rollback; this refactor does not
+publish a release or change customer configuration automatically.
 
 ### Monitor Usage
 
@@ -245,9 +217,9 @@ Agents automatically use latest knowledgebase content.
 
 | Issue                                                 | Solution                                                                       |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------ |
-| **Agents not appearing**                              | Verify `.github-private` exists, wait 10 minutes, check Enterprise AI settings |
-| **Cannot access knowledgebase**                       | Ensure repository visibility is **Internal**, verify org slug in agent files   |
-| **Organization slug still shows `{MY_ORGANIZATION}`** | Re-run `sed` command or manually edit agent files                              |
+| **Skills unavailable** | Check the selected configuration source, plugin-resolution errors, and loaded revision. Do not substitute a generic migration. |
+| **Plugin agents not in picker** | Plugin loading and named-agent registration are separate. Batch submission uses the default agent with explicit skill references. |
+| **Conflicting mappings** | Reconcile `MIGRATION_TYPE_SKILLS` and the legacy `MIGRATION_TYPE_PROMPTS` variable before running again. |
 | **Validation errors in migrations**                   | Review migration report, update knowledgebase mappings                         |
 
 ## Security Best Practices

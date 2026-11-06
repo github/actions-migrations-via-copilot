@@ -1,4 +1,3 @@
-````markdown
 # Migrating Secrets and Variables from Bamboo to GitHub Actions
 
 When migrating CI/CD pipelines from Bamboo to GitHub Actions, properly handling global variables, secrets, and configuration is critical for security and functionality. This guide outlines the best practices and steps to effectively migrate Bamboo variables and credentials.
@@ -632,6 +631,4 @@ env:
 
 ---
 
-*For security best practices, migration checklists, troubleshooting guidance, and additional resources, refer to [Migration Guardrails](docs/migration-guardrails.md) and [Migration Standards](docs/migration-standards.md) in the knowledge base.*
-
-````
+*For security best practices, migration checklists, troubleshooting guidance, and additional resources, refer to [Migration Guardrails](../migration-core/guardrails.md) and [Migration Standards](../migration-core/standards.md) in the installed plugin.*

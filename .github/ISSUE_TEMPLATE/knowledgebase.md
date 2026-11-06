@@ -7,12 +7,12 @@ assignees: ''
 ---
 
 **Which knowledgebase area does this relate to?**
-- [ ] Action Mappings (`knowledge/actions-mapping/`)
-- [ ] Security Patterns (`knowledge/patterns/`)
-- [ ] Report Templates (`knowledge/report-template/`)
-- [ ] Migration Standards (`knowledge/migration-standards.md`)
-- [ ] Migration Guardrails (`knowledge/migration-guardrails.md`)
-- [ ] Migration Workflow (`knowledge/migration-workflow.md`)
+- [ ] Action Mappings (`plugin/skills/<platform>-migration/mapping.md`)
+- [ ] Security Patterns (`plugin/skills/<platform>-migration/secrets.md`)
+- [ ] Report Templates (`plugin/skills/<platform>-migration/report-template.md`)
+- [ ] Migration Standards (`plugin/skills/migration-core/standards.md`)
+- [ ] Migration Guardrails (`plugin/skills/migration-core/guardrails.md`)
+- [ ] Migration Workflow (`plugin/skills/migration-core/workflow.md`)
 
 **Which CI/CD platform does this relate to? (if applicable)**
 - [ ] Jenkins

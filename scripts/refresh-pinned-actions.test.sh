@@ -45,11 +45,10 @@ TEST_ALL_UNRESOLVED=1 bash "$TEST_DIR/scripts/refresh-pinned-actions.sh" 2>"$TES
 jq -e '.actions == {}' "$TEST_DIR/plugin/skills/migration-core/pinned-actions.json" >/dev/null
 printf 'PASS: unresolved actions produce an empty object, not invalid JSON.\n'
 
-cp -R "$ROOT/knowledge" "$ROOT/agents" "$ROOT/plugin" "$ROOT/.github" "$TEST_DIR/"
+cp -R "$ROOT/plugin" "$ROOT/.github" "$TEST_DIR/"
 cp "$ROOT/apm.yml" "$TEST_DIR/"
-cp "$ROOT/scripts/check-content-parity.sh" "$TEST_DIR/scripts/"
-cp "$ROOT/scripts/check-migration-core-sources.sh" "$TEST_DIR/scripts/"
-"$TEST_DIR/scripts/check-content-parity.sh" >"$TEST_DIR/check.log" 2>&1
+cp "$ROOT/scripts/check-plugin-content.sh" "$TEST_DIR/scripts/"
+bash "$TEST_DIR/scripts/check-plugin-content.sh" >"$TEST_DIR/check.log" 2>&1
 printf 'PASS: committed catalog passes the content checker.\n'
 
 CATALOG="$TEST_DIR/plugin/skills/migration-core/pinned-actions.json"
@@ -61,7 +60,7 @@ for invalid_case in trailing-text empty multiple-objects array; do
     multiple-objects) printf '\n{}\n' >>"$CATALOG" ;;
     array) printf '[]\n' >"$CATALOG" ;;
   esac
-  if "$TEST_DIR/scripts/check-content-parity.sh" >"$TEST_DIR/check.log" 2>&1; then
+  if bash "$TEST_DIR/scripts/check-plugin-content.sh" >"$TEST_DIR/check.log" 2>&1; then
     printf 'FAIL: content checker accepted %s catalog\n' "$invalid_case" >&2
     exit 1
   fi
@@ -70,34 +69,86 @@ for invalid_case in trailing-text empty multiple-objects array; do
 done
 
 cp "$ROOT/plugin/skills/migration-core/pinned-actions.json" "$CATALOG"
-for source in knowledge/migration-workflow.md knowledge/migration-standards.md knowledge/migration-guardrails.md plugin/skills/migration-core/SKILL.md; do
-  printf '\nChanged source\n' >>"$TEST_DIR/$source"
-  if "$TEST_DIR/scripts/check-content-parity.sh" >"$TEST_DIR/check.log" 2>&1; then
-    printf 'FAIL: content checker accepted an unreviewed change to %s\n' "$source" >&2
+expect_invalid() {
+  local label="$1" reason="$2"
+  if bash "$TEST_DIR/scripts/check-plugin-content.sh" >"$TEST_DIR/check.log" 2>&1; then
+    printf 'FAIL: plugin validator accepted %s\n' "$label" >&2
     exit 1
   fi
-  grep -q 'migration-core source review required' "$TEST_DIR/check.log"
-  cp "$ROOT/$source" "$TEST_DIR/$source"
-  printf 'PASS: content checker rejects unreviewed %s change.\n' "$source"
-done
-bash "$TEST_DIR/scripts/check-migration-core-sources.sh" --refresh >/dev/null
-"$TEST_DIR/scripts/check-content-parity.sh" >"$TEST_DIR/check.log" 2>&1
+  grep -q "$reason" "$TEST_DIR/check.log"
+  printf 'PASS: plugin validator rejects %s.\n' "$label"
+}
 
-for missing in knowledge/migration-standards.md plugin/skills/migration-core/sources.json; do
+for missing in plugin/skills/migration-core/standards.md plugin/skills/jenkins-migration/SKILL.md plugin/skills/jenkins-migration/mapping.md plugin/skills/jenkins-migration/report-template.md plugin/skills/jenkins-migration/secrets.md plugin/agents/jenkins-migrator.agent.md plugin/hooks.json; do
   mv "$TEST_DIR/$missing" "$TEST_DIR/missing-backup"
-  if "$TEST_DIR/scripts/check-content-parity.sh" >"$TEST_DIR/check.log" 2>&1; then
-    printf 'FAIL: content checker accepted missing %s\n' "$missing" >&2
-    exit 1
-  fi
+  expect_invalid "missing $missing" 'required plugin file is missing'
   mv "$TEST_DIR/missing-backup" "$TEST_DIR/$missing"
-  printf 'PASS: content checker rejects missing %s.\n' "$missing"
 done
-sed 's/Never disable secret scanning/Never switch off secret scanning/' \
-  "$TEST_DIR/knowledge/migration-guardrails.md" >"$TEST_DIR/changed-guardrails"
-mv "$TEST_DIR/changed-guardrails" "$TEST_DIR/knowledge/migration-guardrails.md"
-if bash "$TEST_DIR/scripts/check-migration-core-sources.sh" --refresh >"$TEST_DIR/check.log" 2>&1; then
-  printf 'FAIL: hash refresh accepted divergent report-safety rules\n' >&2
-  exit 1
-fi
-grep -q 'Safe Migration Reports must match' "$TEST_DIR/check.log"
-printf 'PASS: refreshing hashes cannot bypass report-safety section parity.\n'
+
+for invalid_text in 'mcp_github_get_tag' 'github-mcp-server-get_tag' '{MY_ORGANIZATION}' 'knowledge/migration-workflow.md'; do
+  printf '\n%s\n' "$invalid_text" >>"$TEST_DIR/plugin/skills/migration-core/SKILL.md"
+  expect_invalid "$invalid_text instruction" 'undeclared MCP tools'
+  cp "$ROOT/plugin/skills/migration-core/SKILL.md" "$TEST_DIR/plugin/skills/migration-core/SKILL.md"
+done
+
+for version_file in apm.yml plugin/plugin.json .github/plugin/marketplace.json; do
+  if [ "$version_file" = apm.yml ]; then
+    sed 's/^version:.*/version: 0.0.0/' "$ROOT/$version_file" >"$TEST_DIR/$version_file"
+  elif [ "$version_file" = plugin/plugin.json ]; then
+    jq '.version = "0.0.0"' "$ROOT/$version_file" >"$TEST_DIR/$version_file"
+  else
+    jq '.plugins[0].version = "0.0.0"' "$ROOT/$version_file" >"$TEST_DIR/$version_file"
+  fi
+  expect_invalid "version mismatch in $version_file" 'package version mismatch'
+  cp "$ROOT/$version_file" "$TEST_DIR/$version_file"
+done
+
+MARKETPLACE="$TEST_DIR/.github/plugin/marketplace.json"
+for invalid_case in trailing-text empty multiple-valid-objects conflicting-then-valid array; do
+  cp "$ROOT/.github/plugin/marketplace.json" "$MARKETPLACE"
+  case "$invalid_case" in
+    trailing-text) printf '\nnot JSON\n' >>"$MARKETPLACE" ;;
+    empty) : >"$MARKETPLACE" ;;
+    multiple-valid-objects) cat "$ROOT/.github/plugin/marketplace.json" >>"$MARKETPLACE" ;;
+    conflicting-then-valid)
+      jq '.metadata.version = "0.0.0" | .plugins[].version = "0.0.0"' \
+        "$ROOT/.github/plugin/marketplace.json" >"$MARKETPLACE"
+      cat "$ROOT/.github/plugin/marketplace.json" >>"$MARKETPLACE"
+      ;;
+    array) jq -s '.' "$ROOT/.github/plugin/marketplace.json" >"$MARKETPLACE" ;;
+  esac
+  expect_invalid "$invalid_case marketplace" 'package version mismatch'
+done
+cp "$ROOT/.github/plugin/marketplace.json" "$MARKETPLACE"
+
+find() { return 2; }
+export -f find
+expect_invalid 'failed Markdown enumeration' 'unable to enumerate plugin Markdown files'
+find() {
+  printf '%s\n' 'plugin/skills/jenkins-migration/SKILL.md'
+  return 2
+}
+export -f find
+expect_invalid 'partial Markdown enumeration' 'unable to enumerate plugin Markdown files'
+unset -f find
+
+jq '.hooks = "../outside.json"' "$ROOT/plugin/plugin.json" >"$TEST_DIR/plugin/plugin.json"
+expect_invalid 'hook path outside package' 'invalid hooks path'
+cp "$ROOT/plugin/plugin.json" "$TEST_DIR/plugin/plugin.json"
+
+for catalog_case in short-sha empty-actions missing-date; do
+  case "$catalog_case" in
+    short-sha) jq '.actions["actions/checkout"].sha = "abc"' "$ROOT/plugin/skills/migration-core/pinned-actions.json" >"$CATALOG" ;;
+    empty-actions) jq '.actions = {}' "$ROOT/plugin/skills/migration-core/pinned-actions.json" >"$CATALOG" ;;
+    missing-date) jq 'del(.resolved_on)' "$ROOT/plugin/skills/migration-core/pinned-actions.json" >"$CATALOG" ;;
+  esac
+  expect_invalid "$catalog_case catalog" 'resolution date and full commit SHAs'
+done
+cp "$ROOT/plugin/skills/migration-core/pinned-actions.json" "$CATALOG"
+
+printf '````markdown\nwrapped content\n````\n' >"$TEST_DIR/plugin/skills/jenkins-migration/secrets.md"
+expect_invalid 'whole-file markdown wrapper' 'stray markdown fence'
+printf 'unmatched closing fence\n```\n' >"$TEST_DIR/plugin/skills/jenkins-migration/secrets.md"
+expect_invalid 'unmatched closing fence' 'unmatched closing fence'
+cp "$ROOT/plugin/skills/jenkins-migration/secrets.md" "$TEST_DIR/plugin/skills/jenkins-migration/secrets.md"
+bash "$TEST_DIR/scripts/check-plugin-content.sh" >"$TEST_DIR/check.log" 2>&1

@@ -74,21 +74,9 @@ The [GitHub Marketplace](https://github.com/marketplace) is the primary source f
 
 ### Action Version Verification
 
-**Never emit a commit SHA that is not present verbatim in the output of a tool
-call you made in this session.** A fabricated SHA either fails at dispatch time
-or resolves to an unintended commit.
-
-**Process:**
-
-1. Use `mcp_github_get_latest_release` for current version
-2. Use `mcp_github_get_tag` for commit SHA
-3. Fallback: `mcp_github_list_commits` if no releases
-
-When resolving a tag to a SHA, be aware that an **annotated** tag resolves to a
-tag object, not a commit. Pin to the commit SHA, not the tag object SHA.
-
-If a SHA cannot be resolved, stop and tell the user which actions need pinning.
-Do not guess, and do not ship an unpinned reference silently.
+Follow [Action version verification](SKILL.md#action-version-verification): use
+the bundled catalog first, then authenticated `gh` when available, and stop if
+a required pin cannot be resolved. Do not invent SHAs or ship unpinned actions.
 
 **Example Format:**
 
@@ -132,11 +120,8 @@ jobs:
 
 ### Safe Migration Reports
 
-- Document secret and variable names, purpose, scope, and `${{ secrets.NAME }}` / `${{ vars.NAME }}` references, never credential values.
-- Before writing the report, review all prose, tables, examples, and validation output. Remove credential values and use `[REDACTED]` when an omission must be shown; redaction is not an unfinished placeholder.
-- Use the same reviewed content for the report file, PR body, comments, and final response. Do not paste raw source files or logs containing credentials.
-- If a suspected credential cannot be safely removed, stop report publication and warn without repeating the value. Do not claim the migration is complete while publication is blocked.
-- Never disable secret scanning or push protection to deliver a report. If a value may already have been exposed, advise revocation or rotation and follow the repository's incident process.
+Follow the [Safe Migration Reports](SKILL.md#safe-migration-reports) policy in
+the core skill before publishing any report, PR body, comment, or final response.
 
 ### Action Security
 
