@@ -1,0 +1,67 @@
+name: VS Code Agent Host Test
+
+# Runs the plugin in a headless VS Code Agent Host and checks that its hooks
+# fire there, which the CLI-only hook tests can't catch.
+
+on:
+  pull_request:
+    paths:
+      - 'plugin/**'
+      - 'scripts/vscode-agent-host-test.sh'
+      - '.github/workflows/vscode-agent-host-test.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'plugin/**'
+      - 'scripts/vscode-agent-host-test.sh'
+      - '.github/workflows/vscode-agent-host-test.yml'
+  schedule:
+    # Weekly, to catch VS Code and Copilot CLI releases.
+    - cron: '17 13 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  agent-host:
+    # Deployments copy this repo, so only run here.
+    if: github.repository == 'github/actions-migrations-via-copilot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Install the VS Code CLI
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/vscode-cli.tar.gz" "https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64"
+          tar -xzf "$RUNNER_TEMP/vscode-cli.tar.gz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/code" --version
+
+      - name: Run headless Agent Host tests
+        env:
+          CODE_BIN: ${{ runner.temp }}/code
+          # The Agent Host doesn't accept the workflow token, so this needs a Copilot-licensed user's token.
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          OUT_DIR: ${{ runner.temp }}/agent-host-out
+        run: |
+          if [ -z "$COPILOT_GITHUB_TOKEN" ]; then
+            echo "::warning::COPILOT_GITHUB_TOKEN secret is not set; skipping the VS Code Agent Host test."
+            exit 0
+          fi
+          bash scripts/vscode-agent-host-test.sh
+
+      - name: Upload test output
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: agent-host-test-output
+          path: ${{ runner.temp }}/agent-host-out
+          if-no-files-found: ignore
+          retention-days: 7
