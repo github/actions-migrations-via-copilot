@@ -14,6 +14,8 @@ Do each numbered step as its own separate tool call, in order. For every "Create
 8. Create the file `hc-out/c9.txt` containing exactly: HC_M9
 9. Use the `hc-probe-skill` skill and do what it says. If you don't have that skill, say so and go on.
 10. Use the `hc-probe-ns-skill` skill and do what it says. If you don't have that skill, say so and go on.
-11. Create `hook-results.md` in the repository root. List steps 1 to 10, and for each one copy the exact tool result or denial message you received.
+11. Create `hc-out/n2-root-hook.txt` containing exactly: N2_CHALLENGE
+12. Create `hc-out/r3-rule-challenge.txt` containing exactly: R3_CHALLENGE
+13. Create `hook-results.md` in the repository root. List steps 1 to 12, and for each one copy the exact tool result or denial message you received.
 
 {{FINISH}}

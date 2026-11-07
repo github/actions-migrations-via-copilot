@@ -162,6 +162,78 @@ class EvidenceTests(unittest.TestCase):
             summary = json.loads((root / "summary/results.json").read_text())
             self.assertEqual(len(summary["missing"]), 4)
 
+    def test_valid_scores_do_not_hide_a_failed_upstream_job(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cases = {
+                "repo": ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10", "C9", "P1"),
+                "plugin": ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10",
+                           "N1", "N2", "S1", "S2", "R1", "R2", "R3", "A1", "A2"),
+            }
+            for surface in ("cli", "vscode"):
+                for session, names in cases.items():
+                    score_dir = root / surface / session
+                    score_dir.mkdir(parents=True)
+                    (score_dir / "score.json").write_text(json.dumps({
+                        "cases": [{"case": name, "expected": name, "result": "PASS", "observed": "evidence"}
+                                  for name in names]
+                    }))
+            result = subprocess.run([
+                sys.executable, str(SUITE / "summarize.py"), "--scores", str(root), "--expect", "cli,vscode",
+                "--job-result", "target=success", "--job-result", "cli=failure", "--job-result", "vscode=success",
+                "--out", str(root / "summary"),
+            ], capture_output=True, text=True, check=True)
+            summary = json.loads((root / "summary/results.json").read_text())
+            self.assertIn("upstream_failed=1", result.stdout)
+            self.assertEqual(summary["unexpected"], [])
+            self.assertEqual(summary["missing"], [])
+            self.assertEqual(summary["not_run"], [])
+            self.assertEqual(summary["upstream_failed"], ["cli: failure"])
+
+    def test_malformed_score_artifact_fails_summary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            score = root / "cli/repo/score.json"
+            score.parent.mkdir(parents=True)
+            score.write_text("{not-json")
+            result = subprocess.run([
+                sys.executable, str(SUITE / "summarize.py"), "--scores", str(root), "--expect", "cli",
+                "--out", str(root / "summary"),
+            ], capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+
+    def test_n2_and_r3_need_their_own_negative_challenge_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "hc-out"
+            output.mkdir()
+            (output / "skill-ns.txt").write_text("SKILL_NS")
+            (output / "rule-ns.txt").write_text("RULE_NS")
+            log = root / "probe.jsonl"
+            log.write_text(json.dumps({"label": "ns:sessionStart", "event": "sessionStart", "raw": {}}) + "\n")
+            command = [
+                sys.executable, str(SUITE / "score.py"), "--surface", "cli", "--session", "plugin",
+                "--log", str(log), "--out-dir", str(output), "--json", str(root / "score.json"),
+            ]
+            subprocess.run(command, check=True, capture_output=True)
+            cases = {case["case"]: case["result"] for case in json.loads((root / "score.json").read_text())["cases"]}
+            self.assertEqual(cases["N2"], "NOT RUN")
+            self.assertEqual(cases["R3"], "NOT RUN")
+
+            challenge_rows = [
+                {"label": "ns:preToolUse", "event": "preToolUse",
+                 "raw": {"toolArgs": {"path": "hc-out/n2-root-hook.txt"}}},
+                {"label": "ns:preToolUse", "event": "preToolUse",
+                 "raw": {"toolArgs": {"path": "hc-out/r3-rule-challenge.txt"}}},
+            ]
+            log.write_text("".join(json.dumps(row) + "\n" for row in challenge_rows))
+            (output / "n2-root-hook.txt").write_text("N2_CHALLENGE")
+            (output / "r3-rule-challenge.txt").write_text("R3_CHALLENGE")
+            subprocess.run(command, check=True, capture_output=True)
+            cases = {case["case"]: case["result"] for case in json.loads((root / "score.json").read_text())["cases"]}
+            self.assertEqual(cases["N2"], "PASS")
+            self.assertEqual(cases["R3"], "PASS")
+
     def test_agent_report_cannot_prove_secret_guard(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

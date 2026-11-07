@@ -27,9 +27,12 @@ ap.add_argument("--expect", default="")
 ap.add_argument("--expected", type=Path, default=Path(__file__).resolve().parent / "expected.json")
 ap.add_argument("--baseline", type=Path)
 ap.add_argument("--meta", action="append", default=[])
+ap.add_argument("--job-result", action="append", default=[], metavar="JOB=CONCLUSION")
 ap.add_argument("--out", type=Path, required=True)
 a = ap.parse_args()
 meta = dict(m.split("=", 1) for m in a.meta if "=" in m)
+job_results = dict(m.split("=", 1) for m in a.job_result if "=" in m)
+upstream_failed = [f"{job}: {result}" for job, result in job_results.items() if result != "success"]
 expect = [s for s in a.expect.split(",") if s]
 required_cases = {
     "repo": {"C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10", "C9", "P1"},
@@ -79,6 +82,7 @@ for s, cells in grid.items():
 a.out.mkdir(parents=True, exist_ok=True)
 (a.out / "results.json").write_text(json.dumps({
     "meta": meta, "surface_meta": surface_meta, "grid": grid,
+    "job_results": job_results, "upstream_failed": upstream_failed,
     "unexpected": unexpected, "missing": missing, "not_run": not_run, "changes": changes,
 }, indent=2) + "\n")
 
@@ -107,11 +111,13 @@ known_notes = sorted({f"- {NAMES[s]} {k}: {v.get('why', '')}" for s, ks in known
 if known_notes:
     lines += ["", "**Known surface gaps** (expected results that aren't PASS):"] + known_notes
 for title, items in (("Unexpected results", unexpected), ("Surfaces that didn't run", missing),
-                     ("Not run (no evidence either way)", not_run), ("Changed since the last main run", changes)):
+                     ("Not run (no evidence either way)", not_run), ("Changed since the last main run", changes),
+                     ("Required jobs that did not succeed", upstream_failed)):
     lines += ["", f"**{title} ({len(items)}):**"] + [f"- {x}" for x in items or ["none"]]
 (a.out / "results.md").write_text("\n".join(lines) + "\n")
 
-summary = f"unexpected={len(unexpected)}\nmissing={len(missing)}\nnot_run={len(not_run)}\nchanged={len(changes)}\n"
+summary = (f"unexpected={len(unexpected)}\nmissing={len(missing)}\nnot_run={len(not_run)}\n"
+           f"changed={len(changes)}\nupstream_failed={len(upstream_failed)}\n")
 print(summary, end="")
 if os.environ.get("GITHUB_OUTPUT"):
     with open(os.environ["GITHUB_OUTPUT"], "a") as f:

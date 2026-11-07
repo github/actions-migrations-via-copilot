@@ -202,18 +202,24 @@ jobs:
         id: sum
         env:
           SHA: ${{ needs.target.outputs.sha }}
+          TARGET_RESULT: ${{ needs.target.result }}
+          CLI_RESULT: ${{ needs.cli.result }}
+          VSCODE_RESULT: ${{ needs.vscode.result }}
         run: |
           python3 tests/surfaces/summarize.py --scores "$RUNNER_TEMP/scores" --expect cli,vscode \
-            --meta "sha=$SHA" --meta "kind=$GITHUB_EVENT_NAME" --out "$RUNNER_TEMP/summary"
+            --meta "sha=$SHA" --meta "kind=$GITHUB_EVENT_NAME" \
+            --job-result "target=$TARGET_RESULT" --job-result "cli=$CLI_RESULT" \
+            --job-result "vscode=$VSCODE_RESULT" --out "$RUNNER_TEMP/summary"
           cat "$RUNNER_TEMP/summary/results.md" >> "$GITHUB_STEP_SUMMARY"
       - name: Fail on unexpected results or missing surfaces
-        if: steps.sum.outputs.unexpected != '0' || steps.sum.outputs.missing != '0' || steps.sum.outputs.not_run != '0'
+        if: steps.sum.outputs.unexpected != '0' || steps.sum.outputs.missing != '0' || steps.sum.outputs.not_run != '0' || steps.sum.outputs.upstream_failed != '0'
         env:
           UNEXPECTED: ${{ steps.sum.outputs.unexpected }}
           MISSING: ${{ steps.sum.outputs.missing }}
           NOT_RUN: ${{ steps.sum.outputs.not_run }}
+          UPSTREAM_FAILED: ${{ steps.sum.outputs.upstream_failed }}
         run: |
-          echo "::error::Surface tests: $UNEXPECTED unexpected, $MISSING sessions/cases missing, $NOT_RUN checks not run. See the summary."
+          echo "::error::Surface tests: $UNEXPECTED unexpected, $MISSING sessions/cases missing, $NOT_RUN checks not run, $UPSTREAM_FAILED required jobs unsuccessful. See the summary."
           exit 1
 
   pr-status:
