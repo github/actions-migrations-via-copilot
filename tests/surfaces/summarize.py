@@ -44,6 +44,7 @@ baseline = json.loads(a.baseline.read_text()).get("grid", {}) if a.baseline and 
 
 grid, surface_meta, order = {}, {}, {s: [] for s in SESSIONS}
 expected_text = {}
+execution_failures = []
 for s in SURFACES:
     for session in SESSIONS:
         f = a.scores / s / session / "score.json"
@@ -51,6 +52,15 @@ for s in SURFACES:
             continue
         data = json.loads(f.read_text())
         surface_meta.setdefault(s, {}).update(data.get("meta", {}))
+        for key, value in data.get("meta", {}).items():
+            if not key.endswith("_exit") and key != "selected_agent_failures":
+                continue
+            try:
+                status = int(value)
+            except (TypeError, ValueError):
+                continue
+            if status != 0:
+                execution_failures.append(f"{NAMES[s]} {session} {key}={status}")
         for c in data["cases"]:
             key = f"{session}:{c['case']}"
             grid.setdefault(s, {})[key] = {"result": c["result"], "observed": c["observed"]}
@@ -82,7 +92,7 @@ for s, cells in grid.items():
 a.out.mkdir(parents=True, exist_ok=True)
 (a.out / "results.json").write_text(json.dumps({
     "meta": meta, "surface_meta": surface_meta, "grid": grid,
-    "job_results": job_results, "upstream_failed": upstream_failed,
+    "job_results": job_results, "upstream_failed": upstream_failed, "execution_failures": execution_failures,
     "unexpected": unexpected, "missing": missing, "not_run": not_run, "changes": changes,
 }, indent=2) + "\n")
 
@@ -112,12 +122,14 @@ if known_notes:
     lines += ["", "**Known surface gaps** (expected results that aren't PASS):"] + known_notes
 for title, items in (("Unexpected results", unexpected), ("Surfaces that didn't run", missing),
                      ("Not run (no evidence either way)", not_run), ("Changed since the last main run", changes),
+                     ("Recorded nonzero process exits", execution_failures),
                      ("Required jobs that did not succeed", upstream_failed)):
     lines += ["", f"**{title} ({len(items)}):**"] + [f"- {x}" for x in items or ["none"]]
 (a.out / "results.md").write_text("\n".join(lines) + "\n")
 
 summary = (f"unexpected={len(unexpected)}\nmissing={len(missing)}\nnot_run={len(not_run)}\n"
-           f"changed={len(changes)}\nupstream_failed={len(upstream_failed)}\n")
+           f"changed={len(changes)}\nexecution_failed={len(execution_failures)}\n"
+           f"upstream_failed={len(upstream_failed)}\n")
 print(summary, end="")
 if os.environ.get("GITHUB_OUTPUT"):
     with open(os.environ["GITHUB_OUTPUT"], "a") as f:

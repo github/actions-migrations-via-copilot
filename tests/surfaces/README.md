@@ -42,10 +42,10 @@ Each implemented surface runs two sessions: 13 repository-hook checks and 20 plu
 | C9 | 1 | actions-migrator's secret guard prints `{}`, then its delete guard denies an `rm` → blocked |
 | P1 | 1 | actions-migrator's secret guard blocks writing a fake credential |
 | N1 | 2 | New-format plugin: hooks in `com.github.copilot/hooks/` run |
-| N2 | 2 | New-format plugin: a root `hooks.json` is ignored, as the spec says |
+| N2 | 2 | New-format plugin: the target hook challenge runs without a root `hooks.json` hook call |
 | S1 / S2 | 2 | A skill loads, in each format |
 | R1 / R2 | 2 | An always-on rule applies, in each format |
-| R3 | 2 | New-format plugin: a root `rules/` folder is ignored, as the spec says |
+| R3 | 2 | New-format plugin: a case-specific rule challenge runs with the positive R2 rule control, without the root rule marker |
 | A1 / A2 | 2 | A plugin agent can be started, in each format |
 
 Each part of a probe plugin asks for its own file with its own code word, so a file with the right code proves that part loaded.
@@ -90,7 +90,10 @@ The 2026-11-07 cloud result is **13 repository checks passed; 14 plugin checks
 passed and 6 known deviations**. The deviations reproduce ignored new-format
 hook locations, execution of the root decoy hook, missing plugin rules, and
 rejected plugin custom-agent selection. No cloud case was left unexecuted in
-that result. This does not claim that the weekly scheduler is deployed.
+that historical result. It predates the N2/R3 challenge-evidence gate below and
+does not validate the new scoring rules; until case-specific challenge evidence
+is present (and R3 has the R2 positive control), those cases remain **NOT RUN**.
+This does not claim that the weekly scheduler is deployed.
 
 ## Historical regression check
 

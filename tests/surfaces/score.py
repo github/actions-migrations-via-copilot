@@ -240,8 +240,8 @@ else:
     n2_calls = challenge_calls(ns_rows, "hc-out/n2-root-hook.txt")
     n2_root_calls = challenge_calls(ns_root_rows, "hc-out/n2-root-hook.txt")
     n2_file = file_has("n2-root-hook.txt", "N2_CHALLENGE")
-    if not n2_calls:
-        add("N2", "no namespace-hook evidence for the root-hook challenge", "NOT RUN")
+    if not n2_calls and not n2_root_calls:
+        add("N2", "no hook evidence for the root-hook challenge", "NOT RUN")
     else:
         add("N2", f"challenge_calls={len(n2_calls)} root_hook_calls={len(n2_root_calls)} challenge_file={n2_file}",
             verdict(n2_file and not n2_root_calls))
