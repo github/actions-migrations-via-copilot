@@ -1,0 +1,14 @@
+{
+  "vscode": {
+    "plugin:A1": {"result": "NOT RUN", "why": "The headless test client can't select a custom agent."},
+    "plugin:A2": {"result": "NOT RUN", "why": "The headless test client can't select a custom agent."}
+  },
+  "cloud-agent": {
+    "plugin:N1": {"result": "DEVIATION", "why": "Ignores hooks in com.github.copilot/hooks/: its bundled Copilot CLI predates Agent Plugins 1.0 support (CLI 1.0.81)."},
+    "plugin:N2": {"result": "DEVIATION", "why": "Runs a new-format plugin's root hooks.json, which the spec says to ignore."},
+    "plugin:R1": {"result": "DEVIATION", "why": "Applies no plugin rules, in either format."},
+    "plugin:R2": {"result": "DEVIATION", "why": "Applies no plugin rules, in either format."},
+    "plugin:A1": {"result": "DEVIATION", "why": "Plugin agents can't be selected as a custom agent; they need a .github/agents/*.agent.md stub in the repo."},
+    "plugin:A2": {"result": "DEVIATION", "why": "Plugin agents can't be selected as a custom agent; they need a .github/agents/*.agent.md stub in the repo."}
+  }
+}

@@ -9,7 +9,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+# Loaded from .github/hooks/ (repository hooks) or .hc-probe/ (plugin hooks); log at the repo root either way.
+ROOT = next((d for d in Path(__file__).resolve().parents if (d / ".git").exists()), Path.cwd())
 LOG = ROOT / ".hook-conformance" / "probe.jsonl"
 OUT = "hc-out/"
 WRITE_TOOLS = {
@@ -70,7 +71,7 @@ EVENTS = {
 record = {
     "ts": datetime.now(timezone.utc).isoformat(),
     "label": label,
-    "event": payload.get("hook_event_name") or EVENTS.get(label, label),
+    "event": payload.get("hook_event_name") or EVENTS.get(label) or label.split(":")[-1],
     "session": payload.get("sessionId") or payload.get("session_id") or "",
     "tool": tool,
     "payload_keys": sorted(payload),

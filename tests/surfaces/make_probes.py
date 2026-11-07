@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Build the local marketplace of probe plugins used by the plugin-hooks session.
+
+make_probes.py <dir>
+
+- hc-probe-a: current format. Conformance hooks from kit/conformance-a.json, plus a skill,
+  an always-on rule in rules/, and an agent.
+- hc-probe-b: current format. Conformance hooks from kit/conformance-b.json, so C8/C8b
+  test `{}` in one plugin and a deny in another.
+- hc-probe-ns: Agent Plugins 1.0 format. Log-only hooks, a rule and an agent under
+  com.github.copilot/, a portable skill, and decoys at the root (hooks.json, rules/) that
+  the spec says to ignore.
+
+Each part asks for a distinct file in hc-out/, so the file proves which part loaded.
+"""
+import json
+import sys
+from pathlib import Path
+
+KIT = Path(__file__).resolve().parent / "kit"
+OUT = Path(sys.argv[1])
+PROBE = '"$(git rev-parse --show-toplevel)/.hc-probe/probe.py"'
+SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
+
+
+def write(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+
+
+def conformance_hooks(name):
+    text = (KIT / name).read_text()
+    return text.replace('"$(git rev-parse --show-toplevel)/.github/hooks/probe.py"', PROBE)
+
+
+def log_only_hooks(prefix):
+    entry = lambda event: [{"type": "command", "timeoutSec": 15, "bash": f"python3 {PROBE} {prefix}:{event}"}]
+    return json.dumps({"version": 1, "hooks": {e: entry(e) for e in ("sessionStart", "preToolUse")}}, indent=2) + "\n"
+
+
+def code_task(code, file):
+    # The code is spelled out as two words so the plugin files never contain it verbatim.
+    a, b = code.split("_")
+    return (f"Create the file `hc-out/{file}` containing the code formed by joining the words "
+            f"{a} and {b} with an underscore, in capitals. Use your file-creation tool.")
+
+
+def skill(name, code, file):
+    return (f"---\nname: {name}\ndescription: Hook conformance probe skill. Use when a task asks for {name}.\n---\n\n"
+            f"{code_task(code, file)}\n")
+
+
+def rule(code, file):
+    return ("---\ndescription: Hook conformance probe rule\nalwaysApply: true\n---\n\n"
+            f"Before you finish any task in a repository that has an `hc-out/` folder, also do this: {code_task(code, file)}\n")
+
+
+def agent(name, code, file):
+    return (f"---\nname: {name}\ndescription: Hook conformance probe agent.\n---\n\n"
+            f"You are the hook conformance probe agent. {code_task(code, file)} Do nothing else.\n")
+
+
+plugins = OUT / "plugins"
+
+a = plugins / "hc-probe-a"
+write(a / "plugin.json", json.dumps({"name": "hc-probe-a", "version": "0.0.1", "description": "Hook conformance probe A",
+                                     "hooks": "hooks.json", "skills": "skills/", "agents": "agents/"}, indent=2) + "\n")
+write(a / "hooks.json", conformance_hooks("conformance-a.json"))
+write(a / "skills/hc-probe-skill/SKILL.md", skill("hc-probe-skill", "SKILL_LEGACY", "skill-legacy.txt"))
+write(a / "rules/hc-probe-rule.mdc", rule("RULE_LEGACY", "rule-legacy.txt"))
+write(a / "agents/hc-probe-agent.agent.md", agent("hc-probe-agent", "AGENT_LEGACY", "agent-legacy.txt"))
+
+b = plugins / "hc-probe-b"
+write(b / "plugin.json", json.dumps({"name": "hc-probe-b", "version": "0.0.1", "description": "Hook conformance probe B",
+                                     "hooks": "hooks.json"}, indent=2) + "\n")
+write(b / "hooks.json", conformance_hooks("conformance-b.json"))
+
+ns = plugins / "hc-probe-ns"
+write(ns / "plugin.json", json.dumps({"$schema": SCHEMA, "name": "hc-probe-ns", "version": "0.0.1",
+                                      "description": "Agent Plugins 1.0 format probe"}, indent=2) + "\n")
+write(ns / "com.github.copilot/hooks/hooks.json", log_only_hooks("ns"))
+write(ns / "com.github.copilot/rules/hc-probe-ns-rule.mdc", rule("RULE_NS", "rule-ns.txt"))
+write(ns / "com.github.copilot/agents/hc-probe-ns-agent.agent.md", agent("hc-probe-ns-agent", "AGENT_NS", "agent-ns.txt"))
+write(ns / "skills/hc-probe-ns-skill/SKILL.md", skill("hc-probe-ns-skill", "SKILL_NS", "skill-ns.txt"))
+write(ns / "hooks.json", log_only_hooks("ns-root"))
+write(ns / "rules/hc-probe-nsroot-rule.mdc", rule("RULE_NSROOT", "rule-nsroot.txt"))
+
+write(OUT / ".github/plugin/marketplace.json", json.dumps({
+    "name": "hc-probes",
+    "owner": {"name": "surface-tests"},
+    "plugins": [{"name": n, "version": "0.0.1", "source": f"./plugins/{n}"} for n in ("hc-probe-a", "hc-probe-b", "hc-probe-ns")],
+}, indent=2) + "\n")

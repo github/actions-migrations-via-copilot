@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Score one surface run.
+"""Score one session on one surface.
 
-score.py --surface S --log probe.jsonl --out-dir hc-out --json score.json
+score.py --surface S --session repo|plugin --log probe.jsonl --out-dir hc-out --json score.json
          [--transcript FILE]... [--meta key=value]...
 
-Results: PASS, DEVIATION (the surface differs from the documented hook behavior),
-FAIL (an actions-migrator guard didn't block), NOT RUN (no evidence either way).
+Sessions:
+- repo:   the conformance hooks as repository hooks, plus actions-migrator (C0-C10, C9, P1).
+- plugin: the same hooks inside probe plugins, plus a new-format plugin, skills, rules and
+          agents (C0-C10, N1-N2, S1-S2, R1-R3, A1-A2).
+
+Results: PASS; DEVIATION (the surface differs from the documented behavior); FAIL (an
+actions-migrator guard didn't block); NOT RUN (no evidence either way).
 """
 import argparse
 import json
@@ -13,124 +18,204 @@ from pathlib import Path
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--surface", required=True)
+ap.add_argument("--session", choices=["repo", "plugin"], required=True)
 ap.add_argument("--log", type=Path, required=True)
 ap.add_argument("--out-dir", type=Path, required=True)
 ap.add_argument("--json", type=Path, required=True)
 ap.add_argument("--transcript", type=Path, action="append", default=[])
 ap.add_argument("--meta", action="append", default=[])
 a = ap.parse_args()
+meta = dict(m.split("=", 1) for m in a.meta if "=" in m)
 
 rows = []
 if a.log.exists():
     rows = [json.loads(line) for line in a.log.read_text().splitlines() if line.strip()]
 transcript = "\n".join(t.read_text(errors="replace") for t in a.transcript if t.is_file())
-fake_value = "Synthetic" + "Probe12345abcdef"
 # actions-migrator's own deny reasons: proof that its hooks ran, not just that a call failed.
 DELETE_GUARD = "deletion outside .github/ci-archive/ is not allowed"
 SECRET_GUARD = "likely credential value in proposed output"
+FAKE_VALUE = "Synthetic" + "Probe12345abcdef"
+KIT = {"pre1", "pre2", "pre3-matcher-bash", "pre-b0", "pre-b", "post1", "post2"}
+LIFECYCLE = {"sessionStart", "userPromptSubmitted", "agentStop", "Stop", "subagentStop", "sessionEnd"}
+
+EXPECTED = {
+    "C0": "every hook entry runs; the bash-only hook skips file writes",
+    "C1": "hook 1 prints nothing, hook 2 denies -> blocked",
+    "C2": "hook 1 prints `{}`, hook 2 denies -> blocked",
+    "C3": "hook 1 exits with code 2 -> blocked",
+    "C4": "matcher `bash` runs for bash only",
+    "C5": "post hook prints `{}`, later post hook still runs",
+    "C6": "lifecycle events fire (sessionStart, userPromptSubmitted, agentStop, sessionEnd)",
+    "C7": "preToolUse payload has sessionId, timestamp, cwd, toolName, toolArgs",
+    "C8": "`{}` in hook file A, deny in file B -> blocked",
+    "C8b": "`{}` in hook file B, deny in file A -> blocked",
+    "C10": "after a deny or exit 2, later hooks for that call don't run",
+    "C9": "actions-migrator: secret guard prints `{}`, delete guard denies `rm` -> blocked",
+    "P1": "actions-migrator: secret guard blocks a fake credential",
+    "N1": "new-format plugin: hooks in com.github.copilot/hooks/ run",
+    "N2": "new-format plugin: root hooks.json ignored, per the spec",
+    "S1": "current-format plugin: skill loads",
+    "S2": "new-format plugin: skill loads",
+    "R1": "current-format plugin: always-on rule in rules/ applies",
+    "R2": "new-format plugin: always-on rule in com.github.copilot/rules/ applies",
+    "R3": "new-format plugin: root rules/ ignored, per the spec",
+    "A1": "current-format plugin: agent can be started",
+    "A2": "new-format plugin: agent in com.github.copilot/agents/ can be started",
+}
+ORDER = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10", "C9", "P1",
+         "N1", "N2", "S1", "S2", "R1", "R2", "R3", "A1", "A2"]
+results = []
 
 
-def with_marker(n):
-    return [r for r in rows if n in r.get("markers", []) and r["event"] in ("preToolUse", "postToolUse")]
+def add(case, observed, result):
+    results.append({"case": case, "expected": EXPECTED[case], "observed": str(observed), "result": result})
+
+
+def verdict(ok):
+    return "PASS" if ok else "DEVIATION"
+
+
+def with_marker(n, events=("preToolUse", "postToolUse")):
+    return [r for r in rows if n in r.get("markers", []) and r["event"] in events]
 
 
 def labels(rs):
     return sorted({r["label"] for r in rs})
 
 
-def order(rs):
-    return [r["label"] for r in sorted(rs, key=lambda r: r["ts"]) if r["event"] == "preToolUse"]
+def actions(rs):
+    return {(r["label"], r["action"]) for r in rs}
 
 
-def written(name):
-    return (a.out_dir / name).exists()
+def file_has(name, code):
+    f = a.out_dir / name
+    return f.is_file() and code in f.read_text(errors="replace")
 
 
-def verdict(ok, bad="DEVIATION"):
-    return "PASS" if ok else bad
+kit_rows = [r for r in rows if r["label"] in KIT | LIFECYCLE]
 
-
-EXPECTED = {
-    "C0": "every hook entry runs; the bash-only hook skips file writes",
-    "C1": "no output, then deny -> blocked",
-    "C2": "`{}`, then deny -> blocked",
-    "C3": "exit code 2 -> blocked",
-    "C4": "matcher `bash` runs for bash only",
-    "C5": "post hook prints `{}`, later post hook still runs",
-    "C6": "lifecycle events fire",
-    "C7": "preToolUse payload has sessionId, timestamp, cwd, toolName, toolArgs",
-    "C8": "`{}` in hook file A, deny in file B -> blocked",
-    "C8b": "`{}` in hook file B, deny in file A -> blocked",
-}
-results = []
-
-
-def add(case, expected, observed, result):
-    results.append({"case": case, "expected": expected, "observed": str(observed), "result": result})
-
-
-if not rows:
-    for case in ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b"):
-        add(case, EXPECTED[case], "no hook log", "NOT RUN")
+# C0-C10: the same conformance kit in both sessions (repository hooks, or hooks inside plugins).
+if not any(r["label"] in KIT for r in rows):
+    for case in ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10"):
+        add(case, "no conformance hook calls logged", "NOT RUN")
 else:
-    c0 = [r for r in rows if r["tool"] and r["tool"] not in ("bash", "run_in_terminal")
-          and r["action"] == "no-op" and not r["markers"]]
-    c0l = labels(c0)
-    add("C0", "every hook entry runs; the bash-only hook skips file writes", c0l,
-        verdict({"pre1", "pre2", "pre-b0", "pre-b", "post1", "post2"} <= set(c0l) and "pre3-matcher-bash" not in c0l))
-    c4 = [r for r in rows if r["label"] == "pre3-matcher-bash" and r["tool"] == "bash"]
-    c4_other = sorted({r["tool"] for r in rows if r["label"] == "pre3-matcher-bash" and r["tool"] != "bash"})
-    add("C4", "matcher `bash` runs for bash only", f"bash={len(c4)} other_tools={c4_other}",
-        verdict(len(c4) > 0 and not c4_other))
-    for case, n, expected, fname in [
-        ("C1", "1", "no output, then deny -> blocked", "c1.txt"),
-        ("C2", "2", "`{}`, then deny -> blocked", "c2.txt"),
-        ("C3", "3", "exit code 2 -> blocked", "c3.txt"),
-        ("C8", "8", "`{}` in hook file A, deny in file B -> blocked", "c8.txt"),
-        ("C8b", "9", "`{}` in hook file B, deny in file A -> blocked", "c9.txt"),
-    ]:
+    c0 = labels(r for r in kit_rows if r["tool"] not in ("", "bash", "run_in_terminal")
+                and r["action"] == "no-op" and not r["markers"])
+    add("C0", c0, verdict({"pre1", "pre2", "pre-b0", "pre-b", "post1", "post2"} <= set(c0)
+                          and "pre3-matcher-bash" not in c0))
+
+    # Each blocked case needs the expected hook actions in the log *and* the file not written.
+    blocked_cases = [
+        ("C1", "1", {("pre2", "deny-C1")}, "c1.txt"),
+        ("C2", "2", {("pre1", "empty-json"), ("pre2", "deny-C2")}, "c2.txt"),
+        ("C3", "3", {("pre1", "exit-2")}, "c3.txt"),
+    ]
+    for case, n, needed, fname in blocked_cases:
         rs = with_marker(n)
-        add(case, expected, f"pre order={order(rs)} file_written={written(fname)}",
-            verdict(not written(fname)) if rs else "NOT RUN")
-    rs = with_marker("5")
-    add("C5", "post hook prints `{}`, later post hook still runs", f"hooks={labels(rs)}",
-        verdict({"post1", "post2"} <= set(labels(rs))) if rs else "NOT RUN")
-    seen = {r["event"] for r in rows}
-    life = {e: e in seen for e in ("sessionStart", "userPromptSubmitted", "agentStop", "Stop", "subagentStop", "sessionEnd")}
-    add("C6", "lifecycle events fire", life,
-        verdict(all(life[e] for e in ("sessionStart", "userPromptSubmitted", "agentStop", "sessionEnd"))))
-    keys = sorted({",".join(r["payload_keys"]) for r in rows if r["event"] == "preToolUse"})
-    add("C7", "preToolUse payload has sessionId, timestamp, cwd, toolName, toolArgs", keys,
-        verdict(any({"sessionId", "timestamp", "cwd", "toolName", "toolArgs"} <= set(k.split(",")) for k in keys)))
+        got = actions(rs)
+        written = (a.out_dir / fname).exists()
+        missing = sorted(f"{lab}:{act}" for lab, act in needed - got)
+        observed = f"hook actions={sorted(f'{lab}:{act}' for lab, act in got if act != 'no-op')} missing={missing} file_written={written}"
+        add(case, observed, "NOT RUN" if not rs else verdict(not missing and not written))
 
-# C9: the secret guard prints {} for the rm call, then the delete guard (same plugin) denies it.
-c9_expected = "actions-migrator: `{}` then delete-guard deny -> blocked"
-rm_rows = with_marker("rm")
-if not rm_rows:
-    add("C9", c9_expected, "the rm call never reached the hooks", "NOT RUN")
-elif DELETE_GUARD in transcript:
-    add("C9", c9_expected, "delete guard reason seen", "PASS")
-elif any(r["event"] == "postToolUse" for r in rm_rows):
-    add("C9", c9_expected, "rm ran: no deny", "FAIL")
+    # C8/C8b mirror each other because surfaces may run the two hook files in either order.
+    # Each must be blocked by its own deny; at least one must show `{}` from one file before the other file's deny.
+    pair, empty_first = [], []
+    for case, n, empty, deny, fname in (("C8", "8", "pre1", ("pre-b", "deny-C8"), "c8.txt"),
+                                        ("C8b", "9", "pre-b0", ("pre2", "deny-C8b"), "c9.txt")):
+        rs = sorted(with_marker(n, ("preToolUse",)), key=lambda r: r["ts"])
+        deny_at = next((i for i, r in enumerate(rs) if (r["label"], r["action"]) == deny), None)
+        first = deny_at is not None and any(r["label"] == empty and r["action"] == "empty-json" for r in rs[:deny_at])
+        empty_first.append(first)
+        pair.append((case, rs, deny_at, first, (a.out_dir / fname).exists()))
+    for case, rs, deny_at, first, written in pair:
+        observed = f"denied={deny_at is not None} empty_json_first={first} file_written={written}"
+        if not rs:
+            add(case, observed, "NOT RUN")
+        else:
+            add(case, observed + ("" if any(empty_first) else " (neither order showed `{}` before the deny)"),
+                verdict(deny_at is not None and not written and any(empty_first)))
+
+    c4 = [r for r in kit_rows if r["label"] == "pre3-matcher-bash"]
+    c4_tools = sorted({r["tool"] for r in c4})
+    bash_called = any(r["tool"] == "bash" for r in kit_rows)
+    add("C4", f"tools seen by the bash-only hook: {c4_tools}",
+        "NOT RUN" if not bash_called and not c4 else verdict(c4_tools == ["bash"]))
+
+    rs = with_marker("5", ("postToolUse",))
+    got = actions(rs)
+    add("C5", f"post hooks={labels(rs)}", "NOT RUN" if not rs else
+        verdict(("post1", "empty-json") in got and "post2" in labels(rs)))
+
+    seen = {r["event"] for r in kit_rows}
+    life = {e: e in seen for e in ("sessionStart", "userPromptSubmitted", "agentStop", "Stop", "sessionEnd")}
+    add("C6", life, verdict(all(life[e] for e in ("sessionStart", "userPromptSubmitted", "agentStop", "sessionEnd"))))
+
+    keys = sorted({",".join(r["payload_keys"]) for r in kit_rows if r["event"] == "preToolUse"})
+    add("C7", keys, verdict(any({"sessionId", "timestamp", "cwd", "toolName", "toolArgs"} <= set(k.split(",")) for k in keys)))
+
+    late = []
+    for n in ("1", "2", "3", "8", "9"):
+        pre = sorted(with_marker(n, ("preToolUse",)), key=lambda r: r["ts"])
+        stop = next((i for i, r in enumerate(pre) if r["action"].startswith(("deny", "exit-2"))), None)
+        if stop is not None:
+            late += [f"{n}:{r['label']}" for r in pre[stop + 1:]]
+    add("C10", f"hooks that ran after the deny: {late}", verdict(not late))
+
+if a.session == "repo":
+    rm_rows = with_marker("rm")
+    if not rm_rows:
+        add("C9", "the rm call never reached the hooks", "NOT RUN")
+    elif DELETE_GUARD in transcript:
+        add("C9", "delete guard's deny reason seen", "PASS")
+    elif any(r["event"] == "postToolUse" for r in rm_rows):
+        add("C9", "rm ran: nothing denied it", "FAIL")
+    else:
+        add("C9", "rm was blocked, but not with the delete guard's reason", "FAIL")
+
+    p1 = a.out_dir / "p1.md"
+    if p1.is_file() and FAKE_VALUE in p1.read_text(errors="replace"):
+        add("P1", "fake credential was written", "FAIL")
+    elif SECRET_GUARD in transcript:
+        add("P1", "secret guard's deny reason seen, file not written", "PASS")
+    else:
+        add("P1", "no secret guard deny reason seen", "NOT RUN")
 else:
-    add("C9", c9_expected, "rm was blocked, but not with the delete guard's reason", "FAIL")
+    ns_rows = [r for r in rows if r["label"].startswith("ns:")]
+    ns_root_rows = [r for r in rows if r["label"].startswith("ns-root:")]
+    ns_loaded = bool(ns_rows or ns_root_rows) or any(
+        file_has(f, c) for f, c in (("skill-ns.txt", "SKILL_NS"), ("rule-ns.txt", "RULE_NS"), ("rule-nsroot.txt", "RULE_NSROOT")))
+    ran = bool(rows) or any(p.name != ".gitkeep" for p in a.out_dir.glob("*"))
 
-# P1: the secret guard blocks a write that contains a fake credential.
-p1 = a.out_dir / "p1.md"
-leaked = p1.exists() and fake_value in p1.read_text(errors="replace")
-if leaked:
-    add("P1", "actions-migrator: secret guard blocks a fake credential", "fake credential was written", "FAIL")
-elif SECRET_GUARD in transcript:
-    add("P1", "actions-migrator: secret guard blocks a fake credential", "secret guard reason seen, file not written", "PASS")
-else:
-    add("P1", "actions-migrator: secret guard blocks a fake credential", "no secret guard reason seen", "NOT RUN")
+    if not ns_loaded:
+        add("N1", "no sign the new-format plugin loaded", "NOT RUN" if not ran else "DEVIATION")
+        add("N2", "no sign the new-format plugin loaded", "NOT RUN")
+    else:
+        add("N1", f"namespace hook calls={len(ns_rows)}", verdict(bool(ns_rows)))
+        add("N2", f"root hooks.json calls={len(ns_root_rows)}", verdict(not ns_root_rows))
 
-order_ids = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C9", "P1"]
-results.sort(key=lambda r: order_ids.index(r["case"]))
-meta = dict(m.split("=", 1) for m in a.meta if "=" in m)
-a.json.write_text(json.dumps({"surface": a.surface, "meta": meta, "cases": results}, indent=2) + "\n")
+    for case, fname, code in (("S1", "skill-legacy.txt", "SKILL_LEGACY"), ("S2", "skill-ns.txt", "SKILL_NS"),
+                              ("R1", "rule-legacy.txt", "RULE_LEGACY"), ("R2", "rule-ns.txt", "RULE_NS")):
+        ok = file_has(fname, code)
+        add(case, f"{fname} has the code: {ok}", "NOT RUN" if not ran else verdict(ok))
+    if ns_loaded:
+        root_rule = file_has("rule-nsroot.txt", "RULE_NSROOT")
+        add("R3", f"root rule applied: {root_rule}", verdict(not root_rule))
+    else:
+        add("R3", "no sign the new-format plugin loaded", "NOT RUN")
 
-print(f"surface={a.surface} hook_log_rows={len(rows)}")
+    for case, fname, code in (("A1", "agent-legacy.txt", "AGENT_LEGACY"), ("A2", "agent-ns.txt", "AGENT_NS")):
+        if meta.get("agents") != "tested":
+            add(case, f"not testable here ({meta.get('agents', 'not tested')})", "NOT RUN")
+        else:
+            ok = file_has(fname, code)
+            add(case, f"{fname} has the code: {ok}", verdict(ok))
+
+results.sort(key=lambda r: ORDER.index(r["case"]))
+a.json.write_text(json.dumps({"surface": a.surface, "session": a.session, "meta": meta,
+                              "hook_log_rows": len(rows), "cases": results}, indent=2) + "\n")
+
+print(f"surface={a.surface} session={a.session} hook_log_rows={len(rows)}")
 print("case | result | observed")
 print("--- | --- | ---")
 for r in results:

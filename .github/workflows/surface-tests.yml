@@ -1,0 +1,217 @@
+name: Surface Tests
+
+# Runs tests/surfaces/ on every plugin change: actions-migrator's hooks, plus plugin hooks, skills,
+# rules and agents, on the Copilot CLI and VS Code (headless Agent Host). Fork PRs run only after a
+# maintainer reviews the code and starts this workflow by hand with the PR number and reviewed commit.
+
+on:
+  pull_request:
+    paths:
+      - 'plugin/**'
+      - 'tests/surfaces/**'
+      - '.github/workflows/surface-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'plugin/**'
+      - 'tests/surfaces/**'
+      - '.github/workflows/surface-tests.yml'
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number, to test a fork PR after reviewing it
+        required: false
+      sha:
+        description: The PR commit you reviewed (full SHA; required with a PR number)
+        required: false
+      vscode_version:
+        description: VS Code version to test, e.g. 1.139.1 (empty = latest stable)
+        required: false
+      copilot_cli_version:
+        description: Copilot CLI version to test (empty = latest)
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: surface-tests-${{ github.event.pull_request.number || inputs.pr || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  target:
+    # Copies of this repo don't run it.
+    if: github.repository == 'github/actions-migrations-via-copilot'
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.t.outputs.run }}
+      sha: ${{ steps.t.outputs.sha }}
+    steps:
+      - name: Decide what to test
+        id: t
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          IN_PR: ${{ inputs.pr }}
+          IN_SHA: ${{ inputs.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ] && [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+            {
+              echo "### Surface tests need a maintainer"
+              echo "This PR comes from a fork, so it can't use this repo's Copilot access on its own."
+              echo "A maintainer should review the changes, then run **Surface Tests** from the Actions tab"
+              echo "with this PR's number and the commit they reviewed (now \`$PR_SHA\`)."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::Fork PR: a maintainer needs to review it, then run Surface Tests by hand."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$IN_PR" ]; then
+            if ! [[ $IN_PR =~ ^[0-9]+$ && $IN_SHA =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::Give the PR number and the full 40-character commit SHA you reviewed."; exit 1
+            fi
+            head=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$IN_PR" --jq .head.sha)
+            if [ "$head" != "$IN_SHA" ]; then
+              echo "::error::PR #$IN_PR has commits after $IN_SHA (now $head). Review them, then run again with the new SHA."; exit 1
+            fi
+            sha=$IN_SHA
+          else
+            sha=${PR_SHA:-$GITHUB_SHA}
+          fi
+          { echo "run=true"; echo "sha=$sha"; } >> "$GITHUB_OUTPUT"
+          echo "Testing commit \`$sha\`" >> "$GITHUB_STEP_SUMMARY"
+
+  cli:
+    needs: target
+    if: needs.target.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      copilot-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.target.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Run the Copilot CLI tests
+        env:
+          # The org pays for these requests; no personal token needed.
+          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+          COPILOT_CLI_VERSION: ${{ inputs.copilot_cli_version || 'latest' }}
+          OUT_DIR: ${{ runner.temp }}/out
+        run: bash tests/surfaces/run-cli.sh
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: surface-cli
+          path: ${{ runner.temp }}/out
+          if-no-files-found: ignore
+          retention-days: 14
+
+  vscode:
+    needs: target
+    if: needs.target.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      ran: ${{ steps.run.outputs.ran }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.target.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Install the VS Code CLI
+        env:
+          VERSION: ${{ inputs.vscode_version }}
+        run: |
+          if [ -n "$VERSION" ]; then
+            [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Not a VS Code version: $VERSION"; exit 1; }
+            url="https://update.code.visualstudio.com/$VERSION/cli-alpine-x64/stable"
+          else
+            url="https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64"
+          fi
+          curl -fsSL -o "$RUNNER_TEMP/vscode-cli.tar.gz" "$url"
+          tar -xzf "$RUNNER_TEMP/vscode-cli.tar.gz" -C "$RUNNER_TEMP"
+      - name: Run the VS Code Agent Host tests
+        id: run
+        env:
+          CODE_BIN: ${{ runner.temp }}/code
+          # VS Code doesn't accept the workflow token yet (microsoft/vscode#346628): a Copilot-only user token.
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          COPILOT_CLI_VERSION: ${{ inputs.copilot_cli_version || 'latest' }}
+          OUT_DIR: ${{ runner.temp }}/out
+        run: |
+          if [ -z "$COPILOT_GITHUB_TOKEN" ]; then
+            echo "::warning::COPILOT_GITHUB_TOKEN secret is not set; skipping VS Code."
+            echo "ran=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ran=true" >> "$GITHUB_OUTPUT"
+          bash tests/surfaces/run-vscode.sh
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: surface-vscode
+          path: ${{ runner.temp }}/out
+          if-no-files-found: ignore
+          retention-days: 14
+
+  results:
+    needs: [target, cli, vscode]
+    if: always() && needs.target.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.target.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: surface-*
+          path: ${{ runner.temp }}/scores
+          merge-multiple: true
+      - name: Summarize
+        id: sum
+        env:
+          SHA: ${{ needs.target.outputs.sha }}
+          VSCODE_RAN: ${{ needs.vscode.outputs.ran }}
+        run: |
+          expect=cli
+          [ "$VSCODE_RAN" = true ] && expect=cli,vscode
+          python3 tests/surfaces/summarize.py --scores "$RUNNER_TEMP/scores" --expect "$expect" \
+            --meta "sha=$SHA" --meta "kind=$GITHUB_EVENT_NAME" --out "$RUNNER_TEMP/summary"
+          cat "$RUNNER_TEMP/summary/results.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail on unexpected results or missing surfaces
+        if: steps.sum.outputs.unexpected != '0' || steps.sum.outputs.missing != '0'
+        env:
+          UNEXPECTED: ${{ steps.sum.outputs.unexpected }}
+          MISSING: ${{ steps.sum.outputs.missing }}
+        run: |
+          echo "::error::Surface tests: $UNEXPECTED unexpected result(s), $MISSING surface session(s) missing. See the summary."
+          exit 1
+
+  pr-status:
+    # Maintainer runs of fork PRs: show the result on the PR. Runs no PR code.
+    needs: [target, results]
+    if: always() && inputs.pr != '' && needs.target.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.target.outputs.sha }}
+          STATE: ${{ needs.results.result == 'success' && 'success' || 'failure' }}
+          URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state="$STATE" -f context="Surface Tests (maintainer run)" \
+            -f target_url="$URL" -f description="Copilot CLI and VS Code surface tests" --silent

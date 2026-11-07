@@ -6,40 +6,65 @@ SUITE_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 TOOL_ROOT=$(git -C "$SUITE_DIR" rev-parse --show-toplevel)
 COPILOT_CLI_VERSION=${COPILOT_CLI_VERSION:-latest}
 
-# Scratch git repo holding the conformance hooks, where each surface expects repository hooks.
+# Scratch git repo for one session. $2 = "repo": the conformance hooks as repository hooks.
+# $2 = "plugin": only the probe script; the hooks come from the probe plugins (make_probes.py).
 make_workspace() {
-  local ws=$1
-  mkdir -p "$ws/.github/hooks" "$ws/hc-out"
-  cp "$SUITE_DIR"/kit/* "$ws/.github/hooks/"
+  local ws=$1 session=$2
+  mkdir -p "$ws/hc-out"
+  if [ "$session" = repo ]; then
+    mkdir -p "$ws/.github/hooks"
+    cp "$SUITE_DIR"/kit/* "$ws/.github/hooks/"
+  else
+    mkdir -p "$ws/.hc-probe"
+    cp "$SUITE_DIR/kit/probe.py" "$ws/.hc-probe/"
+  fi
   touch "$ws/hc-out/.gitkeep"
   printf 'Scratch repository for actions-migrator surface tests.\n' > "$ws/README.md"
-  git -C "$ws" init -q -b main
-  git -C "$ws" add -A
-  git -C "$ws" -c user.name=surface-tests -c user.email=surface-tests@users.noreply.github.com \
-    commit -qm "Surface test workspace"
+  git_commit_all "$ws" "Surface test workspace"
 }
 
-# Prints the prompt for "local" (CLI, VS Code) or "cloud" (cloud agent).
+git_commit_all() {
+  git -C "$1" init -q -b main 2>/dev/null || true
+  git -C "$1" add -A
+  git -C "$1" -c user.name=surface-tests -c user.email=surface-tests@users.noreply.github.com commit -qm "$2"
+}
+
+# Local marketplace "hc-probes" with the probe plugins, in $1.
+make_probe_marketplace() {
+  python3 "$SUITE_DIR/make_probes.py" "$1"
+  git_commit_all "$1" "Probe plugins"
+}
+
+# Installs a session's plugins into the Copilot profile at $COPILOT_HOME, logging to $2.
+# repo: actions-migrator from this checkout. plugin: the three probe plugins.
+install_session_plugins() {
+  local session=$1 log=$2
+  {
+    if [ "$session" = repo ]; then
+      "$COPILOT" plugin marketplace add "$TOOL_ROOT"
+      "$COPILOT" plugin install actions-migrator@actions-migrations-via-copilot
+    else
+      make_probe_marketplace "$COPILOT_HOME/../probes"
+      "$COPILOT" plugin marketplace add "$COPILOT_HOME/../probes"
+      for p in hc-probe-a hc-probe-b hc-probe-ns; do "$COPILOT" plugin install "$p@hc-probes"; done
+    fi
+    "$COPILOT" plugin list
+  } > "$log" 2>&1
+}
+
+# Prints the prompt for session $1 (repo or plugin): $2 = "local" (CLI, VS Code) or "cloud" (cloud agent).
 render_prompt() {
-  python3 - "$SUITE_DIR/prompt.md" "$1" <<'EOF'
-import sys
-text = open(sys.argv[1]).read()
-# Built at runtime so no file in this repo contains the fake credential line.
-fake = "| DEPLOY_TOKEN | " + "Synthetic" + "Probe12345abcdef" + " |"
-if sys.argv[2] == "cloud":
-    note = ("The repository hooks write `.hook-conformance/probe.jsonl` by themselves. "
-            "Don't edit that file yourself, but do include it in your commit.")
-    finish = ("Then commit all new files, including the hook-written "
-              "`.hook-conformance/probe.jsonl`, and open the pull request.")
-else:
-    note = "Do not edit anything under `.hook-conformance/`."
-    finish = "Do not run any git commands and do not open a pull request."
-print(text.replace("{{LOG_NOTE}}", note).replace("{{FINISH}}", finish).replace("{{FAKE_LINE}}", fake))
-EOF
+  local file=prompt.md
+  [ "$1" = plugin ] && file=prompt-plugin.md
+  python3 "$SUITE_DIR/render_prompt.py" "$SUITE_DIR/$file" "$2"
 }
 
-# Installs the Copilot CLI under $1 and sets COPILOT to its path.
+# Installs the Copilot CLI under $1 and sets COPILOT to its path. Set COPILOT_BIN to use an installed CLI instead.
 install_copilot_cli() {
+  if [ -n "${COPILOT_BIN:-}" ]; then
+    COPILOT=$COPILOT_BIN
+    return 0
+  fi
   # shellcheck disable=SC2034  # used by the runners
   COPILOT="$1/cli/node_modules/.bin/copilot"
   for _ in 1 2 3; do
@@ -51,10 +76,10 @@ install_copilot_cli() {
   return 1
 }
 
-# Copies the evidence from workspace $2 into $3 and scores it as surface $1.
+# Copies the evidence from workspace $3 into $4 and scores it as surface $1, session $2.
 # Extra args: transcript files, then "--meta key=value" pairs.
 collect_and_score() {
-  local surface=$1 ws=$2 out=$3; shift 3
+  local surface=$1 session=$2 ws=$3 out=$4; shift 4
   mkdir -p "$out/hc-out"
   cp "$ws/.hook-conformance/probe.jsonl" "$out/probe.jsonl" 2>/dev/null || true
   cp "$ws/hook-results.md" "$out/hook-results.md" 2>/dev/null || true
@@ -64,6 +89,6 @@ collect_and_score() {
     if [ "$1" = --meta ]; then args+=(--meta "$2"); shift 2; else transcripts+=("$1"); shift; fi
   done
   for t in "${transcripts[@]}"; do args+=(--transcript "$t"); done
-  python3 "$SUITE_DIR/score.py" --surface "$surface" --log "$out/probe.jsonl" \
+  python3 "$SUITE_DIR/score.py" --surface "$surface" --session "$session" --log "$out/probe.jsonl" \
     --out-dir "$out/hc-out" --json "$out/score.json" ${args[@]+"${args[@]}"}
 }
