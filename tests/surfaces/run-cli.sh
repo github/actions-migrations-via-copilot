@@ -16,6 +16,10 @@ install_copilot_cli "$ROOT" || exit 1
 version=$("$COPILOT" --version 2>/dev/null | head -1)
 model_args=()
 [ -n "${MODEL:-}" ] && model_args=(--model "$MODEL")
+tool_args=(--available-tools bash,create,edit,view,grep,glob
+  --allow-tool 'shell(echo hook-conformance-bash)'
+  --allow-tool 'shell(rm hc-does-not-exist.txt)')
+agent_tool_args=(--available-tools create,edit,view,grep,glob)
 
 run_session() {
   local session=$1 out="$OUT_ROOT/$1" ws="$ROOT/$1/ws" agents=not-tested
@@ -25,8 +29,7 @@ run_session() {
   make_workspace "$ws" "$session"
   install_session_plugins "$session" "$out/plugin-install.log"
 
-  # --add-dir /tmp lets the rm step reach the hooks instead of failing the CLI's own path check.
-  ( cd "$ws" && timeout 1200 "$COPILOT" --trust-folder --allow-all-tools --add-dir /tmp \
+  ( cd "$ws" && timeout 1200 "$COPILOT" --trust-folder "${tool_args[@]}" \
       ${model_args[@]+"${model_args[@]}"} --output-format json --share "$out/transcript.md" \
       -p "$(render_prompt "$session" local)" > "$out/events.jsonl" 2> "$out/stderr.log" )
   echo "exit=$?" >> "$out/stderr.log"
@@ -34,7 +37,7 @@ run_session() {
   if [ "$session" = plugin ]; then
     agents=tested
     for agent in hc-probe-a:hc-probe-agent hc-probe-ns:hc-probe-ns-agent; do
-      ( cd "$ws" && timeout 300 "$COPILOT" --agent "$agent" --trust-folder --allow-all-tools \
+      ( cd "$ws" && timeout 300 "$COPILOT" --agent "$agent" --trust-folder "${agent_tool_args[@]}" \
           ${model_args[@]+"${model_args[@]}"} -p "Do your task." ) >> "$out/agents.log" 2>&1
       echo "agent=$agent exit=$?" >> "$out/agents.log"
     done

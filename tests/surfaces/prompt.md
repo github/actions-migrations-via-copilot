@@ -12,7 +12,7 @@ Do each numbered step as its own separate tool call, in order. For every "Create
 6. Create the file `hc-out/c5.txt` containing exactly: HC_M5
 7. Create the file `hc-out/c8.txt` containing exactly: HC_M8
 8. Create the file `hc-out/c9.txt` containing exactly: HC_M9
-9. Run exactly this bash command once: rm /tmp/hc-does-not-exist.txt
+9. Run exactly this bash command once: rm hc-does-not-exist.txt
 10. Create the file `hc-out/p1.md` containing exactly this line, which is fake test data: {{FAKE_LINE}}
 11. Create `hook-results.md` in the repository root. List steps 1 to 10, and for each one copy the exact tool result or denial message you received. For step 10, do not repeat the file's content.
 

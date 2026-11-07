@@ -4,7 +4,6 @@
 # own plugin loader runs them. The client adapter also selects discovered plugin agents for A1/A2.
 # Needs: CODE_BIN (VS Code CLI), COPILOT_GITHUB_TOKEN (a Copilot user's token; the workflow token is
 # rejected, see microsoft/vscode#346628), node, npm, python3, git, jq, perl.
-# Optional: AHPX_NODE_MODULES, a node_modules folder that already has @tylerl0706/ahpx@0.6.0.
 # Writes $OUT_DIR/vscode/<session>/score.json.
 set -uo pipefail
 # shellcheck source=common.sh
@@ -23,16 +22,19 @@ commit=$(sed -nE 's/.*\(commit ([0-9a-f]{40})\).*/\1/p' <<< "$version")
 trap '"$CODE_BIN" agent kill >/dev/null 2>&1' EXIT
 
 prepare_ahpx() {
-  local nm="$ROOT/ahpx/node_modules"
-  mkdir -p "$ROOT/ahpx"
-  if [ -n "${AHPX_NODE_MODULES:-}" ]; then
-    cp -R "$AHPX_NODE_MODULES" "$nm"
-  else
-    for _ in 1 2 3; do
-      npm install -s --prefix "$ROOT/ahpx" @tylerl0706/ahpx@0.6.0 > "$ROOT/ahpx/npm-install.log" 2>&1 && break
-      sleep 10
-    done
-  fi
+  local nm="$ROOT/ahpx/node_modules" name
+  local -a npm_env=("PATH=$PATH" "HOME=$ROOT/npm-home")
+  mkdir -p "$ROOT/ahpx" "$ROOT/npm-home"
+  cp "$SUITE_DIR/ahpx/package.json" "$SUITE_DIR/ahpx/package-lock.json" "$ROOT/ahpx/"
+  for name in NODE_EXTRA_CA_CERTS SSL_CERT_FILE SSL_CERT_DIR CURL_CA_BUNDLE; do
+    [ -z "${!name:-}" ] || npm_env+=("$name=${!name}")
+  done
+  for _ in 1 2 3; do
+    env -i "${npm_env[@]}" npm ci --ignore-scripts --prefix "$ROOT/ahpx" \
+      > "$ROOT/ahpx/npm-install.log" 2>&1 && break
+    sleep 10
+  done
+  [ -x "$nm/.bin/ahpx" ] || return 1
   python3 "$SUITE_DIR/patch_ahpx.py" "$nm/@tylerl0706/ahpx/dist/bin.js" || return 1
   AHPX=(node "$nm/@tylerl0706/ahpx/dist/bin.js")
 }

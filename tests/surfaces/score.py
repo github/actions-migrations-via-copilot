@@ -14,7 +14,6 @@ actions-migrator guard didn't block); NOT RUN (no evidence either way).
 """
 import argparse
 import json
-import re
 from pathlib import Path
 
 ap = argparse.ArgumentParser()
@@ -31,8 +30,6 @@ meta = dict(m.split("=", 1) for m in a.meta if "=" in m)
 rows = []
 if a.log.exists():
     rows = [json.loads(line) for line in a.log.read_text().splitlines() if line.strip()]
-transcript = "\n".join(t.read_text(errors="replace") for t in a.transcript if t.is_file() and t.name != "hook-results.md")
-transcript = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", transcript)
 # actions-migrator's own deny reasons: proof that its hooks ran, not just that a call failed.
 DELETE_GUARD = "deletion outside .github/ci-archive/ is not allowed"
 SECRET_GUARD = "likely credential value in proposed output"
@@ -95,19 +92,21 @@ def file_has(name, code):
 
 
 def guard_denied(reason, target):
+    expected_calls = {record.get("call") for record in rows
+                      if target in record.get("targets", []) and record.get("call")}
     guard_log = a.log.parent / "plugin-guards.jsonl"
     if guard_log.is_file():
         for line in guard_log.read_text().splitlines():
             try:
                 record = json.loads(line)
-                output = json.loads(record["stdout"])
-                arguments = record["raw"].get("toolArgs", record["raw"].get("tool_input", {}))
+                decision = record["decision"]
                 if (record["event"] == "preToolUse" and record["exit_code"] == 0
-                        and output.get("permissionDecision") == "deny"
-                        and reason in output.get("permissionDecisionReason", "")
-                        and target in json.dumps(arguments)):
+                        and record["call"] in expected_calls
+                        and decision.get("permissionDecision") == "deny"
+                        and reason in decision.get("permissionDecisionReason", "")
+                        and target in record.get("targets", [])):
                     return True
-            except (ValueError, KeyError, TypeError):
+            except (ValueError, KeyError, TypeError, AttributeError):
                 continue
     calls = {}
     for source in a.transcript:
@@ -125,8 +124,7 @@ def guard_denied(reason, target):
                 message = data.get("error", {}).get("message", "")
                 if reason in message and target in calls.get(data.get("toolCallId"), ""):
                     return True
-    return any(line.lstrip().startswith("Denied by preToolUse hook:") and reason in line
-               for line in transcript.splitlines())
+    return False
 
 
 kit_rows = [r for r in rows if r["label"] in KIT | LIFECYCLE]
