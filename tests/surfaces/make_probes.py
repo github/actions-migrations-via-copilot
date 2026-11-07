@@ -14,12 +14,21 @@ make_probes.py <dir>
 Each part asks for a distinct file in hc-out/, so the file proves which part loaded.
 """
 import base64
+import argparse
+import hashlib
 import json
-import sys
+import shutil
 from pathlib import Path
 
 KIT = Path(__file__).resolve().parent / "kit"
-OUT = Path(sys.argv[1])
+parser = argparse.ArgumentParser()
+parser.add_argument("destination", type=Path)
+parser.add_argument("--include-plugin", type=Path)
+parser.add_argument("--source-sha")
+options = parser.parse_args()
+OUT = options.destination
+if options.include_plugin and (not options.source_sha or len(options.source_sha) != 40):
+    parser.error("--include-plugin requires the exact --source-sha")
 SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 # Plugin hooks may run from the plugin's own folder, so each hook carries the probe inline
 # instead of pointing at a path. The probe finds the project from the payload's cwd.
@@ -92,8 +101,24 @@ write(ns / "skills/hc-probe-ns-skill/SKILL.md", skill("hc-probe-ns-skill", "SKIL
 write(ns / "hooks.json", log_only_hooks("ns-root"))
 write(ns / "rules/hc-probe-nsroot-rule.mdc", rule("RULE_NSROOT", "rule-nsroot.txt"))
 
+plugin_names = ["hc-probe-a", "hc-probe-b", "hc-probe-ns"]
+if options.include_plugin:
+    source = options.include_plugin.resolve()
+    manifest = json.loads((source / "plugin.json").read_text())
+    if manifest.get("name") != "actions-migrator" or any(path.is_symlink() for path in source.rglob("*")):
+        raise ValueError("Expected an actions-migrator directory without symlinks")
+    shutil.copytree(source, plugins / "actions-migrator")
+    plugin_names.append("actions-migrator")
+    hashes = {str(path.relative_to(OUT)): hashlib.sha256(path.read_bytes()).hexdigest()
+              for path in sorted(plugins.rglob("*")) if path.is_file()}
+    write(OUT / "fixture-source.json", json.dumps({
+        "source_repository": "github/actions-migrations-via-copilot",
+        "source_sha": options.source_sha,
+        "files_sha256": hashes,
+    }, indent=2) + "\n")
+
 write(OUT / ".github/plugin/marketplace.json", json.dumps({
     "name": "hc-probes",
     "owner": {"name": "surface-tests"},
-    "plugins": [{"name": n, "version": "0.0.1", "source": f"./plugins/{n}"} for n in ("hc-probe-a", "hc-probe-b", "hc-probe-ns")],
+    "plugins": [{"name": n, "source": f"./plugins/{n}"} for n in plugin_names],
 }, indent=2) + "\n")

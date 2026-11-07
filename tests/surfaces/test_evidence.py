@@ -6,12 +6,38 @@ import sys
 import tempfile
 import unittest
 from sanitize_artifacts import publish
+from cloud_settings import configure
 
 
 SUITE = Path(__file__).resolve().parent
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_cloud_marketplace_keeps_plugin_unchanged(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            source.mkdir()
+            (source / "plugin.json").write_text('{"name":"actions-migrator","version":"1.0.0"}')
+            (source / "hooks.json").write_text('{"version":1,"hooks":{}}')
+            subprocess.run([sys.executable, str(SUITE / "make_probes.py"), str(root / "marketplace"),
+                            "--include-plugin", str(source), "--source-sha", "a" * 40], check=True)
+            published = root / "marketplace/plugins/actions-migrator/hooks.json"
+            self.assertEqual(published.read_bytes(), (source / "hooks.json").read_bytes())
+            provenance = json.loads((root / "marketplace/fixture-source.json").read_text())
+            self.assertIn("plugins/actions-migrator/hooks.json", provenance["files_sha256"])
+
+    def test_cloud_sessions_enable_only_their_own_plugins(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for session, expected in (("repo", {"actions-migrator@hc-probes"}),
+                                      ("plugin", {"hc-probe-a@hc-probes", "hc-probe-b@hc-probes", "hc-probe-ns@hc-probes"})):
+                configure(root, session, "example/test-marketplace")
+                settings = json.loads((root / ".github/copilot/settings.json").read_text())
+                actual = {name for name, enabled in settings["enabledPlugins"].items() if enabled}
+                self.assertEqual(actual, expected)
+                self.assertEqual(settings["extraKnownMarketplaces"]["hc-probes"]["source"]["repo"], "example/test-marketplace")
+
     def test_artifacts_exclude_catalog_and_redact_tokens(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
