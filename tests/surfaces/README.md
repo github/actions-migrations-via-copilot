@@ -2,7 +2,7 @@
 
 Automated tests for the Copilot CLI, VS Code Agent Host and the cloud agent. They cover `actions-migrator`'s own hooks and the plugin features it relies on: hooks, skills, rules and agents, in both plugin formats. VS Code Local is a separate, currently uncovered surface.
 
-They follow the method in the [plugin surface testing skill](https://github.com/github/services-toolbox/tree/main/products/copilot/skills/plugin-surface-testing): prove a hook ran from its own log and deny message, not from whether a call failed.
+The [plugin surface testing skill](../../.github/skills/plugin-surface-testing/SKILL.md) lives in this repo with the tests: prove a hook ran from its own log and deny message, not from whether a call failed. Update the method and test code together in the same PR. Private runners use a versioned copy of this guide, not a separately maintained one.
 
 ## How it runs
 

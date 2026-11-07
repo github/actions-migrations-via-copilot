@@ -14,6 +14,19 @@ SUITE = Path(__file__).resolve().parent
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_testing_method_lives_with_the_suite(self):
+        root = SUITE.parents[1]
+        skill = root / ".github/skills/plugin-surface-testing/SKILL.md"
+        reference = skill.parent / "references/compatibility.md"
+        self.assertIn("name: plugin-surface-testing", skill.read_text())
+        self.assertIn("./references/compatibility.md", skill.read_text())
+        self.assertTrue(reference.is_file())
+        readme = (SUITE / "README.md").read_text()
+        self.assertIn("../../.github/skills/plugin-surface-testing/SKILL.md", readme)
+        for text in (skill.read_text(), reference.read_text(), readme):
+            self.assertNotIn("github/services-toolbox", text)
+            self.assertNotIn("github/amer-es-nes", text)
+
     def test_cloud_agent_rejection_requires_a_working_control(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
