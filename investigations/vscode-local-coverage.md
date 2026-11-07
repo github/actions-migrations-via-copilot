@@ -1,6 +1,6 @@
 # VS Code Local coverage investigation
 
-**Date:** 2026-11-07  
+**Date:** 2026-11-07
 **Scope:** Evidence review only. No VS Code session, live Copilot/model call, settings change, or implementation change was made.
 
 ## Recommendation
