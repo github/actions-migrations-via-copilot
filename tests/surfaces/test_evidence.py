@@ -1,4 +1,5 @@
 import json
+import base64
 import os
 from pathlib import Path
 import subprocess
@@ -13,6 +14,43 @@ SUITE = Path(__file__).resolve().parent
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_cloud_agent_rejection_requires_a_working_control(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "hc-out"
+            output.mkdir()
+            control = root / "agents/control"
+            (control / "hc-out").mkdir(parents=True)
+            (control / "agent-selection.json").write_text(json.dumps({"completed": True}))
+            (control / "hc-out/agent-legacy.txt").write_text("AGENT_LEGACY")
+            for case in ("A1", "A2"):
+                (root / "agents" / case).mkdir()
+                (root / "agents" / case / "agent-selection.json").write_text(json.dumps({"completed": False, "rejected": True, "issue": "123"}))
+            command = [sys.executable, str(SUITE / "score.py"), "--surface", "cloud-agent", "--session", "plugin",
+                       "--log", str(root / "probe.jsonl"), "--out-dir", str(output), "--json", str(root / "score.json")]
+            subprocess.run(command, check=True, capture_output=True)
+            cases = {case["case"]: case["result"] for case in json.loads((root / "score.json").read_text())["cases"]}
+            self.assertEqual(cases["A1"], "DEVIATION")
+            (control / "agent-selection.json").write_text(json.dumps({"completed": False}))
+            subprocess.run(command, check=True, capture_output=True)
+            cases = {case["case"]: case["result"] for case in json.loads((root / "score.json").read_text())["cases"]}
+            self.assertEqual(cases["A1"], "NOT RUN")
+
+    def test_observer_preserves_output_and_exit_code(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".git").mkdir()
+            command = "printf '%s' '{\"permissionDecision\":\"deny\"}'; printf 'diagnostic' >&2; exit 2"
+            encoded = base64.b64encode(command.encode()).decode()
+            result = subprocess.run([sys.executable, str(SUITE / "observe_hook.py"), encoded, "preToolUse", "0"],
+                                    input=json.dumps({"cwd": str(root)}), text=True, capture_output=True)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(result.stdout, '{"permissionDecision":"deny"}')
+            self.assertEqual(result.stderr, "diagnostic")
+            record = json.loads((root / ".hook-conformance/plugin-guards.jsonl").read_text())
+            self.assertEqual(record["stdout"], result.stdout)
+            self.assertEqual(record["exit_code"], result.returncode)
+
     def test_cloud_marketplace_keeps_plugin_unchanged(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -31,12 +69,24 @@ class EvidenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for session, expected in (("repo", {"actions-migrator@hc-probes"}),
-                                      ("plugin", {"hc-probe-a@hc-probes", "hc-probe-b@hc-probes", "hc-probe-ns@hc-probes"})):
+                                      ("plugin", {"hc-probe-a@hc-probes", "hc-probe-b@hc-probes", "hc-probe-ns@hc-probes"}),
+                                      ("none", set())):
                 configure(root, session, "example/test-marketplace")
                 settings = json.loads((root / ".github/copilot/settings.json").read_text())
                 actual = {name for name, enabled in settings["enabledPlugins"].items() if enabled}
                 self.assertEqual(actual, expected)
                 self.assertEqual(settings["extraKnownMarketplaces"]["hc-probes"]["source"]["repo"], "example/test-marketplace")
+
+    def test_cloud_preflight_rejects_wrong_default_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            configure(root, "plugin", "example/test-marketplace")
+            command = [sys.executable, str(SUITE / "cloud_settings.py"), "--check",
+                       str(root / ".github/copilot/settings.json"), "repo", "example/test-marketplace"]
+            result = subprocess.run(command, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            command[-2] = "plugin"
+            self.assertEqual(subprocess.run(command, capture_output=True).returncode, 0)
 
     def test_artifacts_exclude_catalog_and_redact_tokens(self):
         with tempfile.TemporaryDirectory() as directory:

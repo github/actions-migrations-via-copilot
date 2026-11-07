@@ -12,7 +12,8 @@ def publish(source, destination):
                if name in {"COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"} and len(value) >= 8]
     allowed = {"score.json", "probe.jsonl", "events.jsonl", "session.log", "transcript.md",
                "stderr.log", "plugin-install.log", "agent-host.log", "agents.log",
-               "hc-probe-agent.log", "hc-probe-ns-agent.log", "run.log"}
+               "hc-probe-agent.log", "hc-probe-ns-agent.log", "run.log", "fixture-source.json", "plugin-guards.jsonl",
+               "agent-selection.json", "agent-start.json", "agent-legacy.txt", "agent-ns.txt"}
     for path in source.rglob("*"):
         if path.name not in allowed or not path.is_file():
             continue

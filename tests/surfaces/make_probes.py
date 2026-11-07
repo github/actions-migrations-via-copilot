@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("destination", type=Path)
 parser.add_argument("--include-plugin", type=Path)
 parser.add_argument("--source-sha")
+parser.add_argument("--observe-plugin", action="store_true")
 options = parser.parse_args()
 OUT = options.destination
 if options.include_plugin and (not options.source_sha or len(options.source_sha) != 40):
@@ -108,12 +109,25 @@ if options.include_plugin:
     if manifest.get("name") != "actions-migrator" or any(path.is_symlink() for path in source.rglob("*")):
         raise ValueError("Expected an actions-migrator directory without symlinks")
     shutil.copytree(source, plugins / "actions-migrator")
+    if options.observe_plugin:
+        original = (source / "hooks.json").read_bytes()
+        write(plugins / "actions-migrator/hooks.original.json", original.decode())
+        hooks = json.loads(original)
+        observer = base64.b64encode((KIT.parent / "observe_hook.py").read_bytes()).decode()
+        for event, entries in hooks["hooks"].items():
+            for index, entry in enumerate(entries):
+                command = entry.get("bash")
+                if command is not None:
+                    encoded = base64.b64encode(command.encode()).decode()
+                    entry["bash"] = f"python3 -c \"import base64; exec(base64.b64decode('{observer}'))\" '{encoded}' '{event}' '{index}'"
+        write(plugins / "actions-migrator/hooks.json", json.dumps(hooks, indent=2) + "\n")
     plugin_names.append("actions-migrator")
     hashes = {str(path.relative_to(OUT)): hashlib.sha256(path.read_bytes()).hexdigest()
               for path in sorted(plugins.rglob("*")) if path.is_file()}
     write(OUT / "fixture-source.json", json.dumps({
         "source_repository": "github/actions-migrations-via-copilot",
         "source_sha": options.source_sha,
+        "observed_plugin": options.observe_plugin,
         "files_sha256": hashes,
     }, indent=2) + "\n")
 

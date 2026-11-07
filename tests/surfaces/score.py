@@ -95,6 +95,20 @@ def file_has(name, code):
 
 
 def guard_denied(reason, target):
+    guard_log = a.log.parent / "plugin-guards.jsonl"
+    if guard_log.is_file():
+        for line in guard_log.read_text().splitlines():
+            try:
+                record = json.loads(line)
+                output = json.loads(record["stdout"])
+                arguments = record["raw"].get("toolArgs", record["raw"].get("tool_input", {}))
+                if (record["event"] == "preToolUse" and record["exit_code"] == 0
+                        and output.get("permissionDecision") == "deny"
+                        and reason in output.get("permissionDecisionReason", "")
+                        and target in json.dumps(arguments)):
+                    return True
+            except (ValueError, KeyError, TypeError):
+                continue
     calls = {}
     for source in a.transcript:
         if not source.is_file() or source.suffix != ".jsonl":
@@ -233,7 +247,22 @@ else:
         add("R3", "no sign the new-format plugin loaded", "NOT RUN")
 
     for case, fname, code in (("A1", "agent-legacy.txt", "AGENT_LEGACY"), ("A2", "agent-ns.txt", "AGENT_NS")):
-        if meta.get("agents") != "tested":
+        agent_results = a.log.parent / "agents"
+        if a.surface == "cloud-agent" and agent_results.is_dir():
+            try:
+                selection = json.loads((agent_results / case / "agent-selection.json").read_text())
+                control = json.loads((agent_results / "control/agent-selection.json").read_text())
+                control_ok = control["completed"] and (agent_results / "control/hc-out/agent-legacy.txt").read_text().strip() == "AGENT_LEGACY"
+                marker = agent_results / case / "hc-out" / fname
+                if selection["completed"] and marker.is_file() and code in marker.read_text():
+                    add(case, "selected plugin agent produced its marker", "PASS")
+                elif selection["rejected"] and control_ok:
+                    add(case, f"plugin-agent startup rejected (issue {selection['issue']}); repository-agent control passed", "DEVIATION")
+                else:
+                    add(case, "no conclusive selection result or positive control", "NOT RUN")
+            except (OSError, ValueError, KeyError):
+                add(case, "cloud agent-selection evidence missing or invalid", "NOT RUN")
+        elif meta.get("agents") != "tested":
             add(case, f"not testable here ({meta.get('agents', 'not tested')})", "NOT RUN")
         else:
             ok = file_has(fname, code)

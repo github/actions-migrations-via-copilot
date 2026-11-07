@@ -1,6 +1,6 @@
 # Plugin surface tests
 
-Automated tests for the Copilot CLI and VS Code Agent Host. They cover `actions-migrator`'s own hooks and the plugin features it relies on: hooks, skills, rules and agents, in both plugin formats. Cloud-agent coverage is still being completed; VS Code Local is a separate, currently uncovered surface.
+Automated tests for the Copilot CLI, VS Code Agent Host and the cloud agent. They cover `actions-migrator`'s own hooks and the plugin features it relies on: hooks, skills, rules and agents, in both plugin formats. VS Code Local is a separate, currently uncovered surface.
 
 They follow the method in the [plugin surface testing skill](https://github.com/github/services-toolbox/tree/main/products/copilot/skills/plugin-surface-testing): prove a hook ran from its own log and deny message, not from whether a call failed.
 
@@ -15,7 +15,9 @@ They follow the method in the [plugin surface testing skill](https://github.com/
 
 Fork PRs can't run on their own because GitHub doesn't give them this repo's secrets or Copilot access, which keeps untrusted code from using them.
 
-The cloud agent isn't tested on PRs. The planned weekly run belongs in a private testing repo and uses reviewed `main` code. That runner is not operational yet: its cloud-agent plugin session, credentials, result retention and analysis handoff remain work in this draft. No hourly polling or GitHub App is required for the per-PR tests.
+The cloud agent isn't tested automatically on public PRs. Its two sessions have been validated as one-off runs in a private testing repo using versioned fixtures. The planned weekly schedule and automatic analysis handoff still need deployment and credentials. No hourly polling or GitHub App is required for the per-PR CLI and Agent Host tests.
+
+VS Code Local is the older built-in agent mode, not another name for Agent Host. It has different hook payloads and event handling. The plugin's broad VS Code compatibility claim includes those paths, so Local needs its own coverage unless that support claim is explicitly narrowed. Passing Agent Host does not prove Local works.
 
 ## Cases
 
@@ -50,7 +52,45 @@ Each part of a probe plugin asks for its own file with its own code word, so a f
 
 Results: **PASS**; **DEVIATION**, where the surface differs from the documented behavior; **FAIL**, where an actions-migrator guard didn't block; or **NOT RUN**, with no evidence either way.
 
-[`expected.json`](expected.json) records historical cloud-agent gaps, not proof that the cloud suite ran. Missing surfaces, missing cases and NOT RUN results fail the check. Current CLI and VS Code Agent Host have no expected exceptions. A maintainer's manual fork run authorizes execution of that exact reviewed commit with Copilot access; it does not make arbitrary fork code safe.
+[`expected.json`](expected.json) records the six cloud-agent deviations reconfirmed on 2026-11-07. It is not proof of execution: each run still needs its own evidence. Missing surfaces, missing cases and NOT RUN results fail the check. Current CLI and VS Code Agent Host have no expected exceptions. A maintainer's manual fork run authorizes execution of that exact reviewed commit with Copilot access; it does not make arbitrary fork code safe.
+
+## Cloud runs
+
+Use a dedicated private repository. Publish the generated `hc-probes` marketplace
+on its default branch, retaining `fixture-source.json` with the source commit and
+per-file hashes. `make_probes.py --include-plugin <plugin-dir> --source-sha <sha>
+--observe-plugin <destination>` includes the real plugin with an observation wrapper
+that preserves each original command, stdout, stderr and exit code. The original
+hook file is retained alongside the observed copy.
+
+Before each cloud session, generate and publish its settings with
+`cloud_settings.py <testing-repo-checkout> repo|plugin <owner/testing-repo>`.
+The cloud agent reads plugin settings from the default branch, not merely the
+task branch. Run these sessions serially because they need different enabled-plugin
+sets. The runner rejects mismatched default settings and source revisions.
+After the batch, publish `cloud_settings.py <testing-repo-checkout> none
+<owner/testing-repo>` so probe hooks do not affect unrelated analysis tasks.
+
+```bash
+REPO=owner/testing-repo CLOUD_SESSION=repo OUT_DIR=/tmp/cloud-out \
+	tests/surfaces/run-cloud-agent.sh
+REPO=owner/testing-repo CLOUD_SESSION=plugin OUT_DIR=/tmp/cloud-out \
+	tests/surfaces/run-cloud-agent.sh
+```
+
+Provide `GH_TOKEN` through the environment, with permission to push test branches,
+create issues and assign the cloud agent. Do not store it in source. The plugin
+session additionally runs both plugin-agent selections and a positive control:
+publish the generated legacy probe agent at `.github/agents/hc-probe-agent.agent.md`
+on the private repo's default branch. Startup rejection counts as a tested
+deviation only when the repository-agent control succeeds. Temporary issues,
+PRs and branches are closed or removed by the runner after evidence collection.
+
+The 2026-11-07 cloud result is **13 repository checks passed; 14 plugin checks
+passed and 6 known deviations**. The deviations reproduce ignored new-format
+hook locations, execution of the root decoy hook, missing plugin rules, and
+rejected plugin custom-agent selection. No cloud case was left unexecuted in
+that result. This does not claim that the weekly scheduler is deployed.
 
 ## Historical regression check
 

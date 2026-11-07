@@ -81,6 +81,7 @@ collect_and_score() {
   cp "${HC_FALLBACK_LOG:-/nonexistent}" "$out/probe.jsonl" 2>/dev/null \
     || cp "$ws/.hook-conformance/probe.jsonl" "$out/probe.jsonl" 2>/dev/null || true
   cp "$ws/hook-results.md" "$out/hook-results.md" 2>/dev/null || true
+  cp "$ws/.hook-conformance/plugin-guards.jsonl" "$out/plugin-guards.jsonl" 2>/dev/null || true
   cp -R "$ws/hc-out/." "$out/hc-out/" 2>/dev/null || true
   local args=() transcripts=("$out/hook-results.md")
   while [ $# -gt 0 ]; do
