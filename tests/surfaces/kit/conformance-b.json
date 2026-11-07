@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" pre-b0"
+      },
+      {
+        "type": "command",
+        "timeoutSec": 15,
+        "bash": "python3 \"$(git rev-parse --show-toplevel)/.github/hooks/probe.py\" pre-b"
+      }
+    ]
+  }
+}
