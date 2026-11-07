@@ -21,6 +21,7 @@ run_session() {
   local session=$1 out="$OUT_ROOT/$1" ws="$ROOT/$1/ws" agents=not-tested
   mkdir -p "$out"
   export COPILOT_HOME="$ROOT/$session/home"
+  export HC_FALLBACK_LOG="$ROOT/$session/fallback-probe.jsonl"
   make_workspace "$ws" "$session"
   install_session_plugins "$session" "$out/plugin-install.log"
 
@@ -43,5 +44,5 @@ run_session() {
     --meta "copilot_cli=$version" --meta "model=${MODEL:-default}" --meta "agents=$agents"
 }
 
-run_session repo
-run_session plugin
+# SESSIONS=plugin (or repo) runs just one session, e.g. while debugging.
+for session in ${SESSIONS:-repo plugin}; do run_session "$session"; done

@@ -5,13 +5,12 @@ It logs every call before acting, never filters on cwd, and builds marker
 strings at runtime so the hook files never contain them.
 """
 import json
+import os
 import sys
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Loaded from .github/hooks/ (repository hooks) or .hc-probe/ (plugin hooks); log at the repo root either way.
-ROOT = next((d for d in Path(__file__).resolve().parents if (d / ".git").exists()), Path.cwd())
-LOG = ROOT / ".hook-conformance" / "probe.jsonl"
 OUT = "hc-out/"
 WRITE_TOOLS = {
     "create", "edit", "apply_patch", "write", "str_replace_editor", "create_file",
@@ -29,18 +28,40 @@ if not isinstance(payload, dict):
     payload = {}
 
 
+def git_root(path):
+    return next((d for d in [path, *path.parents] if (d / ".git").exists()), None)
+
+
+# Log in the project the agent works in. Plugin hooks run from the plugin's folder, so use the
+# payload's working directory first; fall back to this file's repo, then $HC_FALLBACK_LOG.
+root, root_from = None, "none"
+for key in ("cwd", "workingDirectory"):
+    if isinstance(payload.get(key), str) and payload[key]:
+        root, root_from = git_root(Path(payload[key])), key
+        break
+if root is None and "__file__" in globals():
+    root, root_from = git_root(Path(__file__).resolve().parent), "file"
+LOG = root / ".hook-conformance" / "probe.jsonl" if root else None
+if LOG is None and os.environ.get("HC_FALLBACK_LOG"):
+    LOG, root_from = Path(os.environ["HC_FALLBACK_LOG"]), "fallback"
+
+
 def marker(n):
     return "HC_" + "M" + n
 
 
-present = [n for n in ("1", "2", "3", "5", "8", "9") if marker(n) in raw]
-if "hc-does-not-exist" in raw:
-    present.append("rm")
 tool = payload.get("toolName") or payload.get("tool_name") or ""
+arguments = payload.get("toolArgs", payload.get("tool_input", {}))
+argument_text = json.dumps(arguments, sort_keys=True)
 # Act on file-writing tools and shell commands that point at hc-out/. The results
 # file and the agent's own commit/scan/validation tools are never touched.
 SHELL_TOOLS = {"bash", "run_in_terminal"}
-targets_out = (tool in WRITE_TOOLS or tool in SHELL_TOOLS) and OUT in raw and "hook-results.md" not in raw
+targets_out = (tool in WRITE_TOOLS or tool in SHELL_TOOLS) and OUT in argument_text and "hook-results.md" not in argument_text
+present = [number for number in ("1", "2", "3", "5", "8", "9") if targets_out and marker(number) in argument_text]
+if targets_out and "hc-out/c0.txt" in argument_text:
+    present.append("0")
+if tool in SHELL_TOOLS and "hc-does-not-exist" in argument_text and "hook-results.md" not in argument_text:
+    present.append("rm")
 
 action, output, code = "log-only", "", 0
 if targets_out:
@@ -77,10 +98,19 @@ record = {
     "payload_keys": sorted(payload),
     "markers": present,
     "action": action,
+    "log_from": root_from,
+    "call": hashlib.sha256(json.dumps([payload.get("sessionId", payload.get("session_id", "")), tool, arguments], sort_keys=True).encode()).hexdigest(),
+    "raw": payload,
+    "output": output,
+    "exit_code": code,
 }
-LOG.parent.mkdir(parents=True, exist_ok=True)
-with LOG.open("a") as f:
-    f.write(json.dumps(record) + "\n")
+logs = {LOG} if LOG is not None else set()
+if os.environ.get("HC_FALLBACK_LOG"):
+    logs.add(Path(os.environ["HC_FALLBACK_LOG"]))
+for log in logs:
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("a") as f:
+        f.write(json.dumps(record) + "\n")
 print(f"HC_PROBE {label} tool={tool or '-'} action={action}", file=sys.stderr)
 if output:
     print(output)

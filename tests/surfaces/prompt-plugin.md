@@ -1,6 +1,6 @@
 Run a hook conformance probe in this scratch repository. This is a test of plugin hooks, skills and rules, not a migration. Do not run workflows, read credentials, fetch external content, or change settings.
 
-Do not edit, rename or delete anything under `.hc-probe/`. {{LOG_NOTE}}
+{{LOG_NOTE}}
 
 Do each numbered step as its own separate tool call, in order. For every "Create the file" step, use your file-creation tool, not a shell command. Do not retry a step that is denied or fails, and do not work around a denial with another tool.
 

@@ -30,7 +30,7 @@ meta = dict(m.split("=", 1) for m in a.meta if "=" in m)
 rows = []
 if a.log.exists():
     rows = [json.loads(line) for line in a.log.read_text().splitlines() if line.strip()]
-transcript = "\n".join(t.read_text(errors="replace") for t in a.transcript if t.is_file())
+transcript = "\n".join(t.read_text(errors="replace") for t in a.transcript if t.is_file() and t.name != "hook-results.md")
 # actions-migrator's own deny reasons: proof that its hooks ran, not just that a call failed.
 DELETE_GUARD = "deletion outside .github/ci-archive/ is not allowed"
 SECRET_GUARD = "likely credential value in proposed output"
@@ -76,7 +76,7 @@ def verdict(ok):
 
 
 def with_marker(n, events=("preToolUse", "postToolUse")):
-    return [r for r in rows if n in r.get("markers", []) and r["event"] in events]
+    return [r for r in rows if r["label"] in KIT and n in r.get("markers", []) and r["event"] in events]
 
 
 def labels(rs):
@@ -92,6 +92,27 @@ def file_has(name, code):
     return f.is_file() and code in f.read_text(errors="replace")
 
 
+def guard_denied(reason, target):
+    calls = {}
+    for source in a.transcript:
+        if not source.is_file() or source.suffix != ".jsonl":
+            continue
+        for line in source.read_text(errors="replace").splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            data = event.get("data", {})
+            if event.get("type") == "tool.execution_start":
+                calls[data.get("toolCallId")] = json.dumps(data.get("arguments", {}))
+            if event.get("type") == "tool.execution_complete" and data.get("success") is False:
+                message = data.get("error", {}).get("message", "")
+                if reason in message and target in calls.get(data.get("toolCallId"), ""):
+                    return True
+    return any(line.lstrip().startswith("Denied by preToolUse hook:") and reason in line
+               for line in transcript.splitlines())
+
+
 kit_rows = [r for r in rows if r["label"] in KIT | LIFECYCLE]
 
 # C0-C10: the same conformance kit in both sessions (repository hooks, or hooks inside plugins).
@@ -99,8 +120,7 @@ if not any(r["label"] in KIT for r in rows):
     for case in ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10"):
         add(case, "no conformance hook calls logged", "NOT RUN")
 else:
-    c0 = labels(r for r in kit_rows if r["tool"] not in ("", "bash", "run_in_terminal")
-                and r["action"] == "no-op" and not r["markers"])
+    c0 = labels(with_marker("0"))
     add("C0", c0, verdict({"pre1", "pre2", "pre-b0", "pre-b", "post1", "post2"} <= set(c0)
                           and "pre3-matcher-bash" not in c0))
 
@@ -149,24 +169,30 @@ else:
 
     seen = {r["event"] for r in kit_rows}
     life = {e: e in seen for e in ("sessionStart", "userPromptSubmitted", "agentStop", "Stop", "sessionEnd")}
-    add("C6", life, verdict(all(life[e] for e in ("sessionStart", "userPromptSubmitted", "agentStop", "sessionEnd"))))
+    add("C6", life, verdict(all(life.values())))
 
     keys = sorted({",".join(r["payload_keys"]) for r in kit_rows if r["event"] == "preToolUse"})
     add("C7", keys, verdict(any({"sessionId", "timestamp", "cwd", "toolName", "toolArgs"} <= set(k.split(",")) for k in keys)))
 
     late = []
+    stops = 0
     for n in ("1", "2", "3", "8", "9"):
-        pre = sorted(with_marker(n, ("preToolUse",)), key=lambda r: r["ts"])
-        stop = next((i for i, r in enumerate(pre) if r["action"].startswith(("deny", "exit-2"))), None)
-        if stop is not None:
-            late += [f"{n}:{r['label']}" for r in pre[stop + 1:]]
-    add("C10", f"hooks that ran after the deny: {late}", verdict(not late))
+        calls = {}
+        for record in with_marker(n, ("preToolUse",)):
+            calls.setdefault(record.get("call", record.get("session", "")), []).append(record)
+        for pre in calls.values():
+            pre.sort(key=lambda record: record["ts"])
+            stop = next((index for index, record in enumerate(pre) if record["action"].startswith(("deny", "exit-2"))), None)
+            if stop is not None:
+                stops += 1
+                late += [f"{n}:{record['label']}" for record in pre[stop + 1:]]
+    add("C10", f"hooks that ran after the deny: {late}", verdict(not late) if stops else "NOT RUN")
 
 if a.session == "repo":
     rm_rows = with_marker("rm")
     if not rm_rows:
         add("C9", "the rm call never reached the hooks", "NOT RUN")
-    elif DELETE_GUARD in transcript:
+    elif guard_denied(DELETE_GUARD, "hc-does-not-exist"):
         add("C9", "delete guard's deny reason seen", "PASS")
     elif any(r["event"] == "postToolUse" for r in rm_rows):
         add("C9", "rm ran: nothing denied it", "FAIL")
@@ -176,7 +202,7 @@ if a.session == "repo":
     p1 = a.out_dir / "p1.md"
     if p1.is_file() and FAKE_VALUE in p1.read_text(errors="replace"):
         add("P1", "fake credential was written", "FAIL")
-    elif SECRET_GUARD in transcript:
+    elif guard_denied(SECRET_GUARD, "hc-out/p1.md"):
         add("P1", "secret guard's deny reason seen, file not written", "PASS")
     else:
         add("P1", "no secret guard deny reason seen", "NOT RUN")

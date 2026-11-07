@@ -31,6 +31,11 @@ ap.add_argument("--out", type=Path, required=True)
 a = ap.parse_args()
 meta = dict(m.split("=", 1) for m in a.meta if "=" in m)
 expect = [s for s in a.expect.split(",") if s]
+required_cases = {
+    "repo": {"C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10", "C9", "P1"},
+    "plugin": {"C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10",
+               "N1", "N2", "S1", "S2", "R1", "R2", "R3", "A1", "A2"},
+}
 known = json.loads(a.expected.read_text()) if a.expected.is_file() else {}
 baseline = json.loads(a.baseline.read_text()).get("grid", {}) if a.baseline and a.baseline.is_file() else {}
 
@@ -55,11 +60,15 @@ for s in expect:
     for session in SESSIONS:
         if not any(k.startswith(f"{session}:") for k in grid.get(s, {})):
             missing.append(f"{NAMES[s]}: {SESSIONS[session]} session produced no results")
+        else:
+            absent = sorted(case for case in required_cases[session] if f"{session}:{case}" not in grid[s])
+            if absent:
+                missing.append(f"{NAMES[s]} {session}: missing cases {', '.join(absent)}")
 for s, cells in grid.items():
     for key, c in cells.items():
         want = known.get(s, {}).get(key, {}).get("result", "PASS")
         label = f"{NAMES[s]} {key}"
-        if c["result"] == "NOT RUN" and want != "NOT RUN":
+        if c["result"] == "NOT RUN":
             not_run.append(f"{label}: {c['observed']}")
         elif c["result"] != want:
             unexpected.append(f"{label}: expected {want}, got {c['result']} ({c['observed']})")

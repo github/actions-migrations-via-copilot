@@ -7,16 +7,13 @@ TOOL_ROOT=$(git -C "$SUITE_DIR" rev-parse --show-toplevel)
 COPILOT_CLI_VERSION=${COPILOT_CLI_VERSION:-latest}
 
 # Scratch git repo for one session. $2 = "repo": the conformance hooks as repository hooks.
-# $2 = "plugin": only the probe script; the hooks come from the probe plugins (make_probes.py).
+# $2 = "plugin": no repository hooks; the hooks come from the probe plugins (make_probes.py).
 make_workspace() {
   local ws=$1 session=$2
   mkdir -p "$ws/hc-out"
   if [ "$session" = repo ]; then
     mkdir -p "$ws/.github/hooks"
     cp "$SUITE_DIR"/kit/* "$ws/.github/hooks/"
-  else
-    mkdir -p "$ws/.hc-probe"
-    cp "$SUITE_DIR/kit/probe.py" "$ws/.hc-probe/"
   fi
   touch "$ws/hc-out/.gitkeep"
   printf 'Scratch repository for actions-migrator surface tests.\n' > "$ws/README.md"
@@ -81,7 +78,8 @@ install_copilot_cli() {
 collect_and_score() {
   local surface=$1 session=$2 ws=$3 out=$4; shift 4
   mkdir -p "$out/hc-out"
-  cp "$ws/.hook-conformance/probe.jsonl" "$out/probe.jsonl" 2>/dev/null || true
+  cp "${HC_FALLBACK_LOG:-/nonexistent}" "$out/probe.jsonl" 2>/dev/null \
+    || cp "$ws/.hook-conformance/probe.jsonl" "$out/probe.jsonl" 2>/dev/null || true
   cp "$ws/hook-results.md" "$out/hook-results.md" 2>/dev/null || true
   cp -R "$ws/hc-out/." "$out/hc-out/" 2>/dev/null || true
   local args=() transcripts=("$out/hook-results.md")

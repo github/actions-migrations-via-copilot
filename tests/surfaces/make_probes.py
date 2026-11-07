@@ -13,14 +13,18 @@ make_probes.py <dir>
 
 Each part asks for a distinct file in hc-out/, so the file proves which part loaded.
 """
+import base64
 import json
 import sys
 from pathlib import Path
 
 KIT = Path(__file__).resolve().parent / "kit"
 OUT = Path(sys.argv[1])
-PROBE = '"$(git rev-parse --show-toplevel)/.hc-probe/probe.py"'
 SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
+# Plugin hooks may run from the plugin's own folder, so each hook carries the probe inline
+# instead of pointing at a path. The probe finds the project from the payload's cwd.
+_B64 = base64.b64encode((KIT / "probe.py").read_bytes()).decode()
+PROBE_CMD = f"python3 -c \"import base64; exec(base64.b64decode('{_B64}'))\""
 
 
 def write(path, text):
@@ -29,12 +33,15 @@ def write(path, text):
 
 
 def conformance_hooks(name):
-    text = (KIT / name).read_text()
-    return text.replace('"$(git rev-parse --show-toplevel)/.github/hooks/probe.py"', PROBE)
+    hooks = json.loads((KIT / name).read_text())
+    for entries in hooks["hooks"].values():
+        for e in entries:
+            e["bash"] = f"{PROBE_CMD} {e['bash'].split()[-1]}"
+    return json.dumps(hooks, indent=2) + "\n"
 
 
 def log_only_hooks(prefix):
-    entry = lambda event: [{"type": "command", "timeoutSec": 15, "bash": f"python3 {PROBE} {prefix}:{event}"}]
+    entry = lambda event: [{"type": "command", "timeoutSec": 15, "bash": f"{PROBE_CMD} {prefix}:{event}"}]
     return json.dumps({"version": 1, "hooks": {e: entry(e) for e in ("sessionStart", "preToolUse")}}, indent=2) + "\n"
 
 
