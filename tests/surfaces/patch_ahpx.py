@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """patch_ahpx.py <ahpx dist/bin.js>
 
-Adds one thing to AHPX 0.6.0: it also sends each folder in $HC_PLUGIN_DIRS to the Agent Host as a
-plugin, the way the VS Code editor does. VS Code's own plugin loader then runs those plugins, which
-is the path VS Code users get. (Plugins installed with the Copilot CLI run through the CLI's loader
-instead, which misses VS Code-only bugs.) Fails if AHPX no longer has the expected code.
+Adapts AHPX 0.6.0 for editor-path plugin tests: serve explicitly offered plugin files,
+wait for discovery, select discovered agents, and retain evidence before disposal.
+CLI-installed plugins alone miss editor-loader bugs. Fails if the pinned client changes.
 """
 import sys
 from pathlib import Path
@@ -69,7 +68,33 @@ dispose_replacement = '''            if (process.env.HC_EVIDENCE_DIR) {
                         }
                         await client.disposeSession(sessionUri);'''
 selection_anchor = '      const chatUri = await resolveChatChannel(client, sessionUri);'
-selection_addition = '''      if (process.env.HC_AGENT_NAME) {
+selection_addition = '''      if (process.env.HC_PLUGIN_DIRS) {
+                const offered = activeClientParam?.customizations || [];
+                await new Promise((resolve, reject) => {
+                    let timer;
+                    const finish = (error) => {
+                        clearTimeout(timer);
+                        client.removeListener("action", check);
+                        if (error) reject(error); else resolve();
+                    };
+                    const check = () => {
+                        const current = client.state.getSession(sessionUri)?.customizations || [];
+                        const plugins = offered.map((item) => current.find((candidate) => candidate.uri === item.uri));
+                        if (plugins.some((item) => item?.load?.kind === "error" || item?.load?.kind === "degraded")) {
+                            finish(new Error("A test plugin failed to load"));
+                        } else if (plugins.length > 0 && plugins.every((item) => item && item.load?.kind !== "loading" && Array.isArray(item.children))) {
+                            console.error("Ready plugin components: " + JSON.stringify(plugins.map((item) => ({
+                                name: item.name, load: item.load, children: item.children.map((child) => ({type: child.type, name: child.name}))
+                            }))));
+                            finish();
+                        }
+                    };
+                    timer = setTimeout(() => finish(new Error("Plugin discovery did not become ready")), 30000);
+                    client.on("action", check);
+                    check();
+                });
+            }
+            if (process.env.HC_AGENT_NAME) {
                 const flatten = (items) => items.flatMap((item) => [item, ...flatten(item.children || [])]);
                 const matches = flatten(client.state.getSession(sessionUri)?.customizations || [])
                     .filter((item) => item.type === "agent" && item.name === process.env.HC_AGENT_NAME);
