@@ -14,6 +14,7 @@ actions-migrator guard didn't block); NOT RUN (no evidence either way).
 """
 import argparse
 import json
+import re
 from pathlib import Path
 
 ap = argparse.ArgumentParser()
@@ -31,6 +32,7 @@ rows = []
 if a.log.exists():
     rows = [json.loads(line) for line in a.log.read_text().splitlines() if line.strip()]
 transcript = "\n".join(t.read_text(errors="replace") for t in a.transcript if t.is_file() and t.name != "hook-results.md")
+transcript = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", transcript)
 # actions-migrator's own deny reasons: proof that its hooks ran, not just that a call failed.
 DELETE_GUARD = "deletion outside .github/ci-archive/ is not allowed"
 SECRET_GUARD = "likely credential value in proposed output"

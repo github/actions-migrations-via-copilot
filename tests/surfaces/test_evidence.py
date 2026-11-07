@@ -85,6 +85,18 @@ class EvidenceTests(unittest.TestCase):
             result = json.loads((root / "score.json").read_text())
             self.assertEqual(next(case["result"] for case in result["cases"] if case["case"] == "P1"), "NOT RUN")
 
+    def test_terminal_colors_do_not_hide_guard_denials(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            transcript = root / "session.log"
+            transcript.write_text("  \x1b[2mDenied by preToolUse hook: Blocked: likely credential value in proposed output\x1b[22m\n")
+            subprocess.run([sys.executable, str(SUITE / "score.py"), "--surface", "vscode",
+                            "--session", "repo", "--log", str(root / "absent.jsonl"),
+                            "--out-dir", str(root), "--json", str(root / "score.json"),
+                            "--transcript", str(transcript)], check=True, capture_output=True)
+            result = json.loads((root / "score.json").read_text())
+            self.assertEqual(next(case["result"] for case in result["cases"] if case["case"] == "P1"), "PASS")
+
 
 if __name__ == "__main__":
     unittest.main()
