@@ -79,8 +79,11 @@ access, deployment and merging separate from automated analysis.
 
 Use disposable test inputs and fake credentials, never customer secrets. Give
 test execution only the access it needs. Keep unreviewed code away from repository
-writers and trusted caches. Review the exact fork commit before privileged tests,
-and do not mistake that review for technical isolation.
+writers and trusted caches. The public surface workflow runs fork code only in offline checks; manual
+dispatch of a reviewed fork SHA cannot grant Copilot access. Privileged jobs
+check out the repository-owned workflow event revision, not a supplied PR SHA.
+Any future credentialed fork route needs independently enforced credential and
+cache isolation; reviewing the exact commit alone is not that isolation.
 
 Filter evidence before publication. Keep private repository identities, credentials,
 internal-only findings and runtime model catalogs out of public artifacts.

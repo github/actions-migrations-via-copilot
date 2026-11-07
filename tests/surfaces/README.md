@@ -10,10 +10,52 @@ The [plugin surface testing skill](../../.github/skills/plugin-surface-testing/S
 
 | Who opens the PR | What happens |
 |---|---|
-| Someone with write access (a branch in this repo) | The tests run on the PR automatically |
-| An outside contributor (a fork) | The PR shows a note. A maintainer reviews the changes, then runs **Surface Tests** from the Actions tab with the PR number and the commit they reviewed. The result appears on the PR. |
+| Someone with write access (a branch in this repo) | Offline and credentialed tests run on the PR's event revision automatically |
+| An outside contributor (a fork) | Only offline checks run. Credentialed fork tests are disabled, including manual dispatch of an exact reviewed SHA. |
 
-Fork PRs can't run on their own because GitHub doesn't give them this repo's secrets or Copilot access, which keeps untrusted code from using them.
+Repository-owned branches are the credentialed execution trust boundary: their
+writers can already change executable workflow code. Manual PR runs require that
+the API reports a head in this repository, its SHA matches the reviewed SHA, and
+the selected workflow branch is at that same revision. Select that branch in the
+Actions tab; selecting `main` while supplying a different PR SHA fails closed.
+All credentialed jobs and the summarizer check out `github.sha`, never a supplied
+SHA or a fork PR ref. Automatic repository-owned PR runs test the event's merge
+revision. The metadata selector and status writer do not check out or run PR code.
+
+Reviewing fork code is not credential or cache isolation. Until separate execution
+infrastructure enforces those boundaries, neither the runners nor the sanitizer
+may execute fork code with Copilot credentials. The offline job uses a fresh
+GitHub-hosted runner, read-only contents permission, no persisted checkout
+credentials, no Copilot credentials, and no shared-cache restore/save steps.
+Credentialed jobs also do not restore/save shared caches. Missing credentials
+prevent runner startup (CLI fails; VS Code records `ran=false`). This fallback
+sacrifices automatic/live fork coverage, not contributor offline validation:
+
+```bash
+python3 -m unittest discover -s tests/surfaces -p 'test_*.py' -v
+```
+
+### CodeQL follow-up
+
+This change starts from reviewed suite revision
+`67924a46ae3e195e0521a9e7b9f82a47143a186b`; no suite file changes preceded it.
+[Alert 33's review comment](https://github.com/github/actions-migrations-via-copilot/pull/61#discussion_r4502054023)
+reports cache poisoning through `workflow_dispatch` and privileged checkout of
+`needs.target.outputs.sha`. That checkout path is removed, not suppressed.
+Fetching the full alert through the integration returned HTTP 403
+(`Resource not accessible by integration`), so its complete trace and final
+disposition remain unverified. Absence of an explicit cache action is not evidence
+that the alert is a false positive.
+
+A maintainer with code-scanning access must inspect
+[alert 33](https://github.com/github/actions-migrations-via-copilot/security/code-scanning/33)
+and rerun the existing CodeQL analysis on this PR's exact head revision. Confirm
+whether the dispatch-to-untrusted-checkout flow is eliminated. If it remains,
+provide the rule ID, analyzed commit/ref, all source-to-sink locations and messages,
+and any implicated cache scope/key/action from the trace (or its SARIF code flows).
+Keep the alert open pending that evidence. Related investigations: #62 and #65;
+result aggregation/failure propagation and other security-comment fixes are
+separate follow-ups.
 
 The cloud agent isn't tested automatically on public PRs. Its two sessions have been validated as one-off runs in a private testing repo using versioned fixtures. The planned weekly schedule and automatic analysis handoff still need deployment and credentials. No hourly polling or GitHub App is required for the per-PR CLI and Agent Host tests.
 
@@ -52,7 +94,7 @@ Each part of a probe plugin asks for its own file with its own code word, so a f
 
 Results: **PASS**; **DEVIATION**, where the surface differs from the documented behavior; **FAIL**, where an actions-migrator guard didn't block; or **NOT RUN**, with no evidence either way.
 
-[`expected.json`](expected.json) records the six cloud-agent deviations reconfirmed on 2026-11-07. It is not proof of execution: each run still needs its own evidence. Missing surfaces, missing cases and NOT RUN results fail the check. Current CLI and VS Code Agent Host have no expected exceptions. A maintainer's manual fork run authorizes execution of that exact reviewed commit with Copilot access; it does not make arbitrary fork code safe.
+[`expected.json`](expected.json) records the six cloud-agent deviations reconfirmed on 2026-11-07. It is not proof of execution: each run still needs its own evidence. Missing surfaces, missing cases and NOT RUN results fail the check. Current CLI and VS Code Agent Host have no expected exceptions. Fork commits cannot run with Copilot access in this workflow, even after review.
 
 ## Cloud runs
 
