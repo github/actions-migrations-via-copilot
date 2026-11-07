@@ -106,6 +106,26 @@ The old build reproduces C0/C4 matcher failures, C2 stopping after `{}`, C3 igno
 
 The runner pins the actual server commit, not just the CLI version. The AHPX adapter serves plugin files through the host's customization interface, selects discovered agents, and captures evidence before the old host deletes its temporary worktree. Installing plugins only through the Copilot CLI did not reproduce the editor's old failures.
 
+## Isolated VS Code rule probe
+
+The rule probe runs one rule-only plugin at a time, with a neutral task, no selected agent, and no competing fixture instructions. `current` tests R1; `namespace` tests R2. It uses the VS Code Agent Host customization interface, not CLI-installed plugins.
+
+```bash
+RULE_FORMAT=current CODE_BIN=/path/to/code \
+  COPILOT_GITHUB_TOKEN="$COPILOT_GITHUB_TOKEN" MODEL=claude-haiku-4.5 \
+  OUT_DIR=/tmp/vscode-rule-out tests/surfaces/run-vscode-rule.sh
+
+RULE_FORMAT=namespace CODE_BIN=/path/to/code \
+  COPILOT_GITHUB_TOKEN="$COPILOT_GITHUB_TOKEN" MODEL=claude-haiku-4.5 \
+  OUT_DIR=/tmp/vscode-rule-out tests/surfaces/run-vscode-rule.sh
+```
+
+Use an authenticated Copilot user token; do not put it in source or artifacts. The result JSON records the suite SHA, rule case and plugin version, VS Code CLI and Agent Host server commits, AHPX version, and requested model selector. It records only the expected rule file's SHA match when Agent Host reads it, target-specific tool-call evidence, and marker-file state. Prompt/event transcripts, credentials, and model catalogs are not published.
+
+An Agent Host resource read proves that the rule text was returned to the host; it does not prove that the model received it. That delivery stage is reported as unobservable. A missing resource read is **NOT RUN**; a completed isolated session that read the expected rule but did not produce the marker is a **DEVIATION** with unresolved cause. A result is **PASS** only when the expected resource was read, the target tool call succeeded, and the marker matches. The command does not retry. Repeat a case only when testing variability, using the same revision, runtime, model selector, and configuration.
+
+Run from a clean, committed suite checkout; the runner refuses a dirty tree so the recorded source SHA identifies the fixture and scoring code.
+
 ## Run locally
 
 ```bash

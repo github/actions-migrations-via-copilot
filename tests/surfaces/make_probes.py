@@ -2,6 +2,7 @@
 """Build the local marketplace of probe plugins used by the plugin-hooks session.
 
 make_probes.py <dir>
+make_probes.py <dir> --rule-only current|namespace
 
 - hc-probe-a: current format. Conformance hooks from kit/conformance-a.json, plus a skill,
   an always-on rule in rules/, and an agent.
@@ -26,6 +27,7 @@ parser.add_argument("destination", type=Path)
 parser.add_argument("--include-plugin", type=Path)
 parser.add_argument("--source-sha")
 parser.add_argument("--observe-plugin", action="store_true")
+parser.add_argument("--rule-only", choices=["current", "namespace"])
 options = parser.parse_args()
 OUT = options.destination
 if options.include_plugin and (not options.source_sha or len(options.source_sha) != 40):
@@ -78,6 +80,26 @@ def agent(name, code, file):
 
 
 plugins = OUT / "plugins"
+
+if options.rule_only:
+    probe = plugins / "hc-rule-probe"
+    if options.rule_only == "current":
+        write(probe / "plugin.json", json.dumps({
+            "name": "hc-rule-probe", "version": "0.0.1",
+            "description": "Isolated VS Code rule probe",
+        }, indent=2) + "\n")
+        rule_path = probe / "rules/hc-rule-probe.mdc"
+        marker_code = "RULE_LEGACY"
+    else:
+        write(probe / "plugin.json", json.dumps({
+            "$schema": SCHEMA, "name": "hc-rule-probe", "version": "0.0.1",
+            "description": "Isolated VS Code rule probe",
+        }, indent=2) + "\n")
+        rule_path = probe / "com.github.copilot/rules/hc-rule-probe.mdc"
+        marker_code = "RULE_NS"
+    write(rule_path, rule(marker_code, "rule-marker.txt"))
+    write(OUT / "rule-resource-path", str(rule_path.resolve()) + "\n")
+    raise SystemExit(0)
 
 a = plugins / "hc-probe-a"
 write(a / "plugin.json", json.dumps({"name": "hc-probe-a", "version": "0.0.1", "description": "Hook conformance probe A",

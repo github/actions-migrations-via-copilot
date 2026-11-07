@@ -3,6 +3,7 @@
 
 Adapts AHPX 0.6.0 for editor-path plugin tests: serve explicitly offered plugin files,
 wait for discovery, select discovered agents, and retain evidence before disposal.
+The isolated-rule probe also records a hash-only result for its one resource read.
 CLI-installed plugins alone miss editor-loader bugs. Fails if the pinned client changes.
 """
 import sys
@@ -18,7 +19,7 @@ addition = """  for (const dir of (process.env.HC_PLUGIN_DIRS || "").split(path4
   }
 """
 imports = """import { readdirSync as hcReaddirSync, realpathSync as hcRealpathSync } from "node:fs";
-import { cp as hcCopy, mkdir as hcMkdir } from "node:fs/promises";
+import { appendFile as hcAppendFile, cp as hcCopy, mkdir as hcMkdir } from "node:fs/promises";
 import { pathToFileURL as hcPathToFileURL } from "node:url";
 """
 allow_anchor = """        this.allowedPaths.add(filePath);
@@ -37,8 +38,6 @@ allow_addition = """        const pluginRoots = (process.env.HC_PLUGIN_DIRS || "
                     offerDirectory(filePath);
                 }
 """
-if addition in text:
-    sys.exit(0)
 resolve_anchor = '    switch (method) {\n      case "resourceRead": {'
 resolve_replacement = '''    switch (method) {
       case "resourceResolve": {
@@ -105,10 +104,42 @@ selection_addition = '''      if (process.env.HC_PLUGIN_DIRS) {
 '''
 message_anchor = '          ...this.model ? { model: { id: this.model } } : {},'
 message_addition = '\n          ...process.env.HC_SELECTED_AGENT_URI ? { agent: { uri: process.env.HC_SELECTED_AGENT_URI } } : {},'
-if any(text.count(part) != 1 for part in (anchor, allow_anchor, resolve_anchor, dispose_anchor, selection_anchor, message_anchor)) or "createHash" not in text or "path4." not in text:
+resource_anchor = '''      const content = await fs2.readFile(filePath);
+      return {
+        data: content.toString("base64"),
+'''
+resource_replacement = '''      const content = await fs2.readFile(filePath);
+      if (process.env.HC_EVIDENCE_DIR && process.env.HC_RULE_RESOURCE_PATH &&
+          filePath === process.env.HC_RULE_RESOURCE_PATH) {
+        const digest = createHash("sha256").update(content).digest("hex");
+        await hcMkdir(process.env.HC_EVIDENCE_DIR, { recursive: true });
+        await hcAppendFile(path4.join(process.env.HC_EVIDENCE_DIR, "rule-resource.jsonl"),
+          JSON.stringify({ resource_read: true, sha256: digest,
+            matches_expected: digest === process.env.HC_RULE_RESOURCE_SHA256 }) + "\\n", { mode: 0o600 });
+      }
+      return {
+        data: content.toString("base64"),
+'''
+if addition in text:
+    if "process.env.HC_RULE_RESOURCE_PATH" in text:
+        sys.exit(0)
+    old_import = 'import { cp as hcCopy, mkdir as hcMkdir } from "node:fs/promises";'
+    new_import = 'import { appendFile as hcAppendFile, cp as hcCopy, mkdir as hcMkdir } from "node:fs/promises";'
+    if text.count(resource_anchor) != 1:
+        sys.exit(f"AHPX at {path} changed; update tests/surfaces/patch_ahpx.py")
+    if new_import not in text:
+        if text.count(old_import) != 1:
+            sys.exit(f"AHPX at {path} changed; update tests/surfaces/patch_ahpx.py")
+        text = text.replace(old_import, new_import)
+    path.write_text(text.replace(resource_anchor, resource_replacement))
+    sys.exit(0)
+
+if any(text.count(part) != 1 for part in (anchor, allow_anchor, resolve_anchor, dispose_anchor, selection_anchor,
+                                           message_anchor, resource_anchor)) or "createHash" not in text or "path4." not in text:
     sys.exit(f"AHPX at {path} changed; update tests/surfaces/patch_ahpx.py")
 text = text.replace(anchor, anchor + addition).replace(allow_anchor, allow_anchor + allow_addition)
 text = text.replace(resolve_anchor, resolve_replacement)
+text = text.replace(resource_anchor, resource_replacement)
 text = text.replace(dispose_anchor, dispose_replacement)
 text = text.replace(selection_anchor, selection_addition + selection_anchor)
 text = text.replace(message_anchor, message_anchor + message_addition)
