@@ -65,6 +65,14 @@ An expected deviation is still a limitation. Do not remove it without a fresh
 successful retest. Different outcomes across different revisions do not establish
 nondeterminism; repeat an otherwise identical case when that question matters.
 
+The approved CI policy reports VS Code plugin R1/R2 deviations as non-blocking
+warnings, without changing their results to PASS. R3's missing-control result is
+also non-blocking only with its own challenge evidence, no root-rule marker, and
+the scorer's explicit reason that the R2 control did not apply. Missing cases,
+other missing evidence, guard failures, process errors, and failed jobs still
+block. See the suite README for the exact policy; a green gate is not proof that
+the warning cases succeeded. Do not expand this policy without maintainer approval.
+
 ## Analyze a failure
 
 Classify it as a plugin defect, a runtime behavior change, a test defect, or

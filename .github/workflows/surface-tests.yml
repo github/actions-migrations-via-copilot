@@ -240,16 +240,22 @@ jobs:
             --job-result "offline=$OFFLINE_RESULT" \
             --job-result "vscode=$VSCODE_RESULT" --out "$RUNNER_TEMP/summary"
           cat "$RUNNER_TEMP/summary/results.md" >> "$GITHUB_STEP_SUMMARY"
-      - name: Fail on unexpected results or missing surfaces
-        if: steps.sum.outputs.unexpected != '0' || steps.sum.outputs.missing != '0' || steps.sum.outputs.not_run != '0' || steps.sum.outputs.execution_failed != '0' || steps.sum.outputs.upstream_failed != '0'
+      - name: Report non-blocking rule warnings
+        if: steps.sum.outputs.warnings != '0'
         env:
-          UNEXPECTED: ${{ steps.sum.outputs.unexpected }}
+          WARNINGS: ${{ steps.sum.outputs.warnings }}
+        run: |
+          echo "::warning::Surface tests: $WARNINGS non-blocking VS Code rule compatibility warnings. Results remain DEVIATION or NOT RUN; see the summary."
+      - name: Fail on unexpected results or missing surfaces
+        if: steps.sum.outputs.blocking_unexpected != '0' || steps.sum.outputs.missing != '0' || steps.sum.outputs.blocking_not_run != '0' || steps.sum.outputs.execution_failed != '0' || steps.sum.outputs.upstream_failed != '0'
+        env:
+          UNEXPECTED: ${{ steps.sum.outputs.blocking_unexpected }}
           MISSING: ${{ steps.sum.outputs.missing }}
-          NOT_RUN: ${{ steps.sum.outputs.not_run }}
+          NOT_RUN: ${{ steps.sum.outputs.blocking_not_run }}
           EXECUTION_FAILED: ${{ steps.sum.outputs.execution_failed }}
           UPSTREAM_FAILED: ${{ steps.sum.outputs.upstream_failed }}
         run: |
-          echo "::error::Surface tests: $UNEXPECTED unexpected, $MISSING sessions/cases missing, $NOT_RUN checks not run, $EXECUTION_FAILED recorded process failures, $UPSTREAM_FAILED required jobs unsuccessful. See the summary."
+          echo "::error::Surface tests: $UNEXPECTED blocking unexpected results, $MISSING sessions/cases missing, $NOT_RUN blocking checks not run, $EXECUTION_FAILED recorded process failures, $UPSTREAM_FAILED required jobs unsuccessful. See the summary."
           exit 1
 
   pr-status:

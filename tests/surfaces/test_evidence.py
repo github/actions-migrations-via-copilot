@@ -21,6 +21,68 @@ SUITE = Path(__file__).resolve().parent
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_warning_policy_preserves_results_and_required_failures(self):
+        names = {
+            "repo": ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10", "C9", "P1"),
+            "plugin": ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10", "N1", "N2", "S1", "S2", "R1", "R2", "R3", "A1", "A2"),
+        }
+        scenarios = ("warnings", "guard", "hook", "cli_rule", "missing_case", "missing_session", "rule_not_run", "rule_fail", "unknown_dependency", "missing_challenge", "r2_not_run", "r2_pass", "r3_deviation", "process", "job")
+        for scenario in scenarios:
+            with self.subTest(scenario=scenario), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                for surface in ("cli", "vscode"):
+                    for session, cases in names.items():
+                        if scenario == "missing_session" and surface == "vscode" and session == "repo":
+                            continue
+                        records = [{"case": case, "expected": case, "result": "PASS", "observed": "fixture evidence"} for case in cases]
+                        for record in records:
+                            case = record["case"]
+                            if surface == "vscode" and session == "plugin":
+                                if case in {"R1", "R2"}:
+                                    record["result"] = "DEVIATION"
+                                if case == "R3":
+                                    record.update(result="NOT RUN", reason_code="rule_positive_control_missing")
+                                if scenario == "rule_not_run" and case == "R1":
+                                    record["result"] = "NOT RUN"
+                                if scenario == "rule_fail" and case == "R1":
+                                    record["result"] = "FAIL"
+                                if scenario == "r2_not_run" and case == "R2":
+                                    record["result"] = "NOT RUN"
+                                if scenario == "r2_pass" and case == "R2":
+                                    record["result"] = "PASS"
+                                if scenario == "hook" and case == "C2":
+                                    record["result"] = "DEVIATION"
+                                if scenario == "unknown_dependency" and case == "R3":
+                                    record.pop("reason_code")
+                                if scenario == "missing_challenge" and case == "R3":
+                                    record["reason_code"] = "challenge_evidence_incomplete"
+                                if scenario == "r3_deviation" and case == "R3":
+                                    record["result"] = "DEVIATION"
+                            if scenario == "guard" and session == "repo" and case == "P1":
+                                record["result"] = "FAIL"
+                            if scenario == "cli_rule" and surface == "cli" and session == "plugin" and case == "R1":
+                                record["result"] = "DEVIATION"
+                        if scenario == "missing_case" and surface == "vscode" and session == "plugin":
+                            records = [record for record in records if record["case"] != "R1"]
+                        destination = root / surface / session
+                        destination.mkdir(parents=True)
+                        metadata = {"ahpx_exit": "124"} if scenario == "process" and surface == "vscode" else {}
+                        (destination / "score.json").write_text(json.dumps({"meta": metadata, "cases": records}))
+                result = subprocess.run([sys.executable, str(SUITE / "summarize.py"), "--scores", str(root), "--expect", "cli,vscode",
+                                         "--job-result", "offline=" + ("failure" if scenario == "job" else "success"),
+                                         "--out", str(root / "summary")], check=True, capture_output=True, text=True)
+                summary = json.loads((root / "summary/results.json").read_text())
+                blocking = any(summary[key] for key in ("blocking_unexpected", "blocking_not_run", "missing", "execution_failures", "upstream_failed"))
+                self.assertEqual(blocking, scenario != "warnings")
+                if scenario == "warnings":
+                    self.assertEqual(len(summary["warnings"]), 3)
+                    self.assertEqual(len(summary["unexpected"]), 2)
+                    self.assertEqual(len(summary["not_run"]), 1)
+                    self.assertEqual(summary["grid"]["vscode"]["plugin:R1"]["result"], "DEVIATION")
+                    self.assertEqual(summary["grid"]["vscode"]["plugin:R3"]["result"], "NOT RUN")
+                    self.assertIn("warnings=3", result.stdout)
+                    self.assertIn("non-blocking warning", (root / "summary/results.md").read_text())
+
     def test_cloud_marketplace_requires_verified_bytes_and_immutable_pin(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -826,6 +888,21 @@ if os.environ.get("GH_FAIL") and os.environ["GH_FAIL"] in args:
             cases = {case["case"]: case["result"] for case in json.loads((root / "score.json").read_text())["cases"]}
             self.assertEqual(cases["N2"], "DEVIATION")
             self.assertEqual(cases["R3"], "PASS")
+
+            (output / "rule-ns.txt").unlink()
+            subprocess.run(command, check=True, capture_output=True)
+            cases = {case["case"]: case for case in json.loads((root / "score.json").read_text())["cases"]}
+            self.assertEqual(cases["R3"]["result"], "NOT RUN")
+            self.assertEqual(cases["R3"]["reason_code"], "rule_positive_control_missing")
+            (output / "r3-rule-challenge.txt").unlink()
+            subprocess.run(command, check=True, capture_output=True)
+            cases = {case["case"]: case for case in json.loads((root / "score.json").read_text())["cases"]}
+            self.assertEqual(cases["R3"]["reason_code"], "challenge_evidence_incomplete")
+            (output / "r3-rule-challenge.txt").write_text("R3_CHALLENGE")
+            (output / "rule-nsroot.txt").write_text("RULE_NSROOT")
+            subprocess.run(command, check=True, capture_output=True)
+            cases = {case["case"]: case for case in json.loads((root / "score.json").read_text())["cases"]}
+            self.assertEqual(cases["R3"]["reason_code"], "challenge_evidence_incomplete")
 
     def test_agent_report_cannot_prove_secret_guard(self):
         with tempfile.TemporaryDirectory() as directory:

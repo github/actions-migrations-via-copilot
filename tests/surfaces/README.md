@@ -76,8 +76,9 @@ by their owned process IDs, not by a global kill command.
 Real plugin hooks are observed transparently: original command bytes, stdin,
 stdout, stderr, and exit status are preserved. Guard scores require structured
 decisions correlated to the target call, not an agent's report or a denial-like
-line in a transcript. Missing case evidence, required-job failures, and recorded
-nonzero process exits fail the combined result gate.
+line in a transcript. Missing surfaces/cases, required-job failures, and recorded
+nonzero process exits fail the combined result gate. The narrow rule-warning
+policy below does not change those requirements.
 
 Public artifacts contain only structured scores, minimized hook records, fixture
 hashes, and agent-selection results. Full transcripts, raw tool payloads, and
@@ -117,7 +118,25 @@ Each part of a probe plugin asks for its own file with its own code word, so a f
 
 Results: **PASS**; **DEVIATION**, where the surface differs from the documented behavior; **FAIL**, where an actions-migrator guard didn't block; or **NOT RUN**, with no evidence either way.
 
-[`expected.json`](expected.json) records the six cloud-agent deviations reconfirmed on 2026-11-07. It is not proof of execution: each run still needs its own evidence. Missing surfaces, missing cases and NOT RUN results fail the check. Current CLI and VS Code Agent Host have no expected exceptions. Fork commits cannot run with Copilot access in this workflow, even after review.
+[`expected.json`](expected.json) records the six cloud-agent deviations reconfirmed on 2026-11-07. It is not proof of execution: each run still needs its own evidence. Missing surfaces and missing cases fail the check. CLI expectations and cloud exceptions are unchanged. Fork commits cannot run with Copilot access in this workflow, even after review.
+
+### Non-blocking rule warnings
+
+The approved merge policy treats **VS Code plugin R1/R2 DEVIATION** results as
+warnings. They still run and keep their original result and observations in JSON,
+the result table, and the GitHub Actions warning annotation. They are not passes.
+
+R3 remains NOT RUN but is non-blocking only when its own challenge has evidence,
+the root-rule marker is absent, and the scorer identifies the missing R2 positive
+control while R2 is DEVIATION. Missing or older evidence without that reason code
+still blocks. R3 deviations, rule FAIL results, missing rule cases, and other
+NOT RUN outcomes still block, as do security, process, and required-job failures.
+
+The summary retains all `unexpected` and `not_run` results. The workflow uses
+`blocking_unexpected` and `blocking_not_run` for its gate and lists the exceptions
+under `warnings`. A green workflow with rule warnings means the required checks
+passed, not that rule-following is reliable. The standalone rule diagnostic still
+returns a failing exit status for non-PASS results.
 
 ## Cloud runs
 

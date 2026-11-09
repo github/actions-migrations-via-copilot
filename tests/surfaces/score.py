@@ -66,8 +66,11 @@ ORDER = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C8b", "C10", "C9
 results = []
 
 
-def add(case, observed, result):
-    results.append({"case": case, "expected": EXPECTED[case], "observed": str(observed), "result": result})
+def add(case, observed, result, reason_code=None):
+    record = {"case": case, "expected": EXPECTED[case], "observed": str(observed), "result": result}
+    if reason_code is not None:
+        record["reason_code"] = reason_code
+    results.append(record)
 
 
 def verdict(ok):
@@ -261,10 +264,11 @@ else:
     r3_calls = challenge_calls(ns_rows, "hc-out/r3-rule-challenge.txt")
     r3_file = file_has("r3-rule-challenge.txt", "R3_CHALLENGE")
     r2_control = file_has("rule-ns.txt", "RULE_NS")
+    root_rule = file_has("rule-nsroot.txt", "RULE_NSROOT")
     if not r3_calls or not r2_control:
-        add("R3", f"challenge_calls={len(r3_calls)} new-format-rule-control={r2_control}", "NOT RUN")
+        reason = "rule_positive_control_missing" if r3_calls and r3_file and not root_rule else "challenge_evidence_incomplete"
+        add("R3", f"challenge_calls={len(r3_calls)} new-format-rule-control={r2_control}", "NOT RUN", reason)
     else:
-        root_rule = file_has("rule-nsroot.txt", "RULE_NSROOT")
         add("R3", f"challenge_file={r3_file} root_rule_applied={root_rule}",
             verdict(r3_file and not root_rule))
 

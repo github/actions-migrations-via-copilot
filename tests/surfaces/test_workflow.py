@@ -24,6 +24,17 @@ def run_step(job_name, step_name):
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_rule_warnings_are_visible_without_bypassing_other_gates(self):
+        results = job("results")
+        self.assertIn("::warning::", run_step("results", "Report non-blocking rule warnings"))
+        for output in ("blocking_unexpected", "missing", "blocking_not_run", "execution_failed", "upstream_failed"):
+            self.assertIn(f"steps.sum.outputs.{output} != '0'", results)
+        failure = results.split("- name: Fail on unexpected results or missing surfaces", 1)[1]
+        self.assertNotIn("steps.sum.outputs.warnings", failure)
+        self.assertNotIn("steps.sum.outputs.unexpected", failure)
+        self.assertNotIn("steps.sum.outputs.not_run", failure)
+        self.assertIn("exit 1", failure)
+
     def test_offline_failure_blocks_live_jobs_and_combined_status(self):
         for name in ("cli", "vscode"):
             self.assertIn("needs: [offline, target]", job(name))
