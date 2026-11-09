@@ -24,6 +24,13 @@ def run_step(job_name, step_name):
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_offline_failure_blocks_live_jobs_and_combined_status(self):
+        for name in ("cli", "vscode"):
+            self.assertIn("needs: [offline, target]", job(name))
+        self.assertIn("needs: [offline, target, cli, vscode]", job("results"))
+        self.assertIn("OFFLINE_RESULT: ${{ needs.offline.result }}", job("results"))
+        self.assertIn('--job-result "offline=$OFFLINE_RESULT"', run_step("results", "Summarize"))
+
     def decide(self, event="workflow_dispatch", head_repo=REPOSITORY,
                pr="", reviewed="", api_repo=REPOSITORY, api_sha=SHA,
                event_sha=SHA, api_status=0):

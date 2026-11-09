@@ -21,6 +21,8 @@ Actions tab; selecting `main` while supplying a different PR SHA fails closed.
 All credentialed jobs and the summarizer check out `github.sha`, never a supplied
 SHA or a fork PR ref. Automatic repository-owned PR runs test the event's merge
 revision. The metadata selector and status writer do not check out or run PR code.
+Live jobs wait for the offline checks to pass. The final result also includes the
+offline job, so a failed framework test cannot produce a successful combined status.
 
 Reviewing fork code is not credential or cache isolation. Until separate execution
 infrastructure enforces those boundaries, neither the runners nor the sanitizer
@@ -169,10 +171,16 @@ that preserves each original command, stdout, stderr and exit code. The original
 hook file is retained alongside the observed copy.
 
 Before each cloud session, generate and publish its settings with
-`cloud_settings.py <testing-repo-checkout> repo|plugin <owner/testing-repo>`.
+`cloud_settings.py <testing-repo-checkout> repo|plugin <owner/testing-repo> <marketplace-commit>`.
+Use the full commit SHA containing the published fixtures, not a branch or tag.
+This becomes the marketplace's `source.ref`, fixing which files the cloud agent
+loads. The runner fetches that exact commit and compares every plugin file and
+the marketplace manifest against fixtures generated from the approved local suite.
+Source labels and a self-reported hash inventory alone are not sufficient.
 The cloud agent reads plugin settings from the default branch, not merely the
 task branch. Run these sessions serially because they need different enabled-plugin
-sets. The runner rejects mismatched default settings and source revisions.
+sets. The runner rejects missing or mutable marketplace pins, mismatched files,
+default settings, and source revisions before creating a remote task.
 After the batch, publish `cloud_settings.py <testing-repo-checkout> none
 <owner/testing-repo>` so probe hooks do not affect unrelated analysis tasks.
 

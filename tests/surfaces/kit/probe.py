@@ -6,6 +6,7 @@ strings at runtime so the hook files never contain them.
 """
 import json
 import os
+import re
 import sys
 import hashlib
 from datetime import datetime, timezone
@@ -52,12 +53,13 @@ def marker(n):
 
 def safe_targets(arguments, tool):
     targets = set()
+    allowed = ("hc-out/p1.md", "hc-out/n2-root-hook.txt", "hc-out/r3-rule-challenge.txt")
     if isinstance(arguments, dict):
         for key in ("path", "file", "filePath", "file_path", "uri"):
             value = arguments.get(key)
             if isinstance(value, str):
                 normalized = value.replace("\\", "/")
-                for target in ("hc-out/p1.md", "hc-out/n2-root-hook.txt", "hc-out/r3-rule-challenge.txt"):
+                for target in allowed:
                     if normalized == target or normalized.endswith("/" + target):
                         targets.add(target)
         for key in ("command", "cmd"):
@@ -67,6 +69,16 @@ def safe_targets(arguments, tool):
     elif tool in {"bash", "run_in_terminal"} and isinstance(arguments, str):
         if "hc-does-not-exist" in arguments:
             targets.add("hc-does-not-exist")
+    if tool.rsplit(".", 1)[-1] == "apply_patch":
+        patches = [arguments] if isinstance(arguments, str) else [arguments.get(key) for key in ("patch", "input")] if isinstance(arguments, dict) else []
+        for patch_text in patches:
+            if not isinstance(patch_text, str):
+                continue
+            for path in re.findall(r"^\*\*\* (?:Add File|Update File|Delete File|Move to): ([^\r\n]+)$", patch_text, re.M):
+                normalized = path.strip().replace("\\", "/")
+                for target in allowed:
+                    if normalized == target or normalized.endswith("/" + target):
+                        targets.add(target)
     return sorted(targets)
 
 

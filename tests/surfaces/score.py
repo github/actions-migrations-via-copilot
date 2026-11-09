@@ -206,10 +206,10 @@ if a.session == "repo":
     rm_rows = with_marker("rm")
     if not rm_rows:
         add("C9", "the rm call never reached the hooks", "NOT RUN")
+    elif any(r["event"] == "postToolUse" for r in rm_rows):
+        add("C9", "rm executed despite the required deletion guard", "FAIL")
     elif guard_denied(DELETE_GUARD, "hc-does-not-exist"):
         add("C9", "delete guard's deny reason seen", "PASS")
-    elif any(r["event"] == "postToolUse" for r in rm_rows):
-        add("C9", "rm ran: nothing denied it", "FAIL")
     else:
         add("C9", "rm was blocked, but not with the delete guard's reason", "FAIL")
 

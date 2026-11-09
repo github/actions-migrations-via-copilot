@@ -36,9 +36,18 @@ gh api -X GET "repos/$REPO/contents/.github/copilot/surface-test-policy.json" -f
   | base64 -d > "$ROOT/policy.json" || exit 1
 gh api -X GET "repos/$REPO/contents/.github/copilot/settings.json" -f ref="$default_branch" --jq .content \
   | base64 -d > "$ROOT/default-settings.json" || exit 1
-python3 "$SUITE_DIR/cloud_settings.py" --check "$ROOT/default-settings.json" "$CLOUD_SESSION" "$CLOUD_MARKETPLACE_REPO" || exit 1
-gh api "repos/$CLOUD_MARKETPLACE_REPO/contents/fixture-source.json" --jq .content \
-  | base64 -d > "$OUT/fixture-source.json" || exit 1
+marketplace_sha=$(jq -er '.extraKnownMarketplaces["hc-probes"].source.ref' "$ROOT/default-settings.json") || exit 1
+[[ "$marketplace_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "Cloud marketplace must be pinned to a full commit SHA" >&2; exit 1; }
+python3 "$SUITE_DIR/cloud_settings.py" --check "$ROOT/default-settings.json" "$CLOUD_SESSION" "$CLOUD_MARKETPLACE_REPO" "$marketplace_sha" || exit 1
+python3 "$SUITE_DIR/make_probes.py" "$ROOT/expected" --include-plugin "$TOOL_ROOT/plugin" \
+  --source-sha "$local_sha" --observe-plugin || exit 1
+git init -q "$ROOT/published" || exit 1
+git -C "$ROOT/published" -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+  fetch -q --depth=1 "https://github.com/$CLOUD_MARKETPLACE_REPO.git" "$marketplace_sha" || exit 1
+[ "$(git -C "$ROOT/published" rev-parse FETCH_HEAD)" = "$marketplace_sha" ] || exit 1
+git -C "$ROOT/published" -c core.hooksPath=/dev/null checkout -q --detach FETCH_HEAD || exit 1
+python3 "$SUITE_DIR/cloud_settings.py" --verify-marketplace "$ROOT/expected" "$ROOT/published" || exit 1
+cp "$ROOT/published/fixture-source.json" "$OUT/fixture-source.json" || exit 1
 source_sha=$(jq -er .source_sha "$OUT/fixture-source.json") || exit 1
 python3 "$SUITE_DIR/cloud_settings.py" --authorize "$ROOT/policy.json" "$ROOT/repository.json" \
   "$local_sha" "$OUT/fixture-source.json" || exit 1
@@ -48,11 +57,10 @@ if [ -n "${SHA:-}" ] && [ "$SHA" != "$source_sha" ]; then
 fi
 SHA=$source_sha
 make_workspace "$WS" "$CLOUD_SESSION"
-python3 "$SUITE_DIR/cloud_settings.py" "$WS" "$CLOUD_SESSION" "$CLOUD_MARKETPLACE_REPO"
+python3 "$SUITE_DIR/cloud_settings.py" "$WS" "$CLOUD_SESSION" "$CLOUD_MARKETPLACE_REPO" "$marketplace_sha" || exit 1
 if [ "$CLOUD_AGENT" = hc-probe-agent ]; then
   mkdir -p "$WS/.github/agents"
-  gh api "repos/$CLOUD_MARKETPLACE_REPO/contents/plugins/hc-probe-a/agents/hc-probe-agent.agent.md" --jq .content \
-    | base64 -d > "$WS/.github/agents/hc-probe-agent.agent.md" || exit 1
+  cp "$ROOT/published/plugins/hc-probe-a/agents/hc-probe-agent.agent.md" "$WS/.github/agents/hc-probe-agent.agent.md" || exit 1
 fi
 git_commit_all "$WS" "Configure isolated cloud test plugins"
 BRANCH="surface-run/${GITHUB_RUN_ID:-$(date +%s)}-$CLOUD_SESSION${CLOUD_AGENT:+-${CLOUD_AGENT##*:}}-$(openssl rand -hex 8)"
@@ -148,6 +156,7 @@ else
   collect_and_score cloud-agent "$CLOUD_SESSION" "$WS" "$OUT" "$OUT/agent-session.log" \
     --meta "issue=$issue" --meta "pr=${pr:-none}" --meta "marketplace=$CLOUD_MARKETPLACE_REPO" \
     --meta "run=${run_id:-none}" --meta "run_conclusion=${run_conclusion:-unknown}" --meta "source_sha=$source_sha" \
+    --meta "marketplace_sha=$marketplace_sha" \
     --meta "selected_agent_failures=$agent_failures" --meta "control_exit=${control_exit:-not-run}" \
     --meta "agent_a_exit=${agent_a_exit:-not-run}" --meta "agent_ns_exit=${agent_ns_exit:-not-run}" \
     --meta "interrupt_exit=${INTERRUPTED:-0}" || score_exit=$?

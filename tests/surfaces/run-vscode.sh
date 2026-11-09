@@ -56,6 +56,9 @@ run_session() {
   local setup_exit=0 session_exit=0 agent_legacy_exit=0 agent_ns_exit=0 host_cleanup_exit=0 score_exit=0 connect_exit=0
   [ "$session" = plugin ] && port=$((PORT + 1))
   mkdir -p "$out" "$ROOT/$session/ud" "$ROOT/$session/sd" || return 1
+  for evidence_file in events.jsonl session.log hc-probe-agent.log hc-probe-ns-agent.log; do
+    : > "$out/$evidence_file" || return 1
+  done
   HOST_PID=""
   # An empty Copilot profile, so no Copilot CLI-installed plugins load.
   export COPILOT_HOME="$ROOT/$session/home"

@@ -107,7 +107,7 @@ jobs:
           echo "Testing commit \`$sha\`" >> "$GITHUB_STEP_SUMMARY"
 
   cli:
-    needs: target
+    needs: [offline, target]
     if: >-
       needs.target.outputs.run == 'true' &&
       github.repository == 'github/actions-migrations-via-copilot' &&
@@ -152,7 +152,7 @@ jobs:
           retention-days: 14
 
   vscode:
-    needs: target
+    needs: [offline, target]
     if: >-
       needs.target.outputs.run == 'true' &&
       github.repository == 'github/actions-migrations-via-copilot' &&
@@ -212,7 +212,7 @@ jobs:
           retention-days: 14
 
   results:
-    needs: [target, cli, vscode]
+    needs: [offline, target, cli, vscode]
     if: always() && needs.target.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -230,12 +230,14 @@ jobs:
         env:
           SHA: ${{ needs.target.outputs.sha }}
           TARGET_RESULT: ${{ needs.target.result }}
+          OFFLINE_RESULT: ${{ needs.offline.result }}
           CLI_RESULT: ${{ needs.cli.result }}
           VSCODE_RESULT: ${{ needs.vscode.result }}
         run: |
           python3 tests/surfaces/summarize.py --scores "$RUNNER_TEMP/scores" --expect cli,vscode \
             --meta "sha=$SHA" --meta "kind=$GITHUB_EVENT_NAME" \
             --job-result "target=$TARGET_RESULT" --job-result "cli=$CLI_RESULT" \
+            --job-result "offline=$OFFLINE_RESULT" \
             --job-result "vscode=$VSCODE_RESULT" --out "$RUNNER_TEMP/summary"
           cat "$RUNNER_TEMP/summary/results.md" >> "$GITHUB_STEP_SUMMARY"
       - name: Fail on unexpected results or missing surfaces

@@ -5,6 +5,7 @@ import io
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -12,7 +13,7 @@ import time
 import unittest
 from unittest.mock import patch
 from sanitize_artifacts import publish
-from cloud_settings import authorize, configure
+from cloud_settings import authorize, configure, settings_for, verify_marketplace
 import rule_evidence
 
 
@@ -20,6 +21,106 @@ SUITE = Path(__file__).resolve().parent
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_cloud_marketplace_requires_verified_bytes_and_immutable_pin(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            expected = root / "expected"
+            published = root / "published"
+            subprocess.run([sys.executable, str(SUITE / "make_probes.py"), str(expected),
+                            "--include-plugin", str(SUITE.parents[1] / "plugin"), "--source-sha", "a" * 40,
+                            "--observe-plugin"], check=True, capture_output=True)
+            shutil.copytree(expected, published)
+            verify_marketplace(expected, published)
+            settings = settings_for("plugin", "example/fixtures", "b" * 40)
+            self.assertEqual(settings["extraKnownMarketplaces"]["hc-probes"]["source"]["ref"], "b" * 40)
+            with self.assertRaises(ValueError):
+                settings_for("plugin", "example/fixtures", "main")
+            hook = published / "plugins/actions-migrator/hooks.json"
+            original = hook.read_bytes()
+            hook.write_text("{}")
+            with self.assertRaises(ValueError):
+                verify_marketplace(expected, published)
+            hook.write_bytes(original)
+            manifest = published / ".github/plugin/marketplace.json"
+            original_manifest = manifest.read_bytes()
+            manifest.write_text('{"plugins":[]}')
+            with self.assertRaises(ValueError):
+                verify_marketplace(expected, published)
+            manifest.write_bytes(original_manifest)
+            injected = published / "plugins/actions-migrator/injected.txt"
+            injected.write_text("unexpected")
+            with self.assertRaises(ValueError):
+                verify_marketplace(expected, published)
+            injected.unlink()
+            hook.unlink()
+            hook.symlink_to(expected / "plugins/actions-migrator/hooks.json")
+            with self.assertRaises(ValueError):
+                verify_marketplace(expected, published)
+
+    def test_patch_targets_are_correlated_without_retaining_patch_content(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".git").mkdir()
+            patch_text = "*** Begin Patch\n*** Add File: hc-out/p1.md\n+private-patch-content\n*** Update File: hc-out/n2-root-hook.txt\n@@\n+private-patch-content\n*** Move to: hc-out/r3-rule-challenge.txt\n*** End Patch\n"
+            command = base64.b64encode(b"printf '%s' '{\"permissionDecision\":\"deny\"}'").decode()
+            for arguments in (patch_text, {"patch": patch_text}, {"input": patch_text}):
+                payload = json.dumps({"cwd": str(root), "toolName": "apply_patch", "toolArgs": arguments})
+                subprocess.run([sys.executable, str(SUITE / "kit/probe.py"), "ns:preToolUse"], input=payload, text=True, capture_output=True, check=True)
+                subprocess.run([sys.executable, str(SUITE / "observe_hook.py"), command, "preToolUse", "0"], input=payload, text=True, capture_output=True, check=True)
+                probe = json.loads((root / ".hook-conformance/probe.jsonl").read_text().splitlines()[-1])
+                observer = json.loads((root / ".hook-conformance/plugin-guards.jsonl").read_text().splitlines()[-1])
+                self.assertEqual(probe["targets"], ["hc-out/n2-root-hook.txt", "hc-out/p1.md", "hc-out/r3-rule-challenge.txt"])
+                self.assertEqual(observer["targets"], probe["targets"])
+                self.assertEqual(observer["call"], probe["call"])
+                self.assertNotIn("private-patch-content", json.dumps([probe, observer]))
+            payload = json.dumps({"cwd": str(root), "toolName": "apply_patch", "toolArgs": "*** Begin Patch\n*** Add File: report.md\n+*** Add File: hc-out/p1.md\n*** End Patch\n"})
+            subprocess.run([sys.executable, str(SUITE / "kit/probe.py"), "ns:preToolUse"], input=payload, text=True, capture_output=True, check=True)
+            self.assertEqual(json.loads((root / ".hook-conformance/probe.jsonl").read_text().splitlines()[-1])["targets"], [])
+
+    def test_collection_removes_stale_scoring_inputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            (workspace / "hc-out").mkdir(parents=True)
+            (workspace / "hc-out/rule-legacy.txt").write_text("RULE_LEGACY")
+            output = root / "output"
+            command = ["bash", "-c", 'source "$1/common.sh"; collect_and_score vscode plugin "$2" "$3" --meta agents=tested',
+                       "test", str(SUITE), str(workspace), str(output)]
+            subprocess.run(command, check=True, capture_output=True)
+            first = json.loads((output / "score.json").read_text())
+            self.assertEqual(next(case["result"] for case in first["cases"] if case["case"] == "R1"), "PASS")
+            for name in ("probe.jsonl", "plugin-guards.jsonl", "hook-results.md"):
+                (output / name).write_text("stale evidence")
+            empty = root / "empty"
+            (empty / "hc-out").mkdir(parents=True)
+            command[-2] = str(empty)
+            subprocess.run(command, check=True, capture_output=True)
+            second = json.loads((output / "score.json").read_text())
+            self.assertTrue(all(case["result"] != "PASS" for case in second["cases"]))
+            self.assertEqual(next(case["result"] for case in second["cases"] if case["case"] == "R1"), "NOT RUN")
+            self.assertFalse((output / "hc-out/rule-legacy.txt").exists())
+            for name in ("probe.jsonl", "plugin-guards.jsonl", "hook-results.md"):
+                self.assertFalse((output / name).exists())
+
+    def test_delete_guard_execution_overrides_a_deny_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            probe = {"label": "pre1", "event": "preToolUse", "markers": ["rm"], "tool": "bash",
+                     "payload_keys": [], "targets": ["hc-does-not-exist"], "call": "delete-call", "ts": "1", "action": "no-op"}
+            guard = {"event": "preToolUse", "exit_code": 0, "call": "delete-call", "targets": ["hc-does-not-exist"],
+                     "decision": {"permissionDecision": "deny", "permissionDecisionReason": "deletion outside .github/ci-archive/ is not allowed"}}
+            (root / "plugin-guards.jsonl").write_text(json.dumps(guard) + "\n")
+            command = [sys.executable, str(SUITE / "score.py"), "--surface", "cli", "--session", "repo",
+                       "--log", str(root / "probe.jsonl"), "--out-dir", str(root), "--json", str(root / "score.json")]
+            for executed, expected in ((False, "PASS"), (True, "FAIL")):
+                records = [probe]
+                if executed:
+                    records.append({**probe, "event": "postToolUse", "label": "post1", "ts": "2"})
+                (root / "probe.jsonl").write_text("".join(json.dumps(record) + "\n" for record in records))
+                subprocess.run(command, check=True, capture_output=True)
+                cases = json.loads((root / "score.json").read_text())["cases"]
+                self.assertEqual(next(case["result"] for case in cases if case["case"] == "C9"), expected)
+
     def test_cloud_authorization_requires_target_policy_and_exact_source(self):
         repository = {"full_name": "example/test-runner", "private": True, "archived": False, "permissions": {"push": True}}
         policy = {"enabled": True, "repository": repository["full_name"], "source_repository": "github/actions-migrations-via-copilot", "source_commits": ["a" * 40]}
@@ -497,7 +598,7 @@ const path4 = { delimiter: ":" };
                     }))
             result = subprocess.run([
                 sys.executable, str(SUITE / "summarize.py"), "--scores", str(root), "--expect", "cli,vscode",
-                "--job-result", "target=success", "--job-result", "cli=failure", "--job-result", "vscode=success",
+                "--job-result", "target=success", "--job-result", "offline=failure", "--job-result", "cli=success", "--job-result", "vscode=success",
                 "--out", str(root / "summary"),
             ], capture_output=True, text=True, check=True)
             summary = json.loads((root / "summary/results.json").read_text())
@@ -507,7 +608,7 @@ const path4 = { delimiter: ":" };
             self.assertEqual(summary["missing"], [])
             self.assertEqual(summary["not_run"], [])
             self.assertEqual(summary["execution_failures"], ["Copilot CLI repo cli_exit=37"])
-            self.assertEqual(summary["upstream_failed"], ["cli: failure"])
+            self.assertEqual(summary["upstream_failed"], ["offline: failure"])
 
     def test_malformed_score_artifact_fails_summary(self):
         with tempfile.TemporaryDirectory() as directory:

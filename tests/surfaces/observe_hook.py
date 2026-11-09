@@ -2,6 +2,7 @@
 import base64
 import hashlib
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -29,6 +30,16 @@ try:
     elif tool in {"bash", "run_in_terminal"} and isinstance(arguments, str):
         if "hc-does-not-exist" in arguments:
             targets.add("hc-does-not-exist")
+    if tool.rsplit(".", 1)[-1] == "apply_patch":
+        patches = [arguments] if isinstance(arguments, str) else [arguments.get(key) for key in ("patch", "input")] if isinstance(arguments, dict) else []
+        for patch_text in patches:
+            if not isinstance(patch_text, str):
+                continue
+            for path in re.findall(r"^\*\*\* (?:Add File|Update File|Delete File|Move to): ([^\r\n]+)$", patch_text, re.M):
+                normalized = path.strip().replace("\\", "/")
+                for target in ("hc-out/p1.md", "hc-out/n2-root-hook.txt", "hc-out/r3-rule-challenge.txt"):
+                    if normalized == target or normalized.endswith("/" + target):
+                        targets.add(target)
     directory = payload.get("cwd") or payload.get("workingDirectory") or str(Path.cwd())
     root = Path(directory)
     root = next((path for path in [root, *root.parents] if (path / ".git").exists()), root)

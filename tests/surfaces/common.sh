@@ -173,6 +173,22 @@ prepare_ahpx() {
 # Extra args: transcript files, then "--meta key=value" pairs.
 collect_and_score() {
   local surface=$1 session=$2 ws=$3 out=$4; shift 4
+  python3 - "$ws" "$out" <<'PY' || return 1
+from pathlib import Path
+import shutil
+import sys
+
+workspace = Path(sys.argv[1]).resolve()
+destination = Path(sys.argv[2]).resolve()
+if workspace in (destination, destination / "hc-out") or destination / "hc-out" in workspace.parents:
+    raise ValueError("Evidence output must not contain the source workspace")
+for name in ("hc-out", "probe.jsonl", "plugin-guards.jsonl", "hook-results.md", "score.json"):
+    target = destination / name
+    if target.is_symlink() or target.is_file():
+        target.unlink()
+    elif target.is_dir():
+        shutil.rmtree(target)
+PY
   mkdir -p "$out/hc-out"
   cp "${HC_FALLBACK_LOG:-/nonexistent}" "$out/probe.jsonl" 2>/dev/null \
     || cp "$ws/.hook-conformance/probe.jsonl" "$out/probe.jsonl" 2>/dev/null || true

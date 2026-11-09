@@ -39,6 +39,9 @@ run_session() {
   local session=$1 out="$OUT_ROOT/$1" ws="$ROOT/$1/ws" agents=not-tested
   local workspace_exit=0 install_exit=0 main_exit=0 agent_a_exit=0 agent_ns_exit=0 score_exit=0
   mkdir -p "$out"
+  for evidence_file in events.jsonl transcript.md agents.log stderr.log; do
+    : > "$out/$evidence_file" || return 1
+  done
   export COPILOT_HOME="$ROOT/$session/home"
   export HC_FALLBACK_LOG="$ROOT/$session/fallback-probe.jsonl"
   make_workspace "$ws" "$session" || workspace_exit=$?
