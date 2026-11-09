@@ -1,5 +1,7 @@
 import json
 import base64
+import hashlib
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -8,6 +10,7 @@ import tempfile
 import unittest
 from sanitize_artifacts import publish
 from cloud_settings import configure
+import rule_evidence
 
 
 SUITE = Path(__file__).resolve().parent
@@ -185,6 +188,206 @@ class EvidenceTests(unittest.TestCase):
                             "--transcript", str(transcript)], check=True, capture_output=True)
             result = json.loads((root / "score.json").read_text())
             self.assertEqual(next(case["result"] for case in result["cases"] if case["case"] == "P1"), "PASS")
+
+    def test_isolated_rule_fixtures_contain_one_rule_and_neutral_prompt(self):
+        prompt = (SUITE / "prompt-rule.md").read_text()
+        self.assertNotIn("RULE_LEGACY", prompt)
+        self.assertNotIn("RULE_NS", prompt)
+        self.assertNotIn("rule-marker.txt", prompt)
+        for rule_format, relative_rule in (
+                ("current", Path("rules/hc-rule-probe.mdc")),
+                ("namespace", Path("com.github.copilot/rules/hc-rule-probe.mdc"))):
+            with self.subTest(rule_format=rule_format), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                subprocess.run([sys.executable, str(SUITE / "make_probes.py"), str(root),
+                                "--rule-only", rule_format], check=True, capture_output=True)
+                plugin_root = root / "plugins"
+                self.assertEqual([path.name for path in plugin_root.iterdir()], ["hc-rule-probe"])
+                plugin = plugin_root / "hc-rule-probe"
+                self.assertEqual(
+                    {path.relative_to(plugin) for path in plugin.rglob("*") if path.is_file()},
+                    {Path("plugin.json"), relative_rule},
+                )
+                rule_text = (plugin / relative_rule).read_text()
+                self.assertIn("alwaysApply: true", rule_text)
+                self.assertIn("rule-marker.txt", rule_text)
+                self.assertEqual((root / "rule-resource-path").read_text().strip(),
+                                 str((plugin / relative_rule).resolve()))
+
+    def test_rule_client_capture_keeps_only_marker_events(self):
+        events = [
+            {"type": "delta", "data": {"content": "unrelated-private-text"}},
+            {"type": "tool_call_ready", "data": {"toolCallId": "read", "toolName": "view",
+             "toolInput": json.dumps({"path": rule_evidence.TARGET})}},
+            {"type": "tool_call_ready", "data": {"toolCallId": "write", "toolName": "create",
+             "toolInput": json.dumps({"path": rule_evidence.TARGET, "content": "RULE_LEGACY"})}},
+            {"type": "tool_call_complete", "data": {"toolCallId": "read", "result": {"success": True}}},
+            {"type": "tool_call_complete", "data": {"toolCallId": "write", "result": {
+                "success": True, "content": "unrelated-private-text"}}},
+            {"type": "turn_complete", "data": {"responseText": "unrelated-private-text"}},
+        ]
+        stream = io.StringIO('Ready plugin components: [{"name":"hc-rule-probe"}]\n' +
+                            "\n".join(json.dumps(event) for event in events))
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "events.jsonl"
+            self.assertTrue(rule_evidence.capture_client_output(stream, destination))
+            captured = list(rule_evidence.jsonl(destination))
+            self.assertEqual([event["type"] for event in captured],
+                             ["tool.execution_start", "tool.execution_complete", "session.complete"])
+            self.assertEqual(captured[0]["data"]["arguments"], {"path": rule_evidence.TARGET})
+            self.assertTrue(captured[1]["data"]["success"])
+            self.assertNotIn("unrelated-private-text", destination.read_text())
+            self.assertNotIn("RULE_LEGACY", destination.read_text())
+
+    def test_rule_evidence_separates_delivery_tool_and_marker_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            marker = workspace / "hc-out/rule-marker.txt"
+            marker.parent.mkdir(parents=True)
+            marker.write_text("RULE_LEGACY")
+            rule_file = root / "rule.mdc"
+            rule_file.write_text("the isolated rule")
+            fixture_sha = hashlib.sha256(rule_file.read_bytes()).hexdigest()
+            delivery = root / "delivery.jsonl"
+            delivery.write_text(json.dumps({
+                "resource_read": True, "sha256": fixture_sha, "matches_expected": True,
+            }) + "\n")
+            events = root / "events.jsonl"
+            events.write_text("\n".join(json.dumps(event) for event in (
+                {"type": "user.message", "data": {"content": "unrelated prompt text"}},
+                {"type": "tool.execution_start", "data": {
+                    "toolCallId": "call-1", "toolName": "create",
+                    "arguments": {"path": "hc-out/rule-marker.txt", "content": "RULE_LEGACY"},
+                }},
+                {"type": "tool.execution_complete", "data": {
+                    "toolCallId": "call-1", "success": True,
+                }},
+            )) + "\n")
+            evidence = rule_evidence.assess(
+                "current", delivery, events, workspace, fixture_sha,
+                {"plugin_discovered": "true", "server_commit_matches_pin": "true",
+                 "model_selector": "claude-haiku-4.5", "session_exit": "0"},
+            )
+            self.assertEqual(evidence["result"], "PASS")
+            self.assertTrue(evidence["rule_resource"]["exact_fixture_text_returned"])
+            self.assertEqual(evidence["model_delivery"]["status"], "not_observable")
+            self.assertTrue(evidence["marker_tool"]["attempted"])
+            self.assertEqual(evidence["marker_tool"]["calls"][0]["execution"], "succeeded")
+            self.assertTrue(evidence["model_compliance"]["marker_instruction_followed"])
+            self.assertTrue(evidence["marker_file"]["matches_expected"])
+            self.assertTrue(evidence["evidence_collection"]["event_record_seen"])
+            self.assertNotIn("unrelated prompt text", json.dumps(evidence))
+
+            for session_exit in (None, "1", "124"):
+                with self.subTest(session_exit=session_exit):
+                    failed = rule_evidence.assess(
+                        "current", delivery, events, workspace, fixture_sha,
+                        {"plugin_discovered": "true", "server_commit_matches_pin": "true",
+                         "session_exit": session_exit},
+                    )
+                    self.assertEqual(failed["result"], "NOT RUN")
+                    self.assertEqual(failed["diagnosis"], "session did not complete")
+
+            for tool, target, call_id, success, content in (
+                    ("view", rule_evidence.TARGET, "read", True, "RULE_LEGACY"),
+                    ("create", "report.md", "report", True, "RULE_LEGACY"),
+                    ("create", rule_evidence.TARGET, None, True, "RULE_LEGACY"),
+                    ("create", rule_evidence.TARGET, "failed", False, "RULE_LEGACY"),
+                    ("create", rule_evidence.TARGET, "wrong-content", True, "NOT_RULE_LEGACY")):
+                with self.subTest(tool=tool, target=target, call_id=call_id):
+                    marker.write_text(content)
+                    events.write_text("\n".join(json.dumps(event) for event in (
+                        {"type": "tool.execution_start", "data": {
+                            "toolCallId": call_id, "toolName": tool,
+                            "arguments": {"path": target, "content": rule_evidence.TARGET},
+                        }},
+                        {"type": "tool.execution_complete", "data": {
+                            "toolCallId": call_id, "success": success,
+                        }},
+                    )) + "\n")
+                    rejected = rule_evidence.assess(
+                        "current", delivery, events, workspace, fixture_sha,
+                        {"plugin_discovered": "true", "server_commit_matches_pin": "true",
+                         "session_exit": "0"},
+                    )
+                    self.assertEqual(rejected["result"], "DEVIATION")
+
+            result = subprocess.run([
+                sys.executable, str(SUITE / "rule_evidence.py"), "--format", "current",
+                "--delivery-log", str(delivery), "--events", str(events),
+                "--workspace", str(workspace), "--rule-file", str(rule_file),
+                "--out", str(root / "result.json"),
+                "--meta", "plugin_discovered=true", "--meta", "server_commit_matches_pin=true",
+                "--meta", "session_exit=0",
+            ], capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(json.loads((root / "result.json").read_text())["result"], "DEVIATION")
+
+    def test_rule_evidence_keeps_unobserved_delivery_and_noncompliance_visible(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            marker = workspace / "hc-out/rule-marker.txt"
+            marker.parent.mkdir(parents=True)
+            marker.write_text("RULE_NS")
+            rule_file = root / "rule.mdc"
+            rule_file.write_text("the isolated rule")
+            fixture_sha = hashlib.sha256(rule_file.read_bytes()).hexdigest()
+            events = root / "events.jsonl"
+            events.write_text(json.dumps({"type": "user.message", "data": {"content": "neutral"}}) + "\n")
+
+            no_delivery = rule_evidence.assess(
+                "namespace", root / "missing.jsonl", events, workspace, fixture_sha,
+                {"plugin_discovered": "true"},
+            )
+            self.assertEqual(no_delivery["result"], "NOT RUN")
+            self.assertFalse(no_delivery["rule_resource"]["exact_fixture_text_returned"])
+
+            delivery = root / "delivery.jsonl"
+            delivery.write_text(json.dumps({
+                "resource_read": True, "sha256": fixture_sha, "matches_expected": True,
+            }) + "\n")
+            deviation = rule_evidence.assess(
+                "namespace", delivery, events, workspace, fixture_sha,
+                {"plugin_discovered": "true", "server_commit_matches_pin": "true",
+                 "session_exit": "0"},
+            )
+            self.assertEqual(deviation["result"], "DEVIATION")
+            self.assertEqual(deviation["diagnosis"], "unresolved")
+            self.assertFalse(deviation["marker_tool"]["attempted"])
+            self.assertFalse(deviation["model_compliance"]["marker_instruction_followed"])
+            self.assertTrue(deviation["marker_file"]["matches_expected"])
+
+            events.write_text(json.dumps({"type": "tool.execution_start", "data": {
+                "toolCallId": "call-2", "toolName": "create",
+                "arguments": {"path": "hc-out/rule-marker.txt"},
+            }}) + "\n")
+            incomplete = rule_evidence.assess(
+                "namespace", delivery, events, workspace, fixture_sha,
+                {"plugin_discovered": "true", "server_commit_matches_pin": "true",
+                 "session_exit": "1"},
+            )
+            self.assertEqual(incomplete["result"], "NOT RUN")
+            self.assertEqual(incomplete["diagnosis"], "session did not complete")
+
+            delivery.write_text(json.dumps({
+                "resource_read": True, "sha256": "0" * 64, "matches_expected": False,
+            }) + "\n")
+            wrong_rule = rule_evidence.assess(
+                "namespace", delivery, events, workspace, fixture_sha,
+                {"plugin_discovered": "true", "server_commit_matches_pin": "true",
+                 "session_exit": "0"},
+            )
+            self.assertEqual(wrong_rule["result"], "DEVIATION")
+            self.assertEqual(wrong_rule["diagnosis"], "rule content differed from fixture")
+
+            wrong_server = rule_evidence.assess(
+                "namespace", delivery, events, workspace, fixture_sha,
+                {"plugin_discovered": "true", "server_commit_matches_pin": "false"},
+            )
+            self.assertEqual(wrong_server["result"], "NOT RUN")
+            self.assertEqual(wrong_server["diagnosis"], "Agent Host server did not match the requested commit")
 
 
 if __name__ == "__main__":
