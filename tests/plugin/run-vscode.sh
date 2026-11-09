@@ -87,7 +87,7 @@ stop_host
 
 mkdir -p "$OUT/main" "$OUT/agent"
 for name in main agent; do
-  cp "$ROOT/$name/plugin-ready.json" "$ROOT/$name/agent-selected.json" "$OUT/$name/" 2>/dev/null || true
+  cp "$ROOT/$name/plugin-ready.json" "$ROOT/$name/agent-selected.json" "$ROOT/$name/tools.jsonl" "$OUT/$name/" 2>/dev/null || true
   cp -R "$ROOT/$name/hc-out" "$OUT/$name/" 2>/dev/null || true
   cp "$ROOT/$name/.github/MIGRATION-SCORECARD.md" "$OUT/$name/" 2>/dev/null || true
 done

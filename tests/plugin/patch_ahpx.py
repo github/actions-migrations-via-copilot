@@ -12,7 +12,7 @@ from pathlib import Path
 
 MARKER = "hcApproveTool"
 
-IMPORTS = """import { readdirSync as hcReaddirSync, realpathSync as hcRealpathSync, writeFileSync as hcWriteFileSync } from "node:fs";
+IMPORTS = """import { appendFileSync as hcAppendFileSync, readdirSync as hcReaddirSync, realpathSync as hcRealpathSync, writeFileSync as hcWriteFileSync } from "node:fs";
 import { cp as hcCopy, mkdir as hcMkdir } from "node:fs/promises";
 import { pathToFileURL as hcPathToFileURL } from "node:url";
 """
@@ -120,6 +120,24 @@ PATCHES = [
       this.output.write((approved ? "[approved " : "[denied ") + toolCall.toolName + "]\\n");
       return approved;
     }
+""", "after"),
+    # Record each tool call's name and input as the host reports it, for the result below.
+    ("            this.renderer.onToolCallReady(a.toolCallId, callInfo);\n", """            (globalThis.hcToolCalls ??= new Map()).set(a.toolCallId, callInfo);
+""", "after"),
+    # Record each tool result from the host's structured event, not from rendered (model-visible) text.
+    ("""          case ActionType2.ChatToolCallComplete: {
+            const a = action;
+""", """            if (process.env.HC_EVIDENCE_DIR) {
+              const call = globalThis.hcToolCalls?.get(a.toolCallId) || {};
+              const text = (value) => typeof value === "string" ? value : value?.markdown ?? "";
+              hcAppendFileSync(path4.join(process.env.HC_EVIDENCE_DIR, "tools.jsonl"), JSON.stringify({
+                tool: call.toolName ?? null,
+                input: typeof call.toolInput === "string" ? call.toolInput : JSON.stringify(call.toolInput ?? null),
+                success: a.result?.success === true,
+                message: text(a.result?.pastTenseMessage),
+                content: (a.result?.content || []).map((block) => block.text || "").join("\\n"),
+              }) + "\\n", { mode: 0o600 });
+            }
 """, "after"),
 ]
 

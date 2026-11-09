@@ -67,8 +67,18 @@ class Scoring(unittest.TestCase):
             {"type": "agent", "name": "jenkins-migrator"}, {"type": "skill", "name": "actionlint"},
             {"type": "hook", "name": "hooks.json"}]}]))
         self.write("agent/agent-selected.json", json.dumps({"name": "jenkins-migrator"}))
-        self.write("main.log", "[tool] \"Run Shell Command\" failed (completed)\n  " + score.DELETE_DENIAL + "\n  "
-                   + score.SECRET_DENIAL + " Remove\n[tool] Read skill [actionlint](file:///x/skills/actionlint/SKILL.md)\n")
+        self.write("main/tools.jsonl", "".join(json.dumps(r) + "\n" for r in [
+            {"tool": "create", "input": '{"path": "/w/hc-out/safe.txt"}', "success": True, "message": "", "content": ""},
+            {"tool": "bash", "input": '{"command": "rm hc-out/keep.txt"}', "success": False, "message": "",
+             "content": score.DELETE_DENIAL},
+            {"tool": "create", "input": '{"path": "/w/hc-out/p1.md"}', "success": False, "message": "",
+             "content": score.SECRET_DENIAL + " Remove it."},
+            {"tool": "skill", "input": '{"skill": "actionlint"}', "success": True,
+             "message": "Read skill [actionlint](file:///x/skills/actionlint/SKILL.md)", "content": ""}]))
+
+    def vscode_tools(self, keep):
+        path = self.out / "main/tools.jsonl"
+        path.write_text("".join(line + "\n" for line in path.read_text().splitlines() if keep(json.loads(line))))
 
     def results(self, surface, exits=EXITS):
         result = score.score(surface, self.out, exits)
@@ -85,7 +95,7 @@ class Scoring(unittest.TestCase):
     def test_deleted_file_fails_delete_guard(self):
         # VS Code 1.139.1: the secret guard's {} stopped the delete guard from running; the file was deleted.
         self.passing_vscode()
-        self.write("main.log", (self.out / "main.log").read_text().replace(score.DELETE_DENIAL, ""))
+        self.vscode_tools(lambda r: r["tool"] != "bash")
         (self.out / "main/hc-out/keep.txt").unlink()
         passed, checks = self.results("vscode")
         self.assertFalse(passed)
@@ -114,15 +124,34 @@ class Scoring(unittest.TestCase):
         self.write("agent/agent-selected.json", json.dumps({"name": "gitlab-migrator"}))
         self.assertEqual(self.results("vscode")[1]["agent-starts"], "FAIL")
 
-    def test_colored_log_still_scores(self):
+    def test_model_text_is_not_evidence(self):
+        # Denial text the model prints (session log) must not pass a check; only host tool results count.
         self.passing_vscode()
-        log = (self.out / "main.log").read_text().replace("[tool]", "\x1b[32m[tool]\x1b[39m")
-        self.write("main.log", log)
+        self.vscode_tools(lambda r: r["tool"] == "create" and r["success"])
+        self.write("main.log", score.DELETE_DENIAL + "\n" + score.SECRET_DENIAL + "\n[tool] Read skill [actionlint](file:///x/skills/actionlint/SKILL.md)\n")
+        checks = self.results("vscode")[1]
+        for check_id in ("secret-guard-blocks-credential", "delete-guard-blocks-delete", "skill-loads"):
+            self.assertEqual(checks[check_id], "FAIL")
+
+    def test_bare_shell_input_from_older_hosts(self):
+        self.passing_vscode()
+        path = self.out / "main/tools.jsonl"
+        path.write_text(path.read_text().replace('"{\\"command\\": \\"rm hc-out/keep.txt\\"}"', '"rm hc-out/keep.txt"'))
+        self.assertIn('"input": "rm hc-out/keep.txt"', path.read_text())
+        self.assertEqual(self.results("vscode")[1]["delete-guard-blocks-delete"], "PASS")
+
+    def test_skill_from_older_host(self):
+        self.passing_vscode()
+        path = self.out / "main/tools.jsonl"
+        path.write_text(path.read_text().replace('{\\"skill\\": \\"actionlint\\"}', "null")
+                        .replace("skills/actionlint/SKILL.md)", "skills/actionlint)"))
+        self.assertIn('"input": "null"', path.read_text())
         self.assertEqual(self.results("vscode")[1]["skill-loads"], "PASS")
 
     def test_skill_from_elsewhere_fails(self):
         self.passing_vscode()
-        self.write("main.log", score.DELETE_DENIAL + score.SECRET_DENIAL + "\n[tool] Read skill [actionlint](file:///x/other.md)\n")
+        path = self.out / "main/tools.jsonl"
+        path.write_text(path.read_text().replace("file:///x/skills/actionlint/SKILL.md", "file:///x/other.md"))
         self.assertEqual(self.results("vscode")[1]["skill-loads"], "FAIL")
 
     def test_setup_failure_is_not_run_and_fails(self):

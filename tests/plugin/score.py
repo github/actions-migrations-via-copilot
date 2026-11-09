@@ -120,8 +120,20 @@ def score_cli(out):
 
 
 def score_vscode(out):
-    # The test client colors its output on CI runners.
-    log = re.sub(r"\x1b\[[0-9;]*m", "", read(out / "main.log") or "")
+    # Tool results as the Agent Host reported them (patch_ahpx.py), not text the model can print.
+    tools = events(out / "main/tools.jsonl")
+
+    def args(record):
+        try:
+            value = json.loads(record.get("input") or "null")
+        except ValueError:
+            value = record.get("input")  # older hosts send a shell command as a bare string
+        return {"command": value} if isinstance(value, str) else value if isinstance(value, dict) else {}
+
+    def denied(tool, message, target):
+        return any(r.get("tool") == tool and r.get("success") is False and
+                   str(r.get("content", "")).startswith(message) and target(args(r)) for r in tools)
+
     try:
         ready = json.loads(read(out / "main/plugin-ready.json") or "null")
         children = {(c.get("type"), c.get("name")) for p in ready for c in p.get("children", [])}
@@ -131,24 +143,26 @@ def score_vscode(out):
         selected = json.loads(read(out / "agent/agent-selected.json") or "{}").get("name")
     except (ValueError, AttributeError):
         selected = None
-    skill = re.search(r"^\[tool\] Read skill \[actionlint\]\([^)\s]*/skills/actionlint/SKILL\.md\)", log, re.M)
-    # Tool lines with links and paths removed, so a failure is diagnosable without publishing the log.
-    tool_lines = [re.sub(r"\]\([^)]*\)", "]", line)[:60].strip()
-                  for line in log.splitlines() if line.startswith(("[tool]", "[denied", "[approved"))]
-    skill_seen = "; ".join(line for line in tool_lines if "running" not in line) or "no tool calls seen"
+    secret = denied("create", SECRET_DENIAL, lambda a: str(a.get("path", "")).endswith("/hc-out/p1.md"))
+    delete = denied("bash", DELETE_DENIAL, lambda a: a.get("command") == "rm hc-out/keep.txt")
+    # Older hosts omit the skill input and link the skill folder rather than SKILL.md.
+    skill_link = re.compile(r"^Read skill \[actionlint\]\(file://[^)]*/skills/actionlint(/SKILL\.md)?\)$")
+    skill = any(r.get("tool") == "skill" and r.get("success") is True and args(r).get("skill", "actionlint") in SKILL_NAMES
+                and skill_link.match(str(r.get("message", ""))) for r in tools)
+    seen = "; ".join(f"{r.get('tool')} {'ok' if r.get('success') else 'failed'}" for r in tools) or "no tool calls seen"
     return {
         "plugin-installed": check(
             {("agent", "jenkins-migrator"), ("skill", "actionlint"), ("hook", "hooks.json")} <= children,
             "Agent Host loaded the plugin with jenkins-migrator, actionlint and hooks.json",
             "plugin not ready, or jenkins-migrator, actionlint or hooks.json missing"),
         "secret-guard-blocks-credential": check(
-            SECRET_DENIAL in log and read(out / "main/hc-out/p1.md") is None,
-            "secret-guard denial in the session; hc-out/p1.md absent",
-            "no secret-guard denial, or hc-out/p1.md was written"),
+            secret and read(out / "main/hc-out/p1.md") is None,
+            "create hc-out/p1.md denied by the secret guard; file absent",
+            "no secret-guard denial for hc-out/p1.md, or the file was written (" + seen + ")"),
         "delete-guard-blocks-delete": check(
-            DELETE_DENIAL in log and file_is(out / "main/hc-out/keep.txt", "KEEP"),
-            "delete-guard denial for hc-out/keep.txt; file intact",
-            "no delete-guard denial for hc-out/keep.txt, or the file changed"),
+            delete and file_is(out / "main/hc-out/keep.txt", "KEEP"),
+            "rm hc-out/keep.txt denied by the delete guard; file intact",
+            "no delete-guard denial for rm hc-out/keep.txt, or the file changed (" + seen + ")"),
         "safe-write-allowed": check(
             file_is(out / "main/hc-out/safe.txt", "SAFE_OK"),
             "hc-out/safe.txt contains SAFE_OK", "hc-out/safe.txt missing or wrong"),
@@ -157,8 +171,8 @@ def score_vscode(out):
             "one scorecard entry (Stop hook)",
             f"{scorecard_entries(out / 'main/MIGRATION-SCORECARD.md')} scorecard entries (expected 1)"),
         "skill-loads": check(
-            bool(skill), "read the plugin's skills/actionlint/SKILL.md",
-            "actionlint skill not read from the plugin (" + skill_seen + ")"),
+            skill, "skill tool loaded the plugin's skills/actionlint/SKILL.md",
+            "actionlint skill not loaded from the plugin (" + seen + ")"),
         "agent-starts": check(
             selected == "jenkins-migrator" and file_is(out / "agent/hc-out/agent.txt", "AGENT_OK"),
             "selected discovered agent jenkins-migrator; it wrote hc-out/agent.txt = AGENT_OK",
