@@ -30,6 +30,10 @@ fi
 model_args=()
 [ -n "${MODEL:-}" ] && model_args=(--model "$MODEL")
 overall=0
+tool_args=(--available-tools 'bash,create,edit,view,grep,glob,skill'
+  --allow-tool 'shell(echo hook-conformance-bash)'
+  --allow-tool 'shell(rm hc-does-not-exist.txt)')
+agent_tool_args=(--available-tools 'create,edit,view,grep,glob')
 
 run_session() {
   local session=$1 out="$OUT_ROOT/$1" ws="$ROOT/$1/ws" agents=not-tested
@@ -44,10 +48,9 @@ run_session() {
     install_exit=$workspace_exit
   fi
 
-  # --add-dir /tmp lets the rm step reach the hooks instead of failing the CLI's own path check.
   if [ "$install_exit" = 0 ]; then
     run_captured --cwd "$ws" timeout "${CLI_TIMEOUT:-1200}" "$COPILOT" \
-        --trust-folder --allow-all-tools --add-dir /tmp \
+        --trust-folder "${tool_args[@]}" \
         ${model_args[@]+"${model_args[@]}"} --output-format json --share "$out/transcript.md" \
         -p "$(render_prompt "$session" local)" > "$out/events.jsonl" 2> "$out/stderr.log" || main_exit=$?
   else
@@ -59,12 +62,12 @@ run_session() {
   if [ "$session" = plugin ] && [ "$INTERRUPTED" = 0 ] && [ "$install_exit" = 0 ]; then
     agents=tested
     run_captured --cwd "$ws" timeout "${AGENT_TIMEOUT:-300}" "$COPILOT" \
-        --agent hc-probe-a:hc-probe-agent --trust-folder --allow-all-tools \
+    --agent hc-probe-a:hc-probe-agent --trust-folder "${agent_tool_args[@]}" \
         ${model_args[@]+"${model_args[@]}"} -p "Do your task." >> "$out/agents.log" 2>&1 || agent_a_exit=$?
     echo "agent=hc-probe-a:hc-probe-agent exit=$agent_a_exit" >> "$out/agents.log"
     if [ "$INTERRUPTED" = 0 ]; then
       run_captured --cwd "$ws" timeout "${AGENT_TIMEOUT:-300}" "$COPILOT" \
-          --agent hc-probe-ns:hc-probe-ns-agent --trust-folder --allow-all-tools \
+          --agent hc-probe-ns:hc-probe-ns-agent --trust-folder "${agent_tool_args[@]}" \
           ${model_args[@]+"${model_args[@]}"} -p "Do your task." >> "$out/agents.log" 2>&1 || agent_ns_exit=$?
       echo "agent=hc-probe-ns:hc-probe-ns-agent exit=$agent_ns_exit" >> "$out/agents.log"
     fi

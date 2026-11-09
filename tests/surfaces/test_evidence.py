@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 from sanitize_artifacts import publish
 from cloud_settings import configure
 import rule_evidence
@@ -104,7 +105,20 @@ elif "exec" in args:
     sys.exit(int(agent_exit if agent else os.environ.get("AHPX_EXEC_EXIT", "0")))
 """)
         node.chmod(0o755)
+        npm = fake_bin / "npm"
+        npm.write_text("\n".join([
+            "#!/usr/bin/env python3",
+            "from pathlib import Path",
+            "import shutil, sys",
+            "root = Path(__file__).resolve().parents[1]",
+            "prefix = Path(sys.argv[sys.argv.index('--prefix') + 1])",
+            "shutil.copytree(root / 'node_modules', prefix / 'node_modules')",
+        ]) + "\n")
+        npm.chmod(0o755)
         modules = directory / "node_modules"
+        (modules / ".bin").mkdir(parents=True)
+        (modules / ".bin/ahpx").write_text("#!/bin/sh\nexit 0\n")
+        (modules / ".bin/ahpx").chmod(0o755)
         ahpx = modules / "@tylerl0706/ahpx/dist/bin.js"
         ahpx.parent.mkdir(parents=True)
         ahpx.write_text("""import { createHash } from "node:crypto";
@@ -185,13 +199,19 @@ const path4 = { delimiter: ":" };
             command = "printf '%s' '{\"permissionDecision\":\"deny\"}'; printf 'diagnostic' >&2; exit 2"
             encoded = base64.b64encode(command.encode()).decode()
             result = subprocess.run([sys.executable, str(SUITE / "observe_hook.py"), encoded, "preToolUse", "0"],
-                                    input=json.dumps({"cwd": str(root)}), text=True, capture_output=True)
+                                    input=json.dumps({"cwd": str(root), "sessionId": "fake-session",
+                                                      "toolName": "create", "toolArgs": {
+                                                          "path": "hc-out/p1.md", "content": "fake-sensitive-content"}}),
+                                    text=True, capture_output=True)
             self.assertEqual(result.returncode, 2)
             self.assertEqual(result.stdout, '{"permissionDecision":"deny"}')
             self.assertEqual(result.stderr, "diagnostic")
             record = json.loads((root / ".hook-conformance/plugin-guards.jsonl").read_text())
-            self.assertEqual(record["stdout"], result.stdout)
             self.assertEqual(record["exit_code"], result.returncode)
+            self.assertEqual(record["decision"], {"permissionDecision": "deny"})
+            self.assertEqual(record["targets"], ["hc-out/p1.md"])
+            self.assertNotIn("raw", record)
+            self.assertNotIn("fake-sensitive-content", json.dumps(record))
 
     def test_cloud_marketplace_keeps_plugin_unchanged(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -232,14 +252,42 @@ const path4 = { delimiter: ":" };
 
     def test_artifacts_exclude_catalog_and_redact_tokens(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             source = root / "input"
             source.mkdir()
             (source / "connect.json").write_text('{"models": ["private-model"]}')
-            (source / "session.log").write_text("ws://localhost?tkn=local-test-value\n" + "Synthetic" + "Probe12345abcdef")
-            publish(source, root / "published")
+            gh_tokens = [prefix + letter * 36 for prefix, letter in (
+                ("ghp_", "a"), ("gho_", "b"), ("ghu_", "c"), ("ghs_", "d"),
+                ("ghr_", "e"), ("github_pat_", "f"),
+            )]
+            runtime_values = {
+                "ACTIONS_RUNTIME_TOKEN": "runtime-test-token-123456",
+                "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "oidc-test-token-123456",
+                "ACTIONS_ID_TOKEN_REQUEST_URL": "https://example.test/oidc?token=runtime-query-secret",
+                "ACTIONS_CACHE_URL": "https://example.test/cache?token=cache-query-secret",
+            }
+            log = "ws://localhost?tkn=local-test-value\n" + "Synthetic" + "Probe12345abcdef"
+            log += "\n" + "\n".join(gh_tokens)
+            log += "\nAuthorization: " + "header-test-value"
+            log += "\nAuthorization: " + "Bearer " + "bearer-test-token"
+            log += '\n{"Authorization": "Basic ' + "basic-test-token" + '"}'
+            log += "\n" + "\n".join(f"{key}={value}" for key, value in runtime_values.items())
+            log += "\nCOPILOT_GITHUB_TOKEN=environment-test-token"
+            (source / "session.log").write_text(log)
+            with patch.dict(os.environ, {"COPILOT_GITHUB_TOKEN": "environment-test-token"}):
+                publish(source, root / "published")
             self.assertFalse((root / "published/connect.json").exists())
-            self.assertEqual((root / "published/session.log").read_text(), "ws://localhost?tkn=REDACTED\n[fake-credential]")
+            published = (root / "published/session.log").read_text()
+            self.assertIn("ws://localhost?tkn=REDACTED", published)
+            self.assertIn("[fake-credential]", published)
+            for value in gh_tokens + list(runtime_values.values()) + [
+                "bearer-test-token", "basic-test-token", "environment-test-token",
+            ]:
+                self.assertNotIn(value, published)
+            self.assertIn("Authorization: [redacted]", published)
+            self.assertIn('"Authorization": "[redacted]"', published)
+            self.assertIn("ACTIONS_RUNTIME_TOKEN=[redacted]", published)
+            self.assertIn("ACTIONS_ID_TOKEN_REQUEST_URL=[redacted]", published)
 
     def test_reports_do_not_count_as_test_calls(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -254,7 +302,8 @@ const path4 = { delimiter: ":" };
             record = json.loads(log.read_text())
             self.assertEqual(record["markers"], [])
             self.assertEqual(result.stdout, "")
-            self.assertEqual(record["raw"], payload)
+            self.assertNotIn("raw", record)
+            self.assertNotIn("HC_M2", log.read_text())
 
     def test_actual_case_records_hook_decision_and_mirror(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -270,7 +319,79 @@ const path4 = { delimiter: ":" };
             record = json.loads(mirror.read_text())
             self.assertEqual(record["action"], "deny-C2")
             self.assertEqual(record["markers"], ["2"])
+            self.assertNotIn("raw", record)
+            self.assertNotIn("HC_M2", mirror.read_text())
             self.assertEqual(mirror.read_text(), (root / ".hook-conformance/probe.jsonl").read_text())
+
+    def test_artifact_symlinks_and_outside_destinations_are_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "input"
+            source.mkdir()
+            outside = root / "outside.log"
+            outside.write_text("fake")
+            (source / "session.log").symlink_to(outside)
+            with self.assertRaises(ValueError):
+                publish(source, root / "published")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "input"
+            source.mkdir()
+            outside = root / "outside.log"
+            outside.write_text("fake")
+            os.link(outside, source / "session.log")
+            with self.assertRaises(ValueError):
+                publish(source, root / "published")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "input"
+            (source / "nested").mkdir(parents=True)
+            (source / "nested/session.log").write_text("fake")
+            outside = root / "outside"
+            outside.mkdir()
+            destination = root / "published"
+            destination.mkdir()
+            (destination / "nested").symlink_to(outside, target_is_directory=True)
+            with self.assertRaises(ValueError):
+                publish(source, destination)
+
+    def test_cli_runner_has_narrow_unattended_permissions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            copilot = root / "copilot"
+            copilot.write_text(
+                "#!/usr/bin/env python3\n"
+                "import json, os, sys\n"
+                "if sys.argv[1:] == ['--version']:\n"
+                "    print('Copilot CLI test stub')\n"
+                "else:\n"
+                "    with open(os.environ['COPILOT_ARGS_LOG'], 'a') as log:\n"
+                "        log.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+            )
+            copilot.chmod(0o755)
+            args_log = root / "copilot-args.jsonl"
+            result = subprocess.run(["bash", str(SUITE / "run-cli.sh")], env={
+                **os.environ,
+                "COPILOT_GITHUB_TOKEN": "fake-copilot-token",
+                "COPILOT_BIN": str(copilot),
+                "COPILOT_ARGS_LOG": str(args_log),
+                "OUT_DIR": str(root / "out"),
+                "RUNNER_TEMP": str(root),
+                "SESSIONS": "repo",
+            }, text=True, capture_output=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            calls = [json.loads(line) for line in args_log.read_text().splitlines()]
+            session = next(call for call in calls if "--output-format" in call)
+            self.assertIn("--available-tools", session)
+            self.assertIn("bash,create,edit,view,grep,glob,skill", session)
+            self.assertIn("shell(echo hook-conformance-bash)", session)
+            self.assertIn("shell(rm hc-does-not-exist.txt)", session)
+            self.assertNotIn("--allow-all-tools", session)
+            self.assertNotIn("--add-dir", session)
+            self.assertNotIn("/tmp", session)
+            self.assertIn("rm hc-does-not-exist.txt", session[session.index("-p") + 1])
 
     def test_missing_files_alone_do_not_pass(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -551,11 +672,36 @@ if os.environ.get("GH_FAIL") and os.environ["GH_FAIL"] in args:
             result = json.loads((root / "score.json").read_text())
             self.assertEqual(next(case["result"] for case in result["cases"] if case["case"] == "P1"), "NOT RUN")
 
-    def test_terminal_colors_do_not_hide_guard_denials(self):
+    def test_forged_transcript_denial_is_not_guard_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             transcript = root / "session.log"
-            transcript.write_text("  \x1b[2mDenied by preToolUse hook: Blocked: likely credential value in proposed output\x1b[22m\n")
+            events = root / "events.jsonl"
+            transcript.write_text("Denied by preToolUse hook: likely credential value in proposed output\n")
+            events.write_text(json.dumps({
+                "type": "assistant.message",
+                "data": {"content": "Denied by preToolUse hook: likely credential value in proposed output"},
+            }) + "\n")
+            subprocess.run([sys.executable, str(SUITE / "score.py"), "--surface", "vscode",
+                            "--session", "repo", "--log", str(root / "absent.jsonl"),
+                            "--out-dir", str(root), "--json", str(root / "score.json"),
+                            "--transcript", str(transcript), "--transcript", str(events)],
+                           check=True, capture_output=True)
+            result = json.loads((root / "score.json").read_text())
+            self.assertEqual(next(case["result"] for case in result["cases"] if case["case"] == "P1"), "NOT RUN")
+
+    def test_structured_tool_denial_is_correlated_to_the_requested_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            transcript = root / "events.jsonl"
+            events = [
+                {"type": "tool.execution_start", "data": {
+                    "toolCallId": "p1-call", "arguments": {"path": "hc-out/p1.md"}}},
+                {"type": "tool.execution_complete", "data": {
+                    "toolCallId": "p1-call", "success": False,
+                    "error": {"message": "Denied by preToolUse hook: likely credential value in proposed output"}}},
+            ]
+            transcript.write_text("\n".join(json.dumps(event) for event in events))
             subprocess.run([sys.executable, str(SUITE / "score.py"), "--surface", "vscode",
                             "--session", "repo", "--log", str(root / "absent.jsonl"),
                             "--out-dir", str(root), "--json", str(root / "score.json"),
@@ -762,6 +908,59 @@ if os.environ.get("GH_FAIL") and os.environ["GH_FAIL"] in args:
             )
             self.assertEqual(wrong_server["result"], "NOT RUN")
             self.assertEqual(wrong_server["diagnosis"], "Agent Host server did not match the requested commit")
+    def test_structured_hook_decision_requires_a_call_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            probe_log = root / "probe.jsonl"
+            probe_record = {
+                "label": "pre1",
+                "event": "preToolUse",
+                "markers": [],
+                "tool": "create",
+                "payload_keys": [],
+                "targets": ["hc-out/p1.md"],
+                "call": "a" * 64,
+            }
+            probe_log.write_text(json.dumps(probe_record) + "\n")
+            guard_log = root / "plugin-guards.jsonl"
+            record = {
+                "event": "preToolUse",
+                "exit_code": 0,
+                "decision": {
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": "likely credential value in proposed output",
+                },
+                "targets": ["hc-out/p1.md"],
+                "call": "a" * 64,
+            }
+            guard_log.write_text(json.dumps(record) + "\n")
+            command = [sys.executable, str(SUITE / "score.py"), "--surface", "cli", "--session", "repo",
+                       "--log", str(probe_log), "--out-dir", str(root),
+                       "--json", str(root / "score.json")]
+            subprocess.run(command, check=True, capture_output=True)
+            cases = {case["case"]: case["result"] for case in json.loads((root / "score.json").read_text())["cases"]}
+            self.assertEqual(cases["P1"], "PASS")
+
+            record["call"] = "not-a-call-id"
+            guard_log.write_text(json.dumps(record) + "\n")
+            subprocess.run(command, check=True, capture_output=True)
+            cases = {case["case"]: case["result"] for case in json.loads((root / "score.json").read_text())["cases"]}
+            self.assertEqual(cases["P1"], "NOT RUN")
+
+    def test_ahpx_install_uses_a_locked_scriptless_dependency_tree(self):
+        package = json.loads((SUITE / "ahpx/package.json").read_text())
+        lock = json.loads((SUITE / "ahpx/package-lock.json").read_text())
+        ahpx = lock["packages"]["node_modules/@tylerl0706/ahpx"]
+        uuid = lock["packages"]["node_modules/uuid"]
+        runner = (SUITE / "run-vscode.sh").read_text()
+        self.assertEqual(package["dependencies"]["@tylerl0706/ahpx"], "0.6.0")
+        self.assertEqual(ahpx["version"], "0.6.0")
+        self.assertTrue(ahpx["integrity"].startswith("sha512-"))
+        self.assertGreaterEqual(tuple(map(int, uuid["version"].split("."))), (11, 1, 1))
+        self.assertIn('local -a npm_env=("PATH=$PATH" "HOME=$ROOT/npm-home")', runner)
+        self.assertIn('env -i "${npm_env[@]}" npm ci --ignore-scripts', runner)
+        self.assertIn("npm ci --ignore-scripts", runner)
+        self.assertNotIn("AHPX_NODE_MODULES", runner)
 
 
 if __name__ == "__main__":

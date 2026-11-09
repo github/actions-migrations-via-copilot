@@ -203,4 +203,6 @@ CODE_BIN=/path/to/code COPILOT_GITHUB_TOKEN=$(gh auth token) OUT_DIR=/tmp/surfac
 tests/surfaces/summarize.py --scores /tmp/surface-out --expect cli,vscode --out /tmp/surface-out/summary
 ```
 
+The Agent Host adapter is installed from the suite's integrity-locked AHPX dependencies with install scripts disabled.
+
 The VS Code tests need a Copilot user's token. The workflow token isn't accepted there yet ([microsoft/vscode#346628](https://github.com/microsoft/vscode/issues/346628)).

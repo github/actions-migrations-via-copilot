@@ -50,6 +50,23 @@ def marker(n):
     return "HC_" + "M" + n
 
 
+def safe_targets(arguments, tool):
+    targets = set()
+    if isinstance(arguments, dict):
+        for key in ("path", "file", "filePath", "file_path", "uri"):
+            value = arguments.get(key)
+            if isinstance(value, str) and value.replace("\\", "/").endswith("hc-out/p1.md"):
+                targets.add("hc-out/p1.md")
+        for key in ("command", "cmd"):
+            value = arguments.get(key)
+            if isinstance(value, str) and "hc-does-not-exist" in value:
+                targets.add("hc-does-not-exist")
+    elif tool in {"bash", "run_in_terminal"} and isinstance(arguments, str):
+        if "hc-does-not-exist" in arguments:
+            targets.add("hc-does-not-exist")
+    return sorted(targets)
+
+
 tool = payload.get("toolName") or payload.get("tool_name") or ""
 arguments = payload.get("toolArgs", payload.get("tool_input", {}))
 argument_text = json.dumps(arguments, sort_keys=True)
@@ -93,14 +110,14 @@ record = {
     "ts": datetime.now(timezone.utc).isoformat(),
     "label": label,
     "event": payload.get("hook_event_name") or EVENTS.get(label) or label.split(":")[-1],
-    "session": payload.get("sessionId") or payload.get("session_id") or "",
+    "session": hashlib.sha256(str(payload.get("sessionId", payload.get("session_id", ""))).encode()).hexdigest()[:16],
     "tool": tool,
     "payload_keys": sorted(payload),
     "markers": present,
+    "targets": safe_targets(arguments, tool),
     "action": action,
     "log_from": root_from,
     "call": hashlib.sha256(json.dumps([payload.get("sessionId", payload.get("session_id", "")), tool, arguments], sort_keys=True).encode()).hexdigest(),
-    "raw": payload,
     "output": output,
     "exit_code": code,
 }
