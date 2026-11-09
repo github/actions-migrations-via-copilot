@@ -131,6 +131,9 @@ def score_vscode(out):
     except (ValueError, AttributeError):
         selected = None
     skill = re.search(r"^\[tool\] Read skill \[actionlint\]\([^)\s]*/skills/actionlint/SKILL\.md\)", log, re.M)
+    # Tool names and outcomes only, so a failure is diagnosable without publishing the log.
+    seen = re.findall(r'^\[tool\] ("[^"]{1,40}" failed|Read skill \[[\w:-]{1,60}\])|^\[(denied \w{1,40})\]', log, re.M)
+    skill_seen = "; ".join(a or b for a, b in seen if "kill" in (a or b) or b) or "no skill call or denial seen"
     return {
         "plugin-installed": check(
             {("agent", "jenkins-migrator"), ("skill", "actionlint"), ("hook", "hooks.json")} <= children,
@@ -152,7 +155,8 @@ def score_vscode(out):
             "one scorecard entry (Stop hook)",
             f"{scorecard_entries(out / 'main/MIGRATION-SCORECARD.md')} scorecard entries (expected 1)"),
         "skill-loads": check(
-            bool(skill), "read the plugin's skills/actionlint/SKILL.md", "actionlint skill not read from the plugin"),
+            bool(skill), "read the plugin's skills/actionlint/SKILL.md",
+            "actionlint skill not read from the plugin (" + skill_seen + ")"),
         "agent-starts": check(
             selected == "jenkins-migrator" and file_is(out / "agent/hc-out/agent.txt", "AGENT_OK"),
             "selected discovered agent jenkins-migrator; it wrote hc-out/agent.txt = AGENT_OK",
