@@ -52,8 +52,11 @@ class Scoring(unittest.TestCase):
     def passing_cli(self):
         self.common_files()
         self.write("plugin-list.txt", "  • actions-migrator@actions-migrations-via-copilot (v1.4.0) (enabled)\n")
-        lines = [event("session.custom_agents_updated", agents=[{"name": "actions-migrator:jenkins-migrator"}]),
-                 event("session.skills_loaded", skills=[{"commandName": "actions-migrator:actionlint"}])]
+        expected = score.expected_components()
+        lines = [event("session.custom_agents_updated", agents=[
+                     {"name": "actions-migrator:" + n} for kind, n in expected if kind == "agent"]),
+                 event("session.skills_loaded", skills=[
+                     {"commandName": "actions-migrator:" + n} for kind, n in expected if kind == "skill"])]
         lines += tool("1", "create", {"path": "/w/hc-out/safe.txt"}, True)
         lines += tool("2", "bash", {"command": "rm hc-out/keep.txt"}, False, score.DELETE_DENIAL)
         lines += tool("3", "create", {"path": "/w/hc-out/p1.md"}, False, score.SECRET_DENIAL + " Remove it.")
@@ -64,8 +67,8 @@ class Scoring(unittest.TestCase):
     def passing_vscode(self):
         self.common_files()
         self.write("main/plugin-ready.json", json.dumps([{"name": "Plugin: plugin", "children": [
-            {"type": "agent", "name": "jenkins-migrator"}, {"type": "skill", "name": "actionlint"},
-            {"type": "hook", "name": "hooks.json"}]}]))
+            {"type": kind, "name": name} for kind, name in sorted(score.expected_components())]
+            + [{"type": "hook", "name": "hooks.json"}]}]))
         self.write("agent/agent-selected.json", json.dumps({"name": "jenkins-migrator"}))
         self.write("main/tools.jsonl", "".join(json.dumps(r) + "\n" for r in [
             {"tool": "create", "input": '{"path": "/w/hc-out/safe.txt"}', "success": True, "message": "", "content": ""},
@@ -91,6 +94,24 @@ class Scoring(unittest.TestCase):
                 passed, checks = self.results(surface)
                 self.assertTrue(passed, checks)
                 self.assertEqual(set(checks.values()), {"PASS"})
+
+    def test_expected_components_come_from_the_plugin(self):
+        expected = score.expected_components()
+        self.assertIn(("agent", "jenkins-migrator"), expected)
+        self.assertIn(("skill", "actionlint"), expected)
+        self.assertNotIn(None, {name for _, name in expected})
+
+    def test_any_missing_agent_or_skill_fails(self):
+        for surface, setup in (("cli", self.passing_cli), ("vscode", self.passing_vscode)):
+            with self.subTest(surface=surface):
+                setup()
+                for name in ("main-events.jsonl", "main/plugin-ready.json"):
+                    path = self.out / name
+                    if path.exists():
+                        path.write_text(path.read_text().replace("gitlab-migrator", "renamed-agent"))
+                result = {c["id"]: c for c in score.score(surface, self.out, EXITS)["checks"]}["plugin-installed"]
+                self.assertEqual(result["result"], "FAIL")
+                self.assertIn("agent gitlab-migrator", result["evidence"])
 
     def test_deleted_file_fails_delete_guard(self):
         # VS Code 1.139.1: the secret guard's {} stopped the delete guard from running; the file was deleted.

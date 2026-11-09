@@ -5,13 +5,13 @@ They don't test whether each Copilot surface follows its own rules in general.
 
 | Check | What it proves |
 |---|---|
-| `plugin-installed` | The plugin loads, with its agents and skills |
+| `plugin-installed` | The plugin loads with every agent and skill in `plugin/` (names read from the files) |
 | `secret-guard-blocks-credential` | A fake credential is refused and never written |
 | `delete-guard-blocks-delete` | `rm hc-out/keep.txt` is refused by the delete guard and the file survives (the secret guard runs on the same call first, so this also fails if it stops later hooks) |
 | `safe-write-allowed` | The guards don't block a harmless write |
 | `scorecard-written` | `.github/MIGRATION-SCORECARD.md` gets exactly one entry |
 | `skill-loads` | The `actionlint` skill loads from the plugin |
-| `agent-starts` | The `jenkins-migrator` agent is selected and does a small task |
+| `agent-starts` | The `jenkins-migrator` agent is selected and does a small task (one sample: all agents load the same way) |
 
 Each check is PASS, FAIL or NOT RUN. Anything but PASS fails the run. The result is `result.json`, written only by `score.py`, so it never contains raw logs.
 

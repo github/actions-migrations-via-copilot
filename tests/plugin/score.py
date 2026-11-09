@@ -15,7 +15,7 @@ from pathlib import Path
 
 SCHEMA = 1
 CHECKS = [
-    ("plugin-installed", "The plugin, its agents and its skills are discovered"),
+    ("plugin-installed", "The plugin loads with every agent and skill it ships"),
     ("secret-guard-blocks-credential", "A fake credential is refused by the secret guard and not written"),
     ("delete-guard-blocks-delete", "rm of a workspace file is refused by the delete guard; the file survives"),
     ("safe-write-allowed", "A harmless write still succeeds"),
@@ -26,6 +26,25 @@ CHECKS = [
 SECRET_DENIAL = "Denied by preToolUse hook: Blocked: likely credential value in proposed output."
 DELETE_DENIAL = "Denied by preToolUse hook: Blocked: deletion outside .github/ci-archive/ is not allowed (hc-out/keep.txt)."
 SKILL_NAMES = {"actionlint", "actions-migrator:actionlint"}
+PLUGIN_DIR = Path(__file__).resolve().parents[2] / "plugin"
+
+
+def frontmatter_name(path):
+    match = re.search(r"\A---\n(?:.*\n)*?name:\s*['\"]?([\w.-]+)", read(path) or "")
+    return match.group(1) if match else None
+
+
+def expected_components(plugin_dir=PLUGIN_DIR):
+    """Every agent and skill the plugin ships, by the name each file declares."""
+    return ({("agent", frontmatter_name(p)) for p in sorted(plugin_dir.glob("agents/*.agent.md"))} |
+            {("skill", frontmatter_name(p)) for p in sorted(plugin_dir.glob("skills/*/SKILL.md"))})
+
+
+def components_check(loaded, expected):
+    missing = sorted(f"{kind} {name}" for kind, name in expected - loaded)
+    agents = sum(kind == "agent" for kind, _ in expected)
+    return check(not missing and agents > 0, f"all {agents} agents and {len(expected) - agents} skills loaded",
+                 "missing: " + (", ".join(missing) or "no agents found in plugin/"))
 
 
 def read(path):
@@ -92,11 +111,14 @@ def score_cli(out):
     delete = denied("bash", DELETE_DENIAL, lambda a: a.get("command") == "rm hc-out/keep.txt")
     skill = any(t == "skill" and ok and (a.get("skill") or a.get("name")) in SKILL_NAMES for t, a, ok, _ in main)
     agent_ok = any(e.get("type") == "result" for e in agent) and file_is(out / "agent/hc-out/agent.txt", "AGENT_OK")
+    prefix = "actions-migrator:"
+    loaded_components = ({("agent", n.removeprefix(prefix)) for n in agents if str(n).startswith(prefix)} |
+                         {("skill", n.removeprefix(prefix)) for n in skills if str(n).startswith(prefix)})
+    installed = components_check(loaded_components, expected_components())
+    if not listed:
+        installed = ("FAIL", "plugin not listed as enabled")
     return {
-        "plugin-installed": check(
-            bool(listed) and "actions-migrator:jenkins-migrator" in agents and "actions-migrator:actionlint" in skills,
-            "plugin list shows it enabled; session loaded actions-migrator:jenkins-migrator and actions-migrator:actionlint",
-            "plugin not listed as enabled, or its agent/skill missing from the session"),
+        "plugin-installed": installed,
         "secret-guard-blocks-credential": check(
             secret and read(out / "main/hc-out/p1.md") is None,
             "create hc-out/p1.md denied by the secret guard; file absent",
@@ -150,11 +172,11 @@ def score_vscode(out):
     skill = any(r.get("tool") == "skill" and r.get("success") is True and args(r).get("skill", "actionlint") in SKILL_NAMES
                 and skill_link.match(str(r.get("message", ""))) for r in tools)
     seen = "; ".join(f"{r.get('tool')} {'ok' if r.get('success') else 'failed'}" for r in tools) or "no tool calls seen"
+    installed = components_check(children, expected_components())
+    if ("hook", "hooks.json") not in children:
+        installed = ("FAIL", "hooks.json not loaded")
     return {
-        "plugin-installed": check(
-            {("agent", "jenkins-migrator"), ("skill", "actionlint"), ("hook", "hooks.json")} <= children,
-            "Agent Host loaded the plugin with jenkins-migrator, actionlint and hooks.json",
-            "plugin not ready, or jenkins-migrator, actionlint or hooks.json missing"),
+        "plugin-installed": installed,
         "secret-guard-blocks-credential": check(
             secret and read(out / "main/hc-out/p1.md") is None,
             "create hc-out/p1.md denied by the secret guard; file absent",
