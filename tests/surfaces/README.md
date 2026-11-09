@@ -120,11 +120,30 @@ RULE_FORMAT=namespace CODE_BIN=/path/to/code \
   OUT_DIR=/tmp/vscode-rule-out tests/surfaces/run-vscode-rule.sh
 ```
 
-Use an authenticated Copilot user token; do not put it in source or artifacts. The result JSON records the suite SHA, rule case and plugin version, VS Code CLI and Agent Host server commits, AHPX version, and requested model selector. It records only the expected rule file's SHA match when Agent Host reads it, target-specific tool-call evidence, and marker-file state. Prompt/event transcripts, credentials, and model catalogs are not published.
+Use an authenticated Copilot user token; do not put it in source or artifacts. The result JSON records the suite SHA, rule case and plugin version, VS Code CLI and Agent Host server commits, AHPX version, requested model selector, and prompt SHA-256. It records only the expected rule file's SHA match when Agent Host reads it, target-specific tool-call evidence, and marker-file state. Tool evidence comes from the Agent Host client's structured events, not a presumed CLI session-log location. Prompt/event transcripts, credentials, and model catalogs are not published.
 
-An Agent Host resource read proves that the rule text was returned to the host; it does not prove that the model received it. That delivery stage is reported as unobservable. A missing resource read is **NOT RUN**; a completed isolated session that read the expected rule but did not produce the marker is a **DEVIATION** with unresolved cause. A result is **PASS** only when the expected resource was read, the target tool call succeeded, and the marker matches. The command does not retry. Repeat a case only when testing variability, using the same revision, runtime, model selector, and configuration.
+An Agent Host resource read proves that the rule text was returned to the host; it does not prove that the model received it. That delivery stage is reported as unobservable. A missing resource read is **NOT RUN**; a completed isolated session that read the expected rule but did not produce the marker is a **DEVIATION** with unresolved cause. A result is **PASS** only when the session exited successfully, the expected resource was read, a `create` or `edit` call to the marker succeeded, and the marker content matches exactly. A read or a report mentioning the marker cannot pass. The command exits nonzero for any non-PASS result and does not retry. Repeat a case only when testing variability, using the same revision, runtime, model selector, and configuration.
 
 Run from a clean, committed suite checkout; the runner refuses a dirty tree so the recorded source SHA identifies the fixture and scoring code.
+
+For a controlled prompt comparison, set `RULE_PROMPT_FILE` to a neutral task file. Keep the rule fixture unchanged and use separate `OUT_DIR` values for every trial. The result records the prompt hash, not its contents. Do not select only passing trials.
+
+### Live validation on 2026-11-09
+
+VS Code Agent Host 1.145.2, server `c4453f8ea430795f941c1b2ff6c9321135a74a02`, AHPX 0.6.0, model selector `claude-haiku-4.5`:
+
+| Suite revision | Task | Format | Two trial outcomes |
+|---|---|---|---|
+| `6683176` | Default question | R1 / current | DEVIATION, DEVIATION |
+| `6683176` | Default question | R2 / namespace | PASS, PASS |
+| `28d2f9f` | Default question | R1 / current | PASS, PASS |
+| `28d2f9f` | Workspace inspection | R1 / current | DEVIATION, PASS |
+
+The inspection task was: "Inspect the top-level files and directories and read README.md, then summarize the purpose of this scratch repository in one sentence." Its SHA-256 was `0598e8a4ff953508864506b253851d2ff42e6934b065c3ebfbdc04b3e8d25b72`; the default prompt hash was `70a33d16b0b168f4cf00601bdda216162895ade4c5e4088f0df52a1fbea015dc`.
+
+All eight scored runs read the exact rule and completed with session exit 0. Each deviation had no marker-write attempt and no marker file. The inspection pair establishes different R1 outcomes under matching source, runtime, model selector, and prompt settings. It does not distinguish missing model-context delivery from failure to follow a delivered rule; #72 remains unresolved.
+
+The existing combined-plugin session at `6683176` passed all 20 checks, including R1/R2. All 17 offline tests passed. Two initial diagnostic trials at `05353eb` remain NOT RUN because the original runner expected CLI event files that were absent; they are not counted as passes. These are local Agent Host results, not hosted CI, VS Code Local, or cloud-agent validation.
 
 ## Run locally
 
