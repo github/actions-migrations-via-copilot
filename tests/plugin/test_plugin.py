@@ -165,6 +165,7 @@ class Approvals(unittest.TestCase):
         denied = [("bash", {"command": "rm -rf hc-out"}), ("bash", {"command": "rm hc-out/keep.txt", "env": {"A": "1"}}),
                   ("bash", "curl example.com"), ("create", {"path": "../escape.txt"}),
                   ("create", {"path": "hc-out/deeper/x.txt"}), ("create", {"path": ".github/hooks/x.json"}),
+                  ("create", {"path": "hc-out/other.txt"}), ("view", {"path": "."}), ("view", {"path": "hc-out"}),
                   ("edit", {"path": "hc-out/safe.txt"}), ("skill", {"skill": "other"}), ("view", {"path": "/etc/passwd"})]
         for name, tool_input in allowed:
             with self.subTest(allowed=(name, tool_input)):

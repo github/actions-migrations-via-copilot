@@ -16,7 +16,7 @@ MODEL=${MODEL:-claude-haiku-4.5}
 
 OUT=${OUT_DIR:-$(mktemp -d)}/vscode
 ROOT=$(mktemp -d "${RUNNER_TEMP:-/tmp}/plugin-vscode-XXXX")
-mkdir -p "$OUT"
+rm -rf "$OUT" && mkdir -p "$OUT"
 stop_host() {
   [ -n "$HOST_PID" ] || return 0
   kill -TERM "$HOST_PID" 2>/dev/null || true
@@ -43,9 +43,21 @@ if [ "$setup_exit" = 0 ]; then
       --connection-token-file "$ROOT/conn-token" --user-data-dir "$ROOT/ud" --server-data-dir "$ROOT/sd" \
       < /dev/null > "$ROOT/agent-host.log" 2>&1 ) &
   HOST_PID=$!
-  url="ws://127.0.0.1:$PORT?tkn=$(cat "$ROOT/conn-token")"
+  # Credentials reach the client through its environment and a private profile, never its arguments.
+  export GITHUB_TOKEN=$COPILOT_GITHUB_TOKEN
+  python3 - "$ROOT/ahpx-home/.ahpx" "$PORT" "$ROOT/conn-token" <<'PY' || setup_exit=$?
+import json, os, sys
+from pathlib import Path
+home, port, token_file = Path(sys.argv[1]), sys.argv[2], Path(sys.argv[3])
+home.mkdir(parents=True, mode=0o700)
+url = f"ws://127.0.0.1:{port}?tkn={token_file.read_text().strip()}"
+fd = os.open(home / "connections.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(fd, "w") as f:
+    json.dump({"connections": [{"name": "plugin-test", "url": url}]}, f)
+PY
   for _ in $(seq 1 "${HOST_READY_ATTEMPTS:-60}"); do
-    if run_captured timeout 30 env GITHUB_TOKEN="$COPILOT_GITHUB_TOKEN" node "$ahpx_bin" --format json connect "$url" \
+    [ "$setup_exit" = 0 ] || break
+    if run_captured timeout 30 env HOME="$ROOT/ahpx-home" node "$ahpx_bin" --format json connect plugin-test \
          > "$ROOT/connect.json" 2>/dev/null \
        && jq -e '.agents[]? | select(.provider == "copilotcli") | .models | length > 0' "$ROOT/connect.json" >/dev/null; then
       ready=1; break
@@ -53,16 +65,16 @@ if [ "$setup_exit" = 0 ]; then
     [ "$INTERRUPTED" = 0 ] || break
     sleep 3
   done
-  [ "$ready" = 1 ] || { echo "Agent Host not ready or not signed in to Copilot" >&2; setup_exit=1; }
+  [ "$ready" = 1 ] || { echo "Agent Host not ready or not signed in to Copilot" >&2; [ "$setup_exit" != 0 ] || setup_exit=1; }
 fi
 
 # One session per prompt. Tool calls are denied unless approve_tool.mjs allows them.
 run_session() {
   local name=$1 cwd=$2 prompt=$3 agent=${4:-}
   mkdir -p "$ROOT/$name" || return 1
-  run_captured timeout "${SESSION_TIMEOUT:-600}" env HC_EVIDENCE_DIR="$ROOT/$name" HC_PLUGIN_DIRS="$TOOL_ROOT/plugin" \
-    HC_WORKSPACE="$cwd" HC_AGENT_NAME="$agent" GITHUB_TOKEN="$COPILOT_GITHUB_TOKEN" \
-    node "$ahpx_bin" exec -s "$url" -p copilotcli -m "$MODEL" --cwd "$cwd" --deny-all \
+  run_captured timeout "${SESSION_TIMEOUT:-600}" env HOME="$ROOT/ahpx-home" HC_EVIDENCE_DIR="$ROOT/$name" \
+    HC_PLUGIN_DIRS="$TOOL_ROOT/plugin" HC_WORKSPACE="$cwd" HC_AGENT_NAME="$agent" \
+    node "$ahpx_bin" exec -s plugin-test -p copilotcli -m "$MODEL" --cwd "$cwd" --deny-all \
     --idle-timeout "${IDLE_TIMEOUT:-300}" "$prompt" > "$OUT/$name.log" 2>&1
 }
 if [ "$ready" = 1 ]; then

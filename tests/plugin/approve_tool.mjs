@@ -50,7 +50,7 @@ export function hcApproveTool(toolCall, workspace) {
   }
   const parts = relative.split(hcPolicyPath.sep);
   if (tool === "bash") return !input.env && !relative && input.command === "rm hc-out/keep.txt";
-  if (tool === "create") return parts.length === 2 && parts[0] === "hc-out";
-  if (tool === "view") return !relative || relative === "README.md" || relative === "hc-out";
+  if (tool === "create") return ["hc-out/safe.txt", "hc-out/p1.md", "hc-out/agent.txt"].includes(parts.join("/"));
+  if (tool === "view") return relative === "README.md";
   return false;
 }

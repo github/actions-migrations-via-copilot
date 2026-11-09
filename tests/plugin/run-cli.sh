@@ -12,7 +12,7 @@ trap 'on_signal 143' TERM
 OUT=${OUT_DIR:-$(mktemp -d)}/cli
 ROOT=$(mktemp -d "${RUNNER_TEMP:-/tmp}/plugin-cli-XXXX")
 export COPILOT_AUTO_UPDATE=false COPILOT_HOME="$ROOT/home"
-mkdir -p "$OUT/main" "$OUT/agent"
+rm -rf "$OUT" && mkdir -p "$OUT/main" "$OUT/agent"
 
 setup_exit=0 main_exit=0 agent_exit=0 version=""
 model_args=()
