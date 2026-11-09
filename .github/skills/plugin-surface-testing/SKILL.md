@@ -75,6 +75,32 @@ Do not treat the agent's own explanation as proof. Do not weaken assertions or
 add expected failures merely to make CI green. Keep human decisions about scope,
 access, deployment and merging separate from automated analysis.
 
+## Rules and model-dependent checks
+
+- Separate rule-file discovery, the host reading its exact text, inclusion in
+   a model request, the model attempting the action, tool completion, and the
+   resulting file. Evidence for one stage does not prove the next stage.
+- Rules guide model behavior; hooks execute code and can enforce a denial.
+   A missed synthetic rule marker alone does not prove a broken migration or a
+   bypassed security hook. Test those outcomes separately.
+- Start with one rule, no selected agent, and a neutral task. Pin the suite,
+   runtime, model selector, and prompt hash. Choose a fixed number of trials and
+   retain every outcome; do not retry until green. A passing combined suite does
+   not erase a failing isolated check that the combined workflow never ran.
+- Verify the evidence source on the actual surface. Agent Host may not create
+   the CLI session logs a runner expects. Use structured client events and match
+   the exact write target and call ID; a read, report mention, or failed session
+   cannot prove successful instruction-following.
+- An observer loading is not proof that its callback attached or measured a
+   request. Validate instrumentation separately, record when it observes nothing,
+   and never interpret missing measurements as missing rule delivery. Prefer
+   hashes and presence checks for the test rule over publishing model requests,
+   unrelated instructions, or credentials.
+- Stop repeating marker-only tests once the missing evidence is model-request
+   delivery. Record the unresolved boundary and the runtime trace needed to cross
+   it. Keep the limitation visible while improving the rest of the suite; neither
+   a finite set of passes nor a clean PR guarantees future model compliance.
+
 ## Safety and maintenance
 
 Use disposable test inputs and fake credentials, never customer secrets. Give
