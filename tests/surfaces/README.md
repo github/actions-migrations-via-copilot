@@ -119,6 +119,48 @@ Results: **PASS**; **DEVIATION**, where the surface differs from the documented 
 
 ## Cloud runs
 
+### Why keep the private testing repository?
+
+CLI and VS Code PR tests run in disposable projects inside their Actions jobs;
+they do not require a separate testing repository. Cloud-agent tests do: this
+runner requires a private target for its published plugin fixtures, temporary
+issues and pull requests, and saved evidence. Keep that repository while weekly
+cloud testing is planned. Retiring it is a separate decision; preserve its
+evidence before archiving or deleting it.
+
+### Credentials and GitHub Apps
+
+| Tests | Authentication |
+|---|---|
+| CLI in Actions | The workflow token, with organization-billed Copilot access enabled. |
+| VS Code Agent Host | A Copilot-enabled user token supplied through `COPILOT_GITHUB_TOKEN`. The tested workflow-token path does not work here. |
+| Cloud agent | The validated manual flow uses a user's GitHub credential through `GH_TOKEN`, with access to the private target and permission to assign Copilot. |
+
+A weekly runner cannot use a maintainer's local `gh` login. For the current
+user-authenticated approach, configure a repository-scoped personal access token
+(PAT) as an Actions secret in the private testing repository and map it to
+`GH_TOKEN`. Verify that its owner can use the cloud agent and that the credential
+can create test branches/issues, start the assigned Copilot task, collect its
+results, and clean up owned resources. Use an expiry and only the permissions
+needed for those operations. Do not copy a broad local login token into CI or
+assume the VS Code Copilot-only token provides repository-write access.
+
+A GitHub App would be preferable for unattended repository access when it
+supports the complete flow: installation tokens are short-lived, can be limited
+to selected repositories, and are not tied to an employee's account. However,
+an installation token has not been validated for assigning and starting these
+cloud-agent tests. Creating branches or dispatching a workflow alone would not
+prove that capability. The VS Code workflow-token failure does not establish
+whether a separate GitHub App token works for cloud tasks.
+
+Before replacing user authentication, obtain the approved app installation and
+verify task startup, evidence collection, and cleanup end to end. Until then,
+PAT-based scheduling is the proposed starting path, not a deployed service.
+The initial goal is one weekly run with saved results; automatic analysis can
+follow later. No app, credential, policy, or schedule is created by this guide.
+
+### Prepare and run
+
 Use a dedicated private repository. Publish the generated `hc-probes` marketplace
 on its default branch, retaining `fixture-source.json` with the source commit and
 per-file hashes. `make_probes.py --include-plugin <plugin-dir> --source-sha <sha>
