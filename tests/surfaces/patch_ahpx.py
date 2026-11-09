@@ -120,8 +120,24 @@ resource_replacement = '''      const content = await fs2.readFile(filePath);
       return {
         data: content.toString("base64"),
 '''
+permission_anchor = "  async handleToolConfirmation(toolCall) {\n"
+permission_addition = '''    if (process.env.HC_FIXTURE_WORKSPACE) {
+      const approved = hcApproveFixtureTool(toolCall, process.env.HC_FIXTURE_WORKSPACE);
+      this.output.write(approved ? "[fixture-approved]\\n" : "[fixture-denied]\\n");
+      return approved;
+    }
+'''
+if permission_addition not in text:
+    if text.count(permission_anchor) != 1:
+        sys.exit(f"AHPX at {path} changed; fixture approval hook not found")
+    text = text.replace(permission_anchor, permission_anchor + permission_addition)
+    lines = text.splitlines(keepends=True)
+    lines.insert(1 if text.startswith("#!") else 0,
+                 (Path(__file__).parent / "fixture_permissions.mjs").read_text() + "\n")
+    text = "".join(lines)
 if addition in text:
     if "process.env.HC_RULE_RESOURCE_PATH" in text:
+        path.write_text(text)
         sys.exit(0)
     old_import = 'import { cp as hcCopy, mkdir as hcMkdir } from "node:fs/promises";'
     new_import = 'import { appendFile as hcAppendFile, cp as hcCopy, mkdir as hcMkdir } from "node:fs/promises";'

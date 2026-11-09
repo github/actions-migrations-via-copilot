@@ -105,14 +105,21 @@ make_probe_marketplace() {
   git_commit_all "$1" "Probe plugins"
 }
 
+make_observed_marketplace() {
+  python3 "$SUITE_DIR/make_probes.py" "$1" --include-plugin "$TOOL_ROOT/plugin" \
+    --source-sha "$(git -C "$TOOL_ROOT" rev-parse HEAD)" --observe-plugin || return 1
+  git_commit_all "$1" "Observed plugin commands"
+}
+
 # Installs a session's plugins into the Copilot profile at $COPILOT_HOME, logging to $2.
 # repo: actions-migrator from this checkout. plugin: the three probe plugins.
 install_session_plugins() {
   local session=$1 log=$2
   {
     if [ "$session" = repo ]; then
-      "$COPILOT" plugin marketplace add "$TOOL_ROOT" || return 1
-      "$COPILOT" plugin install actions-migrator@actions-migrations-via-copilot || return 1
+      make_observed_marketplace "$COPILOT_HOME/../observed-plugin" || return 1
+      "$COPILOT" plugin marketplace add "$COPILOT_HOME/../observed-plugin" || return 1
+      "$COPILOT" plugin install actions-migrator@hc-probes || return 1
     else
       make_probe_marketplace "$COPILOT_HOME/../probes" || return 1
       "$COPILOT" plugin marketplace add "$COPILOT_HOME/../probes" || return 1
@@ -144,6 +151,22 @@ install_copilot_cli() {
   echo "Copilot CLI install failed:" >&2
   tail -5 "$1/npm-install.log" >&2
   return 1
+}
+
+prepare_ahpx() {
+  local installation_root=$1 name
+  local nm="$installation_root/ahpx/node_modules"
+  local -a npm_env=("PATH=$PATH" "HOME=$installation_root/npm-home")
+  mkdir -p "$installation_root/ahpx" "$installation_root/npm-home" || return 1
+  cp "$SUITE_DIR/ahpx/package.json" "$SUITE_DIR/ahpx/package-lock.json" "$installation_root/ahpx/" || return 1
+  for name in NODE_EXTRA_CA_CERTS SSL_CERT_FILE SSL_CERT_DIR CURL_CA_BUNDLE; do
+    [ -z "${!name:-}" ] || npm_env+=("$name=${!name}")
+  done
+  env -i "${npm_env[@]}" npm ci --ignore-scripts --prefix "$installation_root/ahpx" \
+    > "$installation_root/ahpx/npm-install.log" 2>&1 || return 1
+  [ -x "$nm/.bin/ahpx" ] || return 1
+  python3 "$SUITE_DIR/patch_ahpx.py" "$nm/@tylerl0706/ahpx/dist/bin.js" || return 1
+  printf '%s\n' "$nm/@tylerl0706/ahpx/dist/bin.js"
 }
 
 # Copies the evidence from workspace $3 into $4 and scores it as surface $1, session $2.

@@ -233,7 +233,17 @@ else:
         add("N1", f"namespace hook calls={len(ns_rows)}", verdict(bool(ns_rows)))
 
     def challenge_calls(hook_rows, path):
-        return [r for r in hook_rows if path in json.dumps(r.get("raw", {}))]
+        calls = []
+        for record in hook_rows:
+            if path in record.get("targets", []):
+                calls.append(record)
+                continue
+            payload = record.get("raw", {})
+            arguments = payload.get("toolArgs", payload.get("tool_input", {}))
+            target = arguments.get("path") if isinstance(arguments, dict) else None
+            if isinstance(target, str) and (target == path or target.endswith("/" + path)):
+                calls.append(record)
+        return calls
 
     n2_calls = challenge_calls(ns_rows, "hc-out/n2-root-hook.txt")
     n2_root_calls = challenge_calls(ns_root_rows, "hc-out/n2-root-hook.txt")

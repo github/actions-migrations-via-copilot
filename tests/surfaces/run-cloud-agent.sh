@@ -9,6 +9,9 @@ set -uo pipefail
 source "$(dirname "$0")/common.sh"
 : "${GH_TOKEN:?set GH_TOKEN}"
 : "${REPO:?set REPO to the repo where the cloud agent runs}"
+[[ "$REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo "Expected owner/repo" >&2; exit 1; }
+[ -z "$(git -C "$TOOL_ROOT" status --porcelain)" ] || { echo "Cloud tests require a clean committed suite" >&2; exit 1; }
+local_sha=$(git -C "$TOOL_ROOT" rev-parse HEAD)
 WAIT_MINUTES=${WAIT_MINUTES:-45}
 CLOUD_SESSION=${CLOUD_SESSION:-repo}
 CLOUD_MARKETPLACE_REPO=${CLOUD_MARKETPLACE_REPO:-$REPO}
@@ -27,13 +30,18 @@ esac
 mkdir -p "$OUT"
 ROOT=$(mktemp -d "${RUNNER_TEMP:-/tmp}/surface-cloud-XXXX")
 WS=$ROOT/ws
-default_branch=$(gh api "repos/$REPO" --jq .default_branch) || exit 1
-gh api "repos/$REPO/contents/.github/copilot/settings.json?ref=$default_branch" --jq .content \
+gh api "repos/$REPO" > "$ROOT/repository.json" || exit 1
+default_branch=$(jq -er .default_branch "$ROOT/repository.json") || exit 1
+gh api -X GET "repos/$REPO/contents/.github/copilot/surface-test-policy.json" -f ref="$default_branch" --jq .content \
+  | base64 -d > "$ROOT/policy.json" || exit 1
+gh api -X GET "repos/$REPO/contents/.github/copilot/settings.json" -f ref="$default_branch" --jq .content \
   | base64 -d > "$ROOT/default-settings.json" || exit 1
 python3 "$SUITE_DIR/cloud_settings.py" --check "$ROOT/default-settings.json" "$CLOUD_SESSION" "$CLOUD_MARKETPLACE_REPO" || exit 1
 gh api "repos/$CLOUD_MARKETPLACE_REPO/contents/fixture-source.json" --jq .content \
   | base64 -d > "$OUT/fixture-source.json" || exit 1
 source_sha=$(jq -er .source_sha "$OUT/fixture-source.json") || exit 1
+python3 "$SUITE_DIR/cloud_settings.py" --authorize "$ROOT/policy.json" "$ROOT/repository.json" \
+  "$local_sha" "$OUT/fixture-source.json" || exit 1
 if [ -n "${SHA:-}" ] && [ "$SHA" != "$source_sha" ]; then
   echo 'Requested source SHA does not match the published cloud fixture' >&2
   exit 1
@@ -47,7 +55,7 @@ if [ "$CLOUD_AGENT" = hc-probe-agent ]; then
     | base64 -d > "$WS/.github/agents/hc-probe-agent.agent.md" || exit 1
 fi
 git_commit_all "$WS" "Configure isolated cloud test plugins"
-BRANCH="surface-run/${GITHUB_RUN_ID:-$(date +%s)}-$CLOUD_SESSION${CLOUD_AGENT:+-${CLOUD_AGENT##*:}}"
+BRANCH="surface-run/${GITHUB_RUN_ID:-$(date +%s)}-$CLOUD_SESSION${CLOUD_AGENT:+-${CLOUD_AGENT##*:}}-$(openssl rand -hex 8)"
 git_gh() { git -C "$WS" -c credential.helper= -c 'credential.helper=!gh auth git-credential' "$@"; }
 issue="" pr="" head="" title="" branch_created=0 issue_created=0 remote_started=0 task_terminal=0
 completed=0 run_id="" run_status="" run_conclusion="" rejected=0 agent_failures=0

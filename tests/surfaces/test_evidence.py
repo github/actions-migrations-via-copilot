@@ -12,7 +12,7 @@ import time
 import unittest
 from unittest.mock import patch
 from sanitize_artifacts import publish
-from cloud_settings import configure
+from cloud_settings import authorize, configure
 import rule_evidence
 
 
@@ -20,6 +20,48 @@ SUITE = Path(__file__).resolve().parent
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_cloud_authorization_requires_target_policy_and_exact_source(self):
+        repository = {"full_name": "example/test-runner", "private": True, "archived": False, "permissions": {"push": True}}
+        policy = {"enabled": True, "repository": repository["full_name"], "source_repository": "github/actions-migrations-via-copilot", "source_commits": ["a" * 40]}
+        fixture = {"source_repository": policy["source_repository"], "source_sha": "a" * 40}
+        authorize(policy, repository, "a" * 40, fixture)
+        for changed in ({"enabled": False}, {"repository": "example/production"}, {"source_commits": []}, {"source_commits": "a" * 40}):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                authorize({**policy, **changed}, repository, "a" * 40, fixture)
+        for changed in ({"private": False}, {"archived": True}, {"permissions": {"push": False}}):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                authorize(policy, {**repository, **changed}, "a" * 40, fixture)
+        with self.assertRaises(ValueError):
+            authorize(policy, repository, "b" * 40, fixture)
+        with self.assertRaises(ValueError):
+            authorize(policy, repository, "a" * 40, {**fixture, "source_sha": "b" * 40})
+
+    def test_minimized_probe_keeps_negative_case_targets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".git").mkdir()
+            for target in ("hc-out/n2-root-hook.txt", "hc-out/r3-rule-challenge.txt"):
+                payload = {"cwd": str(root), "toolName": "create", "toolArgs": {"path": target, "content": "private-test-content"}}
+                subprocess.run([sys.executable, str(SUITE / "kit/probe.py"), "ns:preToolUse"], input=json.dumps(payload), text=True, capture_output=True, check=True)
+            records = [json.loads(line) for line in (root / ".hook-conformance/probe.jsonl").read_text().splitlines()]
+            self.assertEqual([record["targets"] for record in records], [["hc-out/n2-root-hook.txt"], ["hc-out/r3-rule-challenge.txt"]])
+            self.assertNotIn("private-test-content", json.dumps(records))
+
+    def test_agent_host_approvals_are_scoped_to_disposable_fixtures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            workspace = root / "ws"
+            workspace.mkdir()
+            outside = root / "outside"
+            outside.mkdir()
+            (workspace / "hc-out").symlink_to(outside, target_is_directory=True)
+            script = "const assert=require('node:assert/strict'); (async()=>{const {hcApproveFixtureTool:approve}=await import(process.argv[1]);const ws=process.argv[2];const call=(toolName,input)=>({toolName,toolInput:JSON.stringify(input)});assert.equal(approve(call('bash',{command:'echo hook-conformance-bash'}),ws),true);assert.equal(approve(call('bash',{command:'echo hook-conformance-bash; env'}),ws),false);assert.equal(approve(call('bash',{command:'rm hc-does-not-exist.txt',cwd:'/'}),ws),false);assert.equal(approve(call('create',{path:'.github/hooks/evil.json'}),ws),false);assert.equal(approve(call('create',{path:'hc-out/c0.txt'}),ws),false);assert.equal(approve(call('view',{path:'../outside'}),ws),false);assert.equal(approve(call('skill',{skill:'unreviewed'}),ws),false);require('node:fs').unlinkSync(ws+'/hc-out');require('node:fs').mkdirSync(ws+'/hc-out');assert.equal(approve(call('create',{path:'hc-out/c0.txt'}),ws),true);assert.equal(approve(call('skill',{skill:'hc-probe-skill'}),ws),true);assert.equal(approve(call('bash',{command:'env'}),''),false);})();"
+            subprocess.run(["node", "-e", script, (SUITE / "fixture_permissions.mjs").as_uri(), str(workspace)], check=True, capture_output=True)
+            worktree = root / "ws.worktrees/session"
+            (worktree / "hc-out").mkdir(parents=True)
+            script = "const assert=require('node:assert/strict'); (async()=>{const {hcApproveFixtureTool:approve}=await import(process.argv[1]);const ws=process.argv[2];const worktree=process.argv[3];assert.equal(approve({toolName:'view',toolInput:JSON.stringify({path:worktree})},ws),true);assert.equal(approve({toolName:'create',toolInput:JSON.stringify({path:worktree+'/hc-out/c0.txt'})},ws),true);})();"
+            subprocess.run(["node", "-e", script, (SUITE / "fixture_permissions.mjs").as_uri(), str(workspace), str(worktree)], check=True, capture_output=True)
+
     def fake_copilot(self, directory):
         executable = directory / "copilot"
         executable.write_text("""#!/usr/bin/env python3
@@ -134,7 +176,7 @@ const path4 = { delimiter: ":" };
             await client.disposeSession(sessionUri);
       const chatUri = await resolveChatChannel(client, sessionUri);
           ...this.model ? { model: { id: this.model } } : {},
-""" + '      const content = await fs2.readFile(filePath);\n      return {\n        data: content.toString("base64"),\n')
+""" + '      const content = await fs2.readFile(filePath);\n      return {\n        data: content.toString("base64"),\n  async handleToolConfirmation(toolCall) {\n')
         return code, node, modules
 
     def run_fake_vscode(self, root, code, modules, **extra):
@@ -274,10 +316,12 @@ const path4 = { delimiter: ":" };
             log += "\n" + "\n".join(f"{key}={value}" for key, value in runtime_values.items())
             log += "\nCOPILOT_GITHUB_TOKEN=environment-test-token"
             (source / "session.log").write_text(log)
+            (source / "score.json").write_text(json.dumps({"message": log}))
             with patch.dict(os.environ, {"COPILOT_GITHUB_TOKEN": "environment-test-token"}):
                 publish(source, root / "published")
             self.assertFalse((root / "published/connect.json").exists())
-            published = (root / "published/session.log").read_text()
+            self.assertFalse((root / "published/session.log").exists())
+            published = json.loads((root / "published/score.json").read_text())["message"]
             self.assertIn("ws://localhost?tkn=REDACTED", published)
             self.assertIn("[fake-credential]", published)
             for value in gh_tokens + list(runtime_values.values()) + [
@@ -325,30 +369,30 @@ const path4 = { delimiter: ":" };
 
     def test_artifact_symlinks_and_outside_destinations_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             source = root / "input"
             source.mkdir()
             outside = root / "outside.log"
             outside.write_text("fake")
-            (source / "session.log").symlink_to(outside)
+            (source / "score.json").symlink_to(outside)
             with self.assertRaises(ValueError):
                 publish(source, root / "published")
 
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             source = root / "input"
             source.mkdir()
             outside = root / "outside.log"
             outside.write_text("fake")
-            os.link(outside, source / "session.log")
+            os.link(outside, source / "score.json")
             with self.assertRaises(ValueError):
                 publish(source, root / "published")
 
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             source = root / "input"
             (source / "nested").mkdir(parents=True)
-            (source / "nested/session.log").write_text("fake")
+            (source / "nested/score.json").write_text("{}")
             outside = root / "outside"
             outside.mkdir()
             destination = root / "published"
@@ -356,6 +400,26 @@ const path4 = { delimiter: ":" };
             (destination / "nested").symlink_to(outside, target_is_directory=True)
             with self.assertRaises(ValueError):
                 publish(source, destination)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source = root / "input"
+            source.mkdir()
+            (source / "score.json").write_text("{}")
+            alias = root / "input-link"
+            alias.symlink_to(source, target_is_directory=True)
+            result = subprocess.run([sys.executable, str(SUITE / "sanitize_artifacts.py"), str(alias), str(root / "published")], capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+
+    def test_artifacts_reject_raw_payloads_and_invalid_structured_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source = root / "input"
+            source.mkdir()
+            for content in ('{"raw":{"secret":"private"}}', "not-json"):
+                (source / "score.json").write_text(content)
+                with self.subTest(content=content), self.assertRaises(ValueError):
+                    publish(source, root / "published")
 
     def test_cli_runner_has_narrow_unattended_permissions(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -952,15 +1016,20 @@ if os.environ.get("GH_FAIL") and os.environ["GH_FAIL"] in args:
         lock = json.loads((SUITE / "ahpx/package-lock.json").read_text())
         ahpx = lock["packages"]["node_modules/@tylerl0706/ahpx"]
         uuid = lock["packages"]["node_modules/uuid"]
-        runner = (SUITE / "run-vscode.sh").read_text()
+        runner = (SUITE / "common.sh").read_text()
         self.assertEqual(package["dependencies"]["@tylerl0706/ahpx"], "0.6.0")
         self.assertEqual(ahpx["version"], "0.6.0")
         self.assertTrue(ahpx["integrity"].startswith("sha512-"))
         self.assertGreaterEqual(tuple(map(int, uuid["version"].split("."))), (11, 1, 1))
-        self.assertIn('local -a npm_env=("PATH=$PATH" "HOME=$ROOT/npm-home")', runner)
+        self.assertIn('local -a npm_env=("PATH=$PATH" "HOME=$installation_root/npm-home")', runner)
         self.assertIn('env -i "${npm_env[@]}" npm ci --ignore-scripts', runner)
         self.assertIn("npm ci --ignore-scripts", runner)
         self.assertNotIn("AHPX_NODE_MODULES", runner)
+        for name in ("run-vscode.sh", "run-vscode-rule.sh"):
+            source = (SUITE / name).read_text()
+            self.assertIn('prepare_ahpx "$ROOT"', source)
+            self.assertNotIn("--approve-all", source)
+            self.assertIn("--deny-all", source)
 
 
 if __name__ == "__main__":

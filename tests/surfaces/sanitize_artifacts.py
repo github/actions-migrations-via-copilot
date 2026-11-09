@@ -1,5 +1,6 @@
 """Publish test evidence without connection tokens, credentials, or model catalogs."""
 import argparse
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -45,10 +46,26 @@ def publish(source, destination):
     authorization_pattern = re.compile(
         r"(?i)(\bAuthorization[\"']?\s*:\s*[\"']?)(?:(?:Bearer|Basic)\s+)?[^\s,\"'}]+"
     )
-    allowed = {"score.json", "probe.jsonl", "events.jsonl", "session.log", "transcript.md",
-               "stderr.log", "plugin-install.log", "agent-host.log", "agents.log",
-               "hc-probe-agent.log", "hc-probe-ns-agent.log", "run.log", "fixture-source.json", "plugin-guards.jsonl",
-               "agent-selection.json", "agent-start.json", "agent-legacy.txt", "agent-ns.txt"}
+    allowed = {"score.json", "probe.jsonl", "fixture-source.json", "plugin-guards.jsonl", "agent-selection.json"}
+
+    def redact(value):
+        if isinstance(value, dict):
+            if {"raw", "payload", "toolArgs", "tool_input"}.intersection(value):
+                raise ValueError("Raw tool payloads are not publishable evidence")
+            return {key: "[redacted]" if key.lower() == "authorization" else redact(item)
+                    for key, item in value.items()}
+        if isinstance(value, list):
+            return [redact(item) for item in value]
+        if not isinstance(value, str):
+            return value
+        for secret in secrets:
+            value = value.replace(secret, "[redacted]")
+        value = token_pattern.sub("[redacted]", value)
+        value = runtime_pattern.sub(r"\1[redacted]", value)
+        value = authorization_pattern.sub(r"\1[redacted]", value)
+        value = re.sub(r"tkn=[^\s\"'&<>]+", "tkn=REDACTED", value)
+        return value.replace("Synthetic" + "Probe12345abcdef", "[fake-credential]")
+
     for path in source.rglob("*"):
         if path.is_symlink():
             raise ValueError("Symlink in test evidence")
@@ -60,13 +77,10 @@ def publish(source, destination):
         if path.stat().st_nlink > 1:
             raise ValueError("Hard link in test evidence")
         text = path.read_text(errors="replace")
-        for secret in secrets:
-            text = text.replace(secret, "[redacted]")
-        text = token_pattern.sub("[redacted]", text)
-        text = runtime_pattern.sub(r"\1[redacted]", text)
-        text = authorization_pattern.sub(r"\1[redacted]", text)
-        text = re.sub(r"tkn=[^\s\"'&<>]+", "tkn=REDACTED", text)
-        text = text.replace("Synthetic" + "Probe12345abcdef", "[fake-credential]")
+        if path.suffix == ".jsonl":
+            text = "".join(json.dumps(redact(json.loads(line))) + "\n" for line in text.splitlines() if line.strip())
+        else:
+            text = json.dumps(redact(json.loads(text)), indent=2) + "\n"
         output = destination / path.relative_to(source)
         output.parent.mkdir(parents=True, exist_ok=True)
         reject_symlink_components(output.parent)

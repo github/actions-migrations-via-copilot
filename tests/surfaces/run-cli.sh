@@ -47,10 +47,21 @@ run_session() {
   else
     install_exit=$workspace_exit
   fi
+  local scope fixture
+  local -a write_args=()
+  if [ "$install_exit" = 0 ]; then
+    scope=$(cd "$ws" && pwd -P)
+    for fixture in c0.txt c1.txt c2.txt c3.txt c5.txt c8.txt c9.txt p1.md \
+      skill-legacy.txt skill-ns.txt rule-legacy.txt rule-ns.txt rule-nsroot.txt \
+      agent-legacy.txt agent-ns.txt n2-root-hook.txt r3-rule-challenge.txt; do
+      write_args+=(--allow-tool "write($scope/hc-out/$fixture)")
+    done
+    write_args+=(--allow-tool "write($scope/hook-results.md)")
+  fi
 
   if [ "$install_exit" = 0 ]; then
     run_captured --cwd "$ws" timeout "${CLI_TIMEOUT:-1200}" "$COPILOT" \
-        --trust-folder "${tool_args[@]}" \
+        --trust-folder --disallow-temp-dir "${tool_args[@]}" "${write_args[@]}" \
         ${model_args[@]+"${model_args[@]}"} --output-format json --share "$out/transcript.md" \
         -p "$(render_prompt "$session" local)" > "$out/events.jsonl" 2> "$out/stderr.log" || main_exit=$?
   else
@@ -62,12 +73,12 @@ run_session() {
   if [ "$session" = plugin ] && [ "$INTERRUPTED" = 0 ] && [ "$install_exit" = 0 ]; then
     agents=tested
     run_captured --cwd "$ws" timeout "${AGENT_TIMEOUT:-300}" "$COPILOT" \
-    --agent hc-probe-a:hc-probe-agent --trust-folder "${agent_tool_args[@]}" \
+    --agent hc-probe-a:hc-probe-agent --trust-folder --disallow-temp-dir "${agent_tool_args[@]}" "${write_args[@]}" \
         ${model_args[@]+"${model_args[@]}"} -p "Do your task." >> "$out/agents.log" 2>&1 || agent_a_exit=$?
     echo "agent=hc-probe-a:hc-probe-agent exit=$agent_a_exit" >> "$out/agents.log"
     if [ "$INTERRUPTED" = 0 ]; then
       run_captured --cwd "$ws" timeout "${AGENT_TIMEOUT:-300}" "$COPILOT" \
-          --agent hc-probe-ns:hc-probe-ns-agent --trust-folder "${agent_tool_args[@]}" \
+          --agent hc-probe-ns:hc-probe-ns-agent --trust-folder --disallow-temp-dir "${agent_tool_args[@]}" "${write_args[@]}" \
           ${model_args[@]+"${model_args[@]}"} -p "Do your task." >> "$out/agents.log" 2>&1 || agent_ns_exit=$?
       echo "agent=hc-probe-ns:hc-probe-ns-agent exit=$agent_ns_exit" >> "$out/agents.log"
     fi

@@ -40,16 +40,10 @@ commit=$(sed -nE 's/.*\(commit ([0-9a-f]{40})\).*/\1/p' <<< "$version")
 export VSCODE_CLI_INITIAL_AH_VERSION=$commit
 
 nm="$ROOT/ahpx/node_modules"
-mkdir -p "$ROOT/ahpx"
-if [ -n "${AHPX_NODE_MODULES:-}" ]; then
-  cp -R "$AHPX_NODE_MODULES" "$nm"
-else
-  npm install -s --prefix "$ROOT/ahpx" @tylerl0706/ahpx@0.6.0
-fi
+ahpx_bin=$(prepare_ahpx "$ROOT")
 ahpx_version=$(node -p "require('$nm/@tylerl0706/ahpx/package.json').version")
 [ "$ahpx_version" = 0.6.0 ] || { echo "Expected AHPX 0.6.0, found $ahpx_version" >&2; exit 1; }
-python3 "$SUITE_DIR/patch_ahpx.py" "$nm/@tylerl0706/ahpx/dist/bin.js"
-AHPX=(node "$nm/@tylerl0706/ahpx/dist/bin.js")
+AHPX=(node "$ahpx_bin")
 
 plugin_root="$ROOT/probe"
 python3 "$SUITE_DIR/make_probes.py" "$plugin_root" --rule-only "$RULE_FORMAT"
@@ -85,9 +79,10 @@ fi
 suite_sha=$(git -C "$TOOL_ROOT" rev-parse HEAD)
 set +e
 HC_EVIDENCE_DIR="$evidence" HC_PLUGIN_DIRS="$plugin_dir" \
+HC_FIXTURE_WORKSPACE="$ws" \
 HC_RULE_RESOURCE_PATH="$rule_file" \
 HC_RULE_RESOURCE_SHA256="$rule_sha" GITHUB_TOKEN="$COPILOT_GITHUB_TOKEN" \
-  "${AHPX[@]}" --format json exec -s "$url" -p copilotcli -m "$MODEL" --cwd "$ws" --approve-all \
+  "${AHPX[@]}" --format json exec -s "$url" -p copilotcli -m "$MODEL" --cwd "$ws" --deny-all \
   --idle-timeout 180 "$(cat "$prompt_file")" 2>&1 \
   | python3 "$SUITE_DIR/rule_evidence.py" capture "$evidence/rule-events.jsonl" > "$ROOT/plugin-discovered"
 statuses=("${PIPESTATUS[@]}")

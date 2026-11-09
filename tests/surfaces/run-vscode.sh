@@ -29,28 +29,12 @@ fi
 commit=$(sed -nE 's/.*\(commit ([0-9a-f]{40})\).*/\1/p' <<< "$version")
 [ -n "$commit" ] && export VSCODE_CLI_INITIAL_AH_VERSION=$commit
 
-prepare_ahpx() {
-  local nm="$ROOT/ahpx/node_modules" name
-  local -a npm_env=("PATH=$PATH" "HOME=$ROOT/npm-home")
-  mkdir -p "$ROOT/ahpx" "$ROOT/npm-home"
-  cp "$SUITE_DIR/ahpx/package.json" "$SUITE_DIR/ahpx/package-lock.json" "$ROOT/ahpx/"
-  for name in NODE_EXTRA_CA_CERTS SSL_CERT_FILE SSL_CERT_DIR CURL_CA_BUNDLE; do
-    [ -z "${!name:-}" ] || npm_env+=("$name=${!name}")
-  done
-  for _ in 1 2 3; do
-    env -i "${npm_env[@]}" npm ci --ignore-scripts --prefix "$ROOT/ahpx" \
-      > "$ROOT/ahpx/npm-install.log" 2>&1 && break
-    sleep 10
-  done
-  [ -x "$nm/.bin/ahpx" ] || return 1
-  python3 "$SUITE_DIR/patch_ahpx.py" "$nm/@tylerl0706/ahpx/dist/bin.js" || return 1
-  AHPX=(node "$nm/@tylerl0706/ahpx/dist/bin.js")
-}
-if ! prepare_ahpx; then
+if ! ahpx_bin=$(prepare_ahpx "$ROOT"); then
   echo "Could not prepare the AHPX test client" | tee "$OUT_ROOT/setup.log" >&2
   [ -f "$ROOT/ahpx/npm-install.log" ] && cp "$ROOT/ahpx/npm-install.log" "$OUT_ROOT/setup.log"
   exit 1
 fi
+AHPX=(node "$ahpx_bin")
 
 stop_host() {
   local failed=0
@@ -79,7 +63,8 @@ run_session() {
   plugins=""
   make_workspace "$ws" "$session" || setup_exit=$?
   if [ "$setup_exit" = 0 ] && [ "$session" = repo ]; then
-    plugins="$TOOL_ROOT/plugin"
+    make_observed_marketplace "$ROOT/$session/observed-plugin" || setup_exit=$?
+    plugins="$ROOT/$session/observed-plugin/plugins/actions-migrator"
   elif [ "$setup_exit" = 0 ]; then
     make_probe_marketplace "$ROOT/$session/probes" || setup_exit=$?
     plugins="$ROOT/$session/probes/plugins/hc-probe-a:$ROOT/$session/probes/plugins/hc-probe-b:$ROOT/$session/probes/plugins/hc-probe-ns"
@@ -121,8 +106,9 @@ run_session() {
   fi
   if [ "$ready" = 1 ]; then
     run_captured timeout "${AHPX_TIMEOUT:-1200}" env HC_EVIDENCE_DIR="$ROOT/$session/evidence" HC_PLUGIN_DIRS="$plugins" \
+      HC_FIXTURE_WORKSPACE="$ws" \
       GITHUB_TOKEN="$COPILOT_GITHUB_TOKEN" "${AHPX[@]}" exec -s "$url" -p copilotcli -m "$MODEL" \
-      --cwd "$ws" --approve-all --idle-timeout "${SESSION_IDLE_TIMEOUT:-300}" \
+      --cwd "$ws" --deny-all --idle-timeout "${SESSION_IDLE_TIMEOUT:-300}" \
       "$(render_prompt "$session" local)" > "$out/session.log" 2>&1 || session_exit=$?
     echo "exit=$session_exit" >> "$out/session.log"
     if [ "$session" = plugin ] && [ "$INTERRUPTED" = 0 ]; then
@@ -134,8 +120,9 @@ run_session() {
         make_workspace "$agent_ws" plugin || agent_status=$?
         if [ -z "${agent_status:-}" ]; then
           run_captured timeout "${AGENT_TIMEOUT:-300}" env HC_AGENT_NAME="$agent" HC_EVIDENCE_DIR="$agent_evidence" HC_PLUGIN_DIRS="$plugins" \
+            HC_FIXTURE_WORKSPACE="$agent_ws" \
             GITHUB_TOKEN="$COPILOT_GITHUB_TOKEN" "${AHPX[@]}" exec -s "$url" -p copilotcli -m "$MODEL" \
-            --cwd "$agent_ws" --approve-all --idle-timeout "${AGENT_IDLE_TIMEOUT:-180}" \
+            --cwd "$agent_ws" --deny-all --idle-timeout "${AGENT_IDLE_TIMEOUT:-180}" \
             'Do your task.' > "$out/$agent.log" 2>&1 || agent_status=$?
         fi
         agent_status=${agent_status:-0}

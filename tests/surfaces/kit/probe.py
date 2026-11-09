@@ -55,8 +55,11 @@ def safe_targets(arguments, tool):
     if isinstance(arguments, dict):
         for key in ("path", "file", "filePath", "file_path", "uri"):
             value = arguments.get(key)
-            if isinstance(value, str) and value.replace("\\", "/").endswith("hc-out/p1.md"):
-                targets.add("hc-out/p1.md")
+            if isinstance(value, str):
+                normalized = value.replace("\\", "/")
+                for target in ("hc-out/p1.md", "hc-out/n2-root-hook.txt", "hc-out/r3-rule-challenge.txt"):
+                    if normalized == target or normalized.endswith("/" + target):
+                        targets.add(target)
         for key in ("command", "cmd"):
             value = arguments.get(key)
             if isinstance(value, str) and "hc-does-not-exist" in value:

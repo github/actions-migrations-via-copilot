@@ -37,8 +37,6 @@ python3 -m unittest discover -s tests/surfaces -p 'test_*.py' -v
 
 ### CodeQL follow-up
 
-This change starts from reviewed suite revision
-`67924a46ae3e195e0521a9e7b9f82a47143a186b`; no suite file changes preceded it.
 [Alert 33's review comment](https://github.com/github/actions-migrations-via-copilot/pull/61#discussion_r4502054023)
 reports cache poisoning through `workflow_dispatch` and privileged checkout of
 `needs.target.outputs.sha`. That checkout path is removed, not suppressed.
@@ -53,13 +51,36 @@ and rerun the existing CodeQL analysis on this PR's exact head revision. Confirm
 whether the dispatch-to-untrusted-checkout flow is eliminated. If it remains,
 provide the rule ID, analyzed commit/ref, all source-to-sink locations and messages,
 and any implicated cache scope/key/action from the trace (or its SARIF code flows).
-Keep the alert open pending that evidence. Related investigations: #62 and #65;
-result aggregation/failure propagation and other security-comment fixes are
-separate follow-ups.
+Do not dismiss the alert without current-revision evidence. The fork boundary,
+failure propagation, and security follow-ups are consolidated in this suite.
 
 The cloud agent isn't tested automatically on public PRs. Its two sessions have been validated as one-off runs in a private testing repo using versioned fixtures. The planned weekly schedule and automatic analysis handoff still need deployment and credentials. No hourly polling or GitHub App is required for the per-PR CLI and Agent Host tests.
 
 VS Code Local is the older built-in agent mode, not another name for Agent Host. It has different hook payloads and event handling. The plugin's broad VS Code compatibility claim includes those paths, so Local needs its own coverage unless that support claim is explicitly narrowed. Passing Agent Host does not prove Local works.
+
+## Execution and evidence boundaries
+
+CLI tests expose only fixture tools, approve writes to named fixture files, and
+disable automatic access to the wider temporary directory. Agent Host clients
+default to denying approval requests; their independent fixture policy permits
+only the test commands and scoped file actions. Neither runner grants blanket
+tool approval. These controls are not an operating-system sandbox: run only
+reviewed suite code in a disposable environment, with narrowly scoped credentials.
+
+Both Agent Host runners use the same integrity-locked AHPX dependencies, installed
+with scripts disabled and a credential-free environment. Test hosts are stopped
+by their owned process IDs, not by a global kill command.
+
+Real plugin hooks are observed transparently: original command bytes, stdin,
+stdout, stderr, and exit status are preserved. Guard scores require structured
+decisions correlated to the target call, not an agent's report or a denial-like
+line in a transcript. Missing case evidence, required-job failures, and recorded
+nonzero process exits fail the combined result gate.
+
+Public artifacts contain only structured scores, minimized hook records, fixture
+hashes, and agent-selection results. Full transcripts, raw tool payloads, and
+model catalogs are excluded; known credentials and connection tokens are also
+redacted. Local diagnostic files are not automatically safe to publish.
 
 ## Cases
 
@@ -113,6 +134,25 @@ sets. The runner rejects mismatched default settings and source revisions.
 After the batch, publish `cloud_settings.py <testing-repo-checkout> none
 <owner/testing-repo>` so probe hooks do not affect unrelated analysis tasks.
 
+The target's default branch must also contain
+`.github/copilot/surface-test-policy.json`, reviewed by the target's maintainers:
+
+```json
+{
+  "enabled": true,
+  "repository": "owner/testing-repo",
+  "source_repository": "github/actions-migrations-via-copilot",
+  "source_commits": ["FULL_REVIEWED_40_CHARACTER_COMMIT_SHA"]
+}
+```
+
+Use the target's exact repository name and actual reviewed commit. The runner
+requires a private, non-archived target, write permission, a clean local suite at
+an approved commit, and a published fixture from that same commit before creating
+branches or tasks. Keep this policy protected from unreviewed changes. Approval
+authorizes a target and source; it does not make arbitrary code safe. No policy,
+credentials, or scheduled runner is deployed by adding these tests.
+
 ```bash
 REPO=owner/testing-repo CLOUD_SESSION=repo OUT_DIR=/tmp/cloud-out \
 	tests/surfaces/run-cloud-agent.sh
@@ -126,7 +166,9 @@ session additionally runs both plugin-agent selections and a positive control:
 publish the generated legacy probe agent at `.github/agents/hc-probe-agent.agent.md`
 on the private repo's default branch. Startup rejection counts as a tested
 deviation only when the repository-agent control succeeds. Temporary issues,
-PRs and branches are closed or removed by the runner after evidence collection.
+PRs and branches are closed or removed only after the remote task ends and
+ownership is checked. If the task may still be active, cleanup is deferred and
+the retained resources are reported; closing an issue is not task cancellation.
 
 The 2026-11-07 cloud result is **13 repository checks passed; 14 plugin checks
 passed and 6 known deviations**. The deviations reproduce ignored new-format
@@ -136,6 +178,24 @@ that historical result. It predates the N2/R3 challenge-evidence gate below and
 does not validate the new scoring rules; until case-specific challenge evidence
 is present (and R3 has the R2 positive control), those cases remain **NOT RUN**.
 This does not claim that the weekly scheduler is deployed.
+
+## Consolidated follow-ups
+
+PR #61 is the single implementation and follow-up location. Closing the related
+investigation issues or report PRs records consolidation, not proof that every
+platform behavior or proposed feature is resolved.
+
+| Area | Remaining work |
+|---|---|
+| Isolated rule behavior | R1 can vary under matching settings. The missing evidence is delivery into the first model request of a failing run. Keep deviations visible; do not retry them away or equate them with a failed security hook. |
+| VS Code Local | Build separate automated coverage; Agent Host results do not cover this mode. |
+| Broader plugin coverage | Add `subagentStop`, live write-time quality checks including `apply_patch`, scorecard counts/deduplication, and additional payload and installation paths. |
+| Cloud compatibility | Revalidate with current evidence gates and target authorization. Historical cloud results do not prove the revised checks passed. |
+| Weekly runs and history | Deploy the private runner, narrowly scoped credentials, versioned result history, and bounded analysis handoff. No hourly polling is planned. |
+| Migration correctness | Compare representative source pipelines with generated workflows and flag unresolved external dependencies; plugin conformance alone does not establish semantic equivalence. |
+
+Research reports remain accessible in their closed PRs. The testing skill and
+this guide are the maintained source, not a second set of investigation documents.
 
 ## Historical regression check
 
