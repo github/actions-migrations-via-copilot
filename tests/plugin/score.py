@@ -131,9 +131,10 @@ def score_vscode(out):
     except (ValueError, AttributeError):
         selected = None
     skill = re.search(r"^\[tool\] Read skill \[actionlint\]\([^)\s]*/skills/actionlint/SKILL\.md\)", log, re.M)
-    # Tool names and outcomes only, so a failure is diagnosable without publishing the log.
-    seen = re.findall(r'^\[tool\] ("[^"]{1,40}" failed|Read skill \[[\w:-]{1,60}\])|^\[(denied \w{1,40})\]', log, re.M)
-    skill_seen = "; ".join(a or b for a, b in seen if "kill" in (a or b) or b) or "no skill call or denial seen"
+    # Tool lines with links and paths removed, so a failure is diagnosable without publishing the log.
+    tool_lines = [re.sub(r"\]\([^)]*\)", "]", line)[:60].strip()
+                  for line in log.splitlines() if line.startswith(("[tool]", "[denied", "[approved"))]
+    skill_seen = "; ".join(line for line in tool_lines if "running" not in line) or "no tool calls seen"
     return {
         "plugin-installed": check(
             {("agent", "jenkins-migrator"), ("skill", "actionlint"), ("hook", "hooks.json")} <= children,
