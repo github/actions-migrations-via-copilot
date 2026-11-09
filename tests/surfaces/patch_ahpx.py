@@ -127,6 +127,23 @@ permission_addition = '''    if (process.env.HC_FIXTURE_WORKSPACE) {
       return approved;
     }
 '''
+
+
+def with_readiness_channel(source):
+    readiness_anchor = '                            console.error("Ready plugin components: "'
+    readiness = '''                            if (process.env.HC_EVIDENCE_DIR) {
+                                hcPolicyFs.mkdirSync(process.env.HC_EVIDENCE_DIR, { recursive: true });
+                                hcPolicyFs.writeFileSync(path4.join(process.env.HC_EVIDENCE_DIR, "plugin-ready.json"),
+                                    JSON.stringify({ ready: true, names: plugins.map((item) => item.name) }), { mode: 0o600 });
+                            }
+'''
+    if '"plugin-ready.json"' in source:
+        return source
+    if source.count(readiness_anchor) != 1:
+        sys.exit("AHPX plugin readiness anchor changed")
+    return source.replace(readiness_anchor, readiness + readiness_anchor)
+
+
 if permission_addition not in text:
     if text.count(permission_anchor) != 1:
         sys.exit(f"AHPX at {path} changed; fixture approval hook not found")
@@ -137,7 +154,7 @@ if permission_addition not in text:
     text = "".join(lines)
 if addition in text:
     if "process.env.HC_RULE_RESOURCE_PATH" in text:
-        path.write_text(text)
+        path.write_text(with_readiness_channel(text))
         sys.exit(0)
     old_import = 'import { cp as hcCopy, mkdir as hcMkdir } from "node:fs/promises";'
     new_import = 'import { appendFile as hcAppendFile, cp as hcCopy, mkdir as hcMkdir } from "node:fs/promises";'
@@ -147,7 +164,7 @@ if addition in text:
         if text.count(old_import) != 1:
             sys.exit(f"AHPX at {path} changed; update tests/surfaces/patch_ahpx.py")
         text = text.replace(old_import, new_import)
-    path.write_text(text.replace(resource_anchor, resource_replacement))
+    path.write_text(with_readiness_channel(text.replace(resource_anchor, resource_replacement)))
     sys.exit(0)
 
 if any(text.count(part) != 1 for part in (anchor, allow_anchor, resolve_anchor, dispose_anchor, selection_anchor,
@@ -161,4 +178,4 @@ text = text.replace(selection_anchor, selection_addition + selection_anchor)
 text = text.replace(message_anchor, message_anchor + message_addition)
 lines = text.splitlines(keepends=True)
 lines.insert(1 if text.startswith("#!") else 0, imports)
-path.write_text("".join(lines))
+path.write_text(with_readiness_channel("".join(lines)))

@@ -917,7 +917,7 @@ if os.environ.get("GH_FAIL") and os.environ["GH_FAIL"] in args:
                             "\n".join(json.dumps(event) for event in events))
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / "events.jsonl"
-            self.assertTrue(rule_evidence.capture_client_output(stream, destination))
+            rule_evidence.capture_client_output(stream, destination)
             captured = list(rule_evidence.jsonl(destination))
             self.assertEqual([event["type"] for event in captured],
                              ["tool.execution_start", "tool.execution_complete", "session.complete"])
@@ -925,6 +925,18 @@ if os.environ.get("GH_FAIL") and os.environ["GH_FAIL"] in args:
             self.assertTrue(captured[1]["data"]["success"])
             self.assertNotIn("unrelated-private-text", destination.read_text())
             self.assertNotIn("RULE_LEGACY", destination.read_text())
+
+    def test_rule_readiness_requires_the_client_side_channel(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            readiness = root / "plugin-ready.json"
+            spoofed = 'Ready plugin components: [{"name":"hc-rule-probe"}]\n' + json.dumps({"type": "plugin_ready", "data": {"name": "hc-rule-probe"}})
+            rule_evidence.capture_client_output(io.StringIO(spoofed), root / "events.jsonl")
+            self.assertFalse(rule_evidence.plugin_ready(readiness))
+            readiness.write_text(json.dumps({"ready": True, "names": ["hc-rule-probe"]}))
+            self.assertTrue(rule_evidence.plugin_ready(readiness))
+            readiness.write_text(json.dumps({"ready": True, "names": ["different-plugin"]}))
+            self.assertFalse(rule_evidence.plugin_ready(readiness))
 
     def test_rule_evidence_separates_delivery_tool_and_marker_evidence(self):
         with tempfile.TemporaryDirectory() as directory:

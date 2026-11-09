@@ -23,22 +23,12 @@ def marker_write(tool_name, arguments):
 
 
 def capture_client_output(stream, destination):
-    discovered = False
     calls = set()
     with destination.open("w") as output:
         def record(event_type, data):
             output.write(json.dumps({"type": event_type, "data": data}) + "\n")
 
         for line in stream:
-            prefix = "Ready plugin components: "
-            if line.startswith(prefix):
-                try:
-                    plugins = json.loads(line[len(prefix):])
-                    discovered = any(plugin.get("name") in {"hc-rule-probe", "Plugin: hc-rule-probe"}
-                                     for plugin in plugins if isinstance(plugin, dict))
-                except (ValueError, TypeError):
-                    pass
-                continue
             try:
                 event = json.loads(line)
             except ValueError:
@@ -69,7 +59,17 @@ def capture_client_output(stream, destination):
                 result = data.get("result")
                 record("tool.execution_complete", {"toolCallId": call_id,
                        "success": isinstance(result, dict) and result.get("success") is True})
-    return discovered
+
+
+def plugin_ready(path):
+    try:
+        if path.is_symlink():
+            return False
+        data = json.loads(path.read_text())
+        return isinstance(data, dict) and data.get("ready") is True and data.get("names") in (
+            ["hc-rule-probe"], ["Plugin: hc-rule-probe"])
+    except (OSError, ValueError):
+        return False
 
 
 def sources(path):
@@ -199,12 +199,15 @@ def assess(rule_format, delivery_log, events_file, workspace, fixture_sha, metad
 
 
 def main():
+    if sys.argv[1:2] == ["readiness"]:
+        print(str(plugin_ready(Path(sys.argv[2]))).lower())
+        return
     if sys.argv[1:2] == ["capture"]:
         parser = argparse.ArgumentParser()
         parser.add_argument("capture")
         parser.add_argument("destination", type=Path)
         options = parser.parse_args()
-        print(str(capture_client_output(sys.stdin, options.destination)).lower())
+        capture_client_output(sys.stdin, options.destination)
         return
     parser = argparse.ArgumentParser()
     parser.add_argument("--format", choices=MARKERS, required=True)

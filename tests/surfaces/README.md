@@ -277,6 +277,9 @@ RULE_FORMAT=namespace CODE_BIN=/path/to/code \
 
 Use an authenticated Copilot user token; do not put it in source or artifacts. The result JSON records the suite SHA, rule case and plugin version, VS Code CLI and Agent Host server commits, AHPX version, requested model selector, and prompt SHA-256. It records only the expected rule file's SHA match when Agent Host reads it, target-specific tool-call evidence, and marker-file state. Tool evidence comes from the Agent Host client's structured events, not a presumed CLI session-log location. Prompt/event transcripts, credentials, and model catalogs are not published.
 
+Plugin readiness comes from a record written directly by the client outside the
+agent's workspace. Text in model output is not accepted as a discovery signal.
+
 An Agent Host resource read proves that the rule text was returned to the host; it does not prove that the model received it. That delivery stage is reported as unobservable. A missing resource read is **NOT RUN**; a completed isolated session that read the expected rule but did not produce the marker is a **DEVIATION** with unresolved cause. A result is **PASS** only when the session exited successfully, the expected resource was read, a `create` or `edit` call to the marker succeeded, and the marker content matches exactly. A read or a report mentioning the marker cannot pass. The command exits nonzero for any non-PASS result and does not retry. Repeat a case only when testing variability, using the same revision, runtime, model selector, and configuration.
 
 Run from a clean, committed suite checkout; the runner refuses a dirty tree so the recorded source SHA identifies the fixture and scoring code.

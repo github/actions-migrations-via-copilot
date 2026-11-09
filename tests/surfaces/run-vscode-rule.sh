@@ -84,14 +84,14 @@ HC_RULE_RESOURCE_PATH="$rule_file" \
 HC_RULE_RESOURCE_SHA256="$rule_sha" GITHUB_TOKEN="$COPILOT_GITHUB_TOKEN" \
   "${AHPX[@]}" --format json exec -s "$url" -p copilotcli -m "$MODEL" --cwd "$ws" --deny-all \
   --idle-timeout 180 "$(cat "$prompt_file")" 2>&1 \
-  | python3 "$SUITE_DIR/rule_evidence.py" capture "$evidence/rule-events.jsonl" > "$ROOT/plugin-discovered"
+  | python3 "$SUITE_DIR/rule_evidence.py" capture "$evidence/rule-events.jsonl"
 statuses=("${PIPESTATUS[@]}")
 session_exit=${statuses[0]}
 set -e
 [ "${statuses[1]}" = 0 ] || { echo "Rule evidence capture failed" >&2; exit 1; }
 
 server=$(sed -nE 's/.*\[([0-9a-f]{7})\]: Server ready.*/\1/p' "$ROOT/host.log" | head -1)
-plugin_discovered=$(cat "$ROOT/plugin-discovered")
+plugin_discovered=$(python3 "$SUITE_DIR/rule_evidence.py" readiness "$evidence/plugin-ready.json")
 server_matches_pin=false
 [ "$server" = "${commit:0:7}" ] && server_matches_pin=true
 case_id=R1
