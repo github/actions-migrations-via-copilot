@@ -3,11 +3,73 @@
 import argparse
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 
 TARGET = "hc-out/rule-marker.txt"
 MARKERS = {"current": "RULE_LEGACY", "namespace": "RULE_NS"}
+
+
+def marker_write(tool_name, arguments):
+    target = arguments.get("path") if isinstance(arguments, dict) else None
+    target_path = Path(target) if isinstance(target, str) else None
+    return tool_name in {"create", "edit"} and target_path is not None and (
+        ".." not in target_path.parts and (
+            target_path == Path(TARGET) or
+            target_path.is_absolute() and target_path.parts[-2:] == Path(TARGET).parts
+        )
+    )
+
+
+def capture_client_output(stream, destination):
+    discovered = False
+    calls = set()
+    with destination.open("w") as output:
+        def record(event_type, data):
+            output.write(json.dumps({"type": event_type, "data": data}) + "\n")
+
+        for line in stream:
+            prefix = "Ready plugin components: "
+            if line.startswith(prefix):
+                try:
+                    plugins = json.loads(line[len(prefix):])
+                    discovered = any(plugin.get("name") in {"hc-rule-probe", "Plugin: hc-rule-probe"}
+                                     for plugin in plugins if isinstance(plugin, dict))
+                except (ValueError, TypeError):
+                    pass
+                continue
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(event, dict) or not isinstance(event.get("data"), dict):
+                continue
+            data = event["data"]
+            event_type = event.get("type")
+            if event_type == "turn_complete":
+                record("session.complete", {})
+            call_id = data.get("toolCallId")
+            if not isinstance(call_id, str) or not call_id:
+                continue
+            if event_type == "tool_call_ready":
+                arguments = data.get("toolInput")
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except ValueError:
+                        arguments = None
+                if data.get("toolName") in {"create", "edit"} and not isinstance(arguments, dict):
+                    record("tool.input_unavailable", {})
+                elif marker_write(data.get("toolName"), arguments):
+                    calls.add(call_id)
+                    record("tool.execution_start", {"toolCallId": call_id,
+                           "toolName": data["toolName"], "arguments": {"path": TARGET}})
+            elif event_type == "tool_call_complete" and call_id in calls:
+                result = data.get("result")
+                record("tool.execution_complete", {"toolCallId": call_id,
+                       "success": isinstance(result, dict) and result.get("success") is True})
+    return discovered
 
 
 def sources(path):
@@ -36,10 +98,13 @@ def assess(rule_format, delivery_log, events_file, workspace, fixture_sha, metad
                          for record in deliveries)
     calls = {}
     event_record_seen = False
+    input_unavailable = False
     for event in jsonl(events_file):
         if not isinstance(event, dict):
             continue
         event_record_seen = True
+        if event.get("type") == "tool.input_unavailable":
+            input_unavailable = True
         if event.get("type") not in {"tool.execution_start", "tool.execution_complete"}:
             continue
         data = event.get("data", {})
@@ -50,13 +115,7 @@ def assess(rule_format, delivery_log, events_file, workspace, fixture_sha, metad
             continue
         if event.get("type") == "tool.execution_start":
             arguments = data.get("arguments", {})
-            target = arguments.get("path") if isinstance(arguments, dict) else None
-            target_path = Path(target) if isinstance(target, str) else None
-            matches_target = target_path is not None and ".." not in target_path.parts and (
-                target_path == Path(TARGET) or
-                target_path.is_absolute() and target_path.parts[-2:] == Path(TARGET).parts
-            )
-            if data.get("toolName") in {"create", "edit"} and matches_target:
+            if marker_write(data.get("toolName"), arguments):
                 calls[call_id] = {
                     "tool": data.get("toolName"),
                     "execution": "not_observed",
@@ -76,7 +135,7 @@ def assess(rule_format, delivery_log, events_file, workspace, fixture_sha, metad
     server_matches_pin = str(metadata.get("server_commit_matches_pin", "false")).lower() == "true"
     session_exit = metadata.get("session_exit")
     if not server_matches_pin or not plugin_discovered or not resource_read \
-            or not event_record_seen or not workspace.is_dir():
+            or not event_record_seen or input_unavailable or not workspace.is_dir():
         result = "NOT RUN"
     elif session_exit != "0":
         result = "NOT RUN"
@@ -92,7 +151,7 @@ def assess(rule_format, delivery_log, events_file, workspace, fixture_sha, metad
             diagnosis = "Agent Host server did not match the requested commit"
         elif not plugin_discovered or not resource_read:
             diagnosis = "no conclusive rule-delivery evidence"
-        elif not event_record_seen or not workspace.is_dir():
+        elif not event_record_seen or input_unavailable or not workspace.is_dir():
             diagnosis = "evidence collection incomplete"
         else:
             diagnosis = "session did not complete"
@@ -132,6 +191,7 @@ def assess(rule_format, delivery_log, events_file, workspace, fixture_sha, metad
             "delivery_log_present": delivery_log.is_file(),
             "event_file_present": event_file_present,
             "event_record_seen": event_record_seen,
+            "tool_input_unavailable": input_unavailable,
             "marker_workspace_present": workspace.is_dir(),
         },
         "diagnosis": diagnosis,
@@ -139,6 +199,13 @@ def assess(rule_format, delivery_log, events_file, workspace, fixture_sha, metad
 
 
 def main():
+    if sys.argv[1:2] == ["capture"]:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("capture")
+        parser.add_argument("destination", type=Path)
+        options = parser.parse_args()
+        print(str(capture_client_output(sys.stdin, options.destination)).lower())
+        return
     parser = argparse.ArgumentParser()
     parser.add_argument("--format", choices=MARKERS, required=True)
     parser.add_argument("--delivery-log", type=Path, required=True)

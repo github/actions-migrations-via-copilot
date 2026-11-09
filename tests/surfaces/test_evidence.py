@@ -1,6 +1,7 @@
 import json
 import base64
 import hashlib
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -212,6 +213,31 @@ class EvidenceTests(unittest.TestCase):
                 self.assertIn("rule-marker.txt", rule_text)
                 self.assertEqual((root / "rule-resource-path").read_text().strip(),
                                  str((plugin / relative_rule).resolve()))
+
+    def test_rule_client_capture_keeps_only_marker_events(self):
+        events = [
+            {"type": "delta", "data": {"content": "unrelated-private-text"}},
+            {"type": "tool_call_ready", "data": {"toolCallId": "read", "toolName": "view",
+             "toolInput": json.dumps({"path": rule_evidence.TARGET})}},
+            {"type": "tool_call_ready", "data": {"toolCallId": "write", "toolName": "create",
+             "toolInput": json.dumps({"path": rule_evidence.TARGET, "content": "RULE_LEGACY"})}},
+            {"type": "tool_call_complete", "data": {"toolCallId": "read", "result": {"success": True}}},
+            {"type": "tool_call_complete", "data": {"toolCallId": "write", "result": {
+                "success": True, "content": "unrelated-private-text"}}},
+            {"type": "turn_complete", "data": {"responseText": "unrelated-private-text"}},
+        ]
+        stream = io.StringIO('Ready plugin components: [{"name":"hc-rule-probe"}]\n' +
+                            "\n".join(json.dumps(event) for event in events))
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "events.jsonl"
+            self.assertTrue(rule_evidence.capture_client_output(stream, destination))
+            captured = list(rule_evidence.jsonl(destination))
+            self.assertEqual([event["type"] for event in captured],
+                             ["tool.execution_start", "tool.execution_complete", "session.complete"])
+            self.assertEqual(captured[0]["data"]["arguments"], {"path": rule_evidence.TARGET})
+            self.assertTrue(captured[1]["data"]["success"])
+            self.assertNotIn("unrelated-private-text", destination.read_text())
+            self.assertNotIn("RULE_LEGACY", destination.read_text())
 
     def test_rule_evidence_separates_delivery_tool_and_marker_evidence(self):
         with tempfile.TemporaryDirectory() as directory:

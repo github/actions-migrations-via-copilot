@@ -85,13 +85,13 @@ set +e
 HC_EVIDENCE_DIR="$evidence" HC_PLUGIN_DIRS="$plugin_dir" \
 HC_RULE_RESOURCE_PATH="$rule_file" \
 HC_RULE_RESOURCE_SHA256="$rule_sha" GITHUB_TOKEN="$COPILOT_GITHUB_TOKEN" \
-  "${AHPX[@]}" exec -s "$url" -p copilotcli -m "$MODEL" --cwd "$ws" --approve-all \
+  "${AHPX[@]}" --format json exec -s "$url" -p copilotcli -m "$MODEL" --cwd "$ws" --approve-all \
   --idle-timeout 180 "$(cat "$SUITE_DIR/prompt-rule.md")" 2>&1 \
-  | awk '/Ready plugin components:/ && index($0, "hc-rule-probe") { found=1 }
-         END { print found ? "true" : "false" }' > "$ROOT/plugin-discovered"
+  | python3 "$SUITE_DIR/rule_evidence.py" capture "$evidence/rule-events.jsonl" > "$ROOT/plugin-discovered"
 statuses=("${PIPESTATUS[@]}")
 session_exit=${statuses[0]}
 set -e
+[ "${statuses[1]}" = 0 ] || { echo "Rule evidence capture failed" >&2; exit 1; }
 
 server=$(sed -nE 's/.*\[([0-9a-f]{7})\]: Server ready.*/\1/p' "$ROOT/host.log" | head -1)
 plugin_discovered=$(cat "$ROOT/plugin-discovered")
@@ -101,13 +101,14 @@ case_id=R1
 [ "$RULE_FORMAT" = namespace ] && case_id=R2
 
 python3 "$SUITE_DIR/rule_evidence.py" --format "$RULE_FORMAT" \
-  --delivery-log "$evidence/rule-resource.jsonl" --events "$COPILOT_HOME/session-state" --workspace "$evidence" \
+  --delivery-log "$evidence/rule-resource.jsonl" --events "$evidence/rule-events.jsonl" --workspace "$evidence" \
   --rule-file "$rule_file" --out "$OUT_ROOT/$RULE_FORMAT.json" \
   --meta "session=vscode-agent-host-rule" --meta "case=$case_id" \
   --meta "suite_sha=$suite_sha" --meta "plugin=hc-rule-probe@0.0.1" \
   --meta "vscode_cli=$version" --meta "agent_host_commit=$commit" \
   --meta "server_ready_commit=${server:-unknown}" --meta "ahpx=$ahpx_version" \
   --meta "model_selector=$MODEL" --meta "session_exit=$session_exit" \
+  --meta "tool_event_source=agent-host-client" \
   --meta "plugin_discovered=$plugin_discovered" \
   --meta "server_commit_matches_pin=$server_matches_pin"
 echo "evidence=$OUT_ROOT/$RULE_FORMAT.json"
