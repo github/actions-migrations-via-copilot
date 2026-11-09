@@ -114,6 +114,12 @@ class Scoring(unittest.TestCase):
         self.write("agent/agent-selected.json", json.dumps({"name": "gitlab-migrator"}))
         self.assertEqual(self.results("vscode")[1]["agent-starts"], "FAIL")
 
+    def test_colored_log_still_scores(self):
+        self.passing_vscode()
+        log = (self.out / "main.log").read_text().replace("[tool]", "\x1b[32m[tool]\x1b[39m")
+        self.write("main.log", log)
+        self.assertEqual(self.results("vscode")[1]["skill-loads"], "PASS")
+
     def test_skill_from_elsewhere_fails(self):
         self.passing_vscode()
         self.write("main.log", score.DELETE_DENIAL + score.SECRET_DENIAL + "\n[tool] Read skill [actionlint](file:///x/other.md)\n")

@@ -120,7 +120,8 @@ def score_cli(out):
 
 
 def score_vscode(out):
-    log = read(out / "main.log") or ""
+    # The test client colors its output on CI runners.
+    log = re.sub(r"\x1b\[[0-9;]*m", "", read(out / "main.log") or "")
     try:
         ready = json.loads(read(out / "main/plugin-ready.json") or "null")
         children = {(c.get("type"), c.get("name")) for p in ready for c in p.get("children", [])}
