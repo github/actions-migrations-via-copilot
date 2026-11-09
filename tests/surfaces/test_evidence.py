@@ -241,7 +241,7 @@ class EvidenceTests(unittest.TestCase):
             evidence = rule_evidence.assess(
                 "current", delivery, events, workspace, fixture_sha,
                 {"plugin_discovered": "true", "server_commit_matches_pin": "true",
-                 "model_selector": "claude-haiku-4.5"},
+                 "model_selector": "claude-haiku-4.5", "session_exit": "0"},
             )
             self.assertEqual(evidence["result"], "PASS")
             self.assertTrue(evidence["rule_resource"]["exact_fixture_text_returned"])
@@ -252,6 +252,51 @@ class EvidenceTests(unittest.TestCase):
             self.assertTrue(evidence["marker_file"]["matches_expected"])
             self.assertTrue(evidence["evidence_collection"]["event_record_seen"])
             self.assertNotIn("unrelated prompt text", json.dumps(evidence))
+
+            for session_exit in (None, "1", "124"):
+                with self.subTest(session_exit=session_exit):
+                    failed = rule_evidence.assess(
+                        "current", delivery, events, workspace, fixture_sha,
+                        {"plugin_discovered": "true", "server_commit_matches_pin": "true",
+                         "session_exit": session_exit},
+                    )
+                    self.assertEqual(failed["result"], "NOT RUN")
+                    self.assertEqual(failed["diagnosis"], "session did not complete")
+
+            for tool, target, call_id, success, content in (
+                    ("view", rule_evidence.TARGET, "read", True, "RULE_LEGACY"),
+                    ("create", "report.md", "report", True, "RULE_LEGACY"),
+                    ("create", rule_evidence.TARGET, None, True, "RULE_LEGACY"),
+                    ("create", rule_evidence.TARGET, "failed", False, "RULE_LEGACY"),
+                    ("create", rule_evidence.TARGET, "wrong-content", True, "NOT_RULE_LEGACY")):
+                with self.subTest(tool=tool, target=target, call_id=call_id):
+                    marker.write_text(content)
+                    events.write_text("\n".join(json.dumps(event) for event in (
+                        {"type": "tool.execution_start", "data": {
+                            "toolCallId": call_id, "toolName": tool,
+                            "arguments": {"path": target, "content": rule_evidence.TARGET},
+                        }},
+                        {"type": "tool.execution_complete", "data": {
+                            "toolCallId": call_id, "success": success,
+                        }},
+                    )) + "\n")
+                    rejected = rule_evidence.assess(
+                        "current", delivery, events, workspace, fixture_sha,
+                        {"plugin_discovered": "true", "server_commit_matches_pin": "true",
+                         "session_exit": "0"},
+                    )
+                    self.assertEqual(rejected["result"], "DEVIATION")
+
+            result = subprocess.run([
+                sys.executable, str(SUITE / "rule_evidence.py"), "--format", "current",
+                "--delivery-log", str(delivery), "--events", str(events),
+                "--workspace", str(workspace), "--rule-file", str(rule_file),
+                "--out", str(root / "result.json"),
+                "--meta", "plugin_discovered=true", "--meta", "server_commit_matches_pin=true",
+                "--meta", "session_exit=0",
+            ], capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(json.loads((root / "result.json").read_text())["result"], "DEVIATION")
 
     def test_rule_evidence_keeps_unobserved_delivery_and_noncompliance_visible(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -279,7 +324,8 @@ class EvidenceTests(unittest.TestCase):
             }) + "\n")
             deviation = rule_evidence.assess(
                 "namespace", delivery, events, workspace, fixture_sha,
-                {"plugin_discovered": "true", "server_commit_matches_pin": "true"},
+                {"plugin_discovered": "true", "server_commit_matches_pin": "true",
+                 "session_exit": "0"},
             )
             self.assertEqual(deviation["result"], "DEVIATION")
             self.assertEqual(deviation["diagnosis"], "unresolved")

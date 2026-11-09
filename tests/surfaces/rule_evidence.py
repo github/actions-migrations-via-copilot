@@ -27,6 +27,7 @@ def jsonl(path):
 
 
 def assess(rule_format, delivery_log, events_file, workspace, fixture_sha, metadata):
+    metadata = dict(metadata)
     deliveries = [record for record in jsonl(delivery_log) if isinstance(record, dict)]
     resource_read = any(record.get("resource_read") is True for record in deliveries)
     exact_delivery = any(record.get("resource_read") is True
@@ -45,9 +46,17 @@ def assess(rule_format, delivery_log, events_file, workspace, fixture_sha, metad
         if not isinstance(data, dict):
             continue
         call_id = data.get("toolCallId")
+        if not isinstance(call_id, str) or not call_id:
+            continue
         if event.get("type") == "tool.execution_start":
-            arguments = json.dumps(data.get("arguments", {}), sort_keys=True)
-            if TARGET in arguments:
+            arguments = data.get("arguments", {})
+            target = arguments.get("path") if isinstance(arguments, dict) else None
+            target_path = Path(target) if isinstance(target, str) else None
+            matches_target = target_path is not None and ".." not in target_path.parts and (
+                target_path == Path(TARGET) or
+                target_path.is_absolute() and target_path.parts[-2:] == Path(TARGET).parts
+            )
+            if data.get("toolName") in {"create", "edit"} and matches_target:
                 calls[call_id] = {
                     "tool": data.get("toolName"),
                     "execution": "not_observed",
@@ -60,19 +69,21 @@ def assess(rule_format, delivery_log, events_file, workspace, fixture_sha, metad
     marker = workspace / TARGET
     event_file_present = any(source.is_file() for source in sources(events_file))
     marker_exists = marker.is_file()
-    marker_matches = marker_exists and MARKERS[rule_format] in marker.read_text(errors="replace")
+    marker_matches = marker_exists and not marker.is_symlink() and (
+        marker.read_text(errors="replace").strip() == MARKERS[rule_format]
+    )
     plugin_discovered = str(metadata.pop("plugin_discovered", "false")).lower() == "true"
     server_matches_pin = str(metadata.get("server_commit_matches_pin", "false")).lower() == "true"
     session_exit = metadata.get("session_exit")
     if not server_matches_pin or not plugin_discovered or not resource_read \
             or not event_record_seen or not workspace.is_dir():
         result = "NOT RUN"
+    elif session_exit != "0":
+        result = "NOT RUN"
     elif not exact_delivery:
         result = "DEVIATION"
     elif marker_matches and any(call["execution"] == "succeeded" for call in calls.values()):
         result = "PASS"
-    elif session_exit is not None and session_exit != "0":
-        result = "NOT RUN"
     else:
         result = "DEVIATION"
 
@@ -145,6 +156,7 @@ def main():
     print(f"result={evidence['result']} delivery={evidence['rule_resource']['exact_fixture_text_returned']} "
           f"marker_attempted={evidence['marker_tool']['attempted']} "
           f"marker_matches={evidence['marker_file']['matches_expected']}")
+    raise SystemExit(0 if evidence["result"] == "PASS" else 1)
 
 
 if __name__ == "__main__":

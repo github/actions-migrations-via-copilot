@@ -22,11 +22,15 @@ ROOT=$(mktemp -d "${RUNNER_TEMP:-/tmp}/surface-vscode-rule-XXXX")
 mkdir -p "$OUT_ROOT"
 host_pid=
 cleanup() {
-  [ -z "$host_pid" ] || kill "$host_pid" 2>/dev/null || true
-  "$CODE_BIN" agent kill >/dev/null 2>&1 || true
+  if [ -n "$host_pid" ]; then
+    kill "$host_pid" 2>/dev/null || true
+    wait "$host_pid" 2>/dev/null || true
+  fi
   rm -rf "$ROOT"
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 version=$("$CODE_BIN" --version 2>/dev/null | head -1)
 commit=$(sed -nE 's/.*\(commit ([0-9a-f]{40})\).*/\1/p' <<< "$version")
@@ -60,8 +64,7 @@ openssl rand -hex 16 > "$ROOT/conn-token"
 chmod 600 "$ROOT/conn-token"
 ( cd "$ws" && exec "$CODE_BIN" agent host --new-instance --foreground --host 127.0.0.1 --port "$PORT" \
     --connection-token-file "$ROOT/conn-token" --user-data-dir "$ROOT/ud" \
-    --server-data-dir "$ROOT/sd" < /dev/null 2>&1 ) \
-  | awk '/\[[0-9a-f]{7}\]: Server ready/ { print; fflush() }' > "$ROOT/server-ready.log" &
+  --server-data-dir "$ROOT/sd" < /dev/null > "$ROOT/host.log" 2>&1 ) &
 host_pid=$!
 url="ws://127.0.0.1:$PORT?tkn=$(cat "$ROOT/conn-token")"
 ready=0
@@ -90,7 +93,7 @@ statuses=("${PIPESTATUS[@]}")
 session_exit=${statuses[0]}
 set -e
 
-server=$(sed -nE 's/.*\[([0-9a-f]{7})\]: Server ready.*/\1/p' "$ROOT/server-ready.log" | head -1)
+server=$(sed -nE 's/.*\[([0-9a-f]{7})\]: Server ready.*/\1/p' "$ROOT/host.log" | head -1)
 plugin_discovered=$(cat "$ROOT/plugin-discovered")
 server_matches_pin=false
 [ "$server" = "${commit:0:7}" ] && server_matches_pin=true
@@ -107,5 +110,4 @@ python3 "$SUITE_DIR/rule_evidence.py" --format "$RULE_FORMAT" \
   --meta "model_selector=$MODEL" --meta "session_exit=$session_exit" \
   --meta "plugin_discovered=$plugin_discovered" \
   --meta "server_commit_matches_pin=$server_matches_pin"
-host_pid=
 echo "evidence=$OUT_ROOT/$RULE_FORMAT.json"
