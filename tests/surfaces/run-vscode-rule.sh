@@ -17,6 +17,8 @@ esac
 
 MODEL=${MODEL:-claude-haiku-4.5}
 PORT=${PORT:-18792}
+prompt_file=${RULE_PROMPT_FILE:-$SUITE_DIR/prompt-rule.md}
+prompt_sha=$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$prompt_file")
 OUT_ROOT=${OUT_DIR:-$(mktemp -d)}/vscode-rule
 ROOT=$(mktemp -d "${RUNNER_TEMP:-/tmp}/surface-vscode-rule-XXXX")
 mkdir -p "$OUT_ROOT"
@@ -86,7 +88,7 @@ HC_EVIDENCE_DIR="$evidence" HC_PLUGIN_DIRS="$plugin_dir" \
 HC_RULE_RESOURCE_PATH="$rule_file" \
 HC_RULE_RESOURCE_SHA256="$rule_sha" GITHUB_TOKEN="$COPILOT_GITHUB_TOKEN" \
   "${AHPX[@]}" --format json exec -s "$url" -p copilotcli -m "$MODEL" --cwd "$ws" --approve-all \
-  --idle-timeout 180 "$(cat "$SUITE_DIR/prompt-rule.md")" 2>&1 \
+  --idle-timeout 180 "$(cat "$prompt_file")" 2>&1 \
   | python3 "$SUITE_DIR/rule_evidence.py" capture "$evidence/rule-events.jsonl" > "$ROOT/plugin-discovered"
 statuses=("${PIPESTATUS[@]}")
 session_exit=${statuses[0]}
@@ -108,6 +110,7 @@ python3 "$SUITE_DIR/rule_evidence.py" --format "$RULE_FORMAT" \
   --meta "vscode_cli=$version" --meta "agent_host_commit=$commit" \
   --meta "server_ready_commit=${server:-unknown}" --meta "ahpx=$ahpx_version" \
   --meta "model_selector=$MODEL" --meta "session_exit=$session_exit" \
+  --meta "prompt_sha256=$prompt_sha" \
   --meta "tool_event_source=agent-host-client" \
   --meta "plugin_discovered=$plugin_discovered" \
   --meta "server_commit_matches_pin=$server_matches_pin"
