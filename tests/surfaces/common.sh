@@ -5,18 +5,91 @@ SUITE_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck disable=SC2034  # used by the runners that source this file
 TOOL_ROOT=$(git -C "$SUITE_DIR" rev-parse --show-toplevel)
 COPILOT_CLI_VERSION=${COPILOT_CLI_VERSION:-latest}
+CURRENT_PID=""
+HOST_PID=""
+INTERRUPTED=0
+
+surface_signal() {
+  INTERRUPTED=$1
+  [ -z "$CURRENT_PID" ] || kill -TERM "$CURRENT_PID" 2>/dev/null || true
+  [ -z "$HOST_PID" ] || kill -TERM "$HOST_PID" 2>/dev/null || true
+}
+
+run_captured() {
+  local working_dir=""
+  if [ "$1" = --cwd ]; then
+    working_dir=$2
+    shift 2
+  fi
+  if [ -n "$working_dir" ]; then
+    ( cd "$working_dir" && exec "$@" ) &
+  else
+    "$@" &
+  fi
+  CURRENT_PID=$!
+  wait "$CURRENT_PID"
+  local status=$?
+  CURRENT_PID=""
+  [ "$INTERRUPTED" = 0 ] || status=$INTERRUPTED
+  return "$status"
+}
+
+cleanup_cloud_resources() {
+  local repo=$1 branch=$2 issue=$3 pr=$4 pr_head=$5
+  local branch_created=$6 issue_created=$7 remote_started=$8 task_terminal=$9 log=${10}
+  local failed=0 pr_cleanup_failed=0 details actual_head actual_base
+  if [ "$remote_started" = 1 ] && [ "$task_terminal" != 1 ]; then
+    echo "Cleanup deferred: remote task may still be active; issue, pull request, and branch retained." >> "$log"
+    return 0
+  fi
+  if [ -n "$pr" ] && [ "$pr" != null ]; then
+    details=$(gh pr view "$pr" --repo "$repo" --json headRefName,baseRefName \
+      --jq '[.headRefName, .baseRefName] | @tsv') || details=""
+    IFS=$'\t' read -r actual_head actual_base <<< "$details"
+    if [ "$actual_head" != "$pr_head" ] || [ "$actual_base" != "$branch" ]; then
+      echo "Cleanup refused pull request $pr: ownership could not be confirmed." >> "$log"
+      failed=1
+      pr_cleanup_failed=1
+    elif gh pr close "$pr" --repo "$repo" >/dev/null 2>&1; then
+      echo "Cleanup closed pull request $pr owned by base branch $branch." >> "$log"
+    else
+      echo "Cleanup failed to close owned pull request $pr." >> "$log"
+      failed=1
+      pr_cleanup_failed=1
+    fi
+  fi
+  if [ "$issue_created" = 1 ] && [ -n "$issue" ] && [ "$issue" != null ]; then
+    if gh issue close "$issue" --repo "$repo" >/dev/null 2>&1; then
+      echo "Cleanup closed issue $issue after the remote task ended; closing an issue does not cancel a task." >> "$log"
+    else
+      echo "Cleanup failed to close owned issue $issue." >> "$log"
+      failed=1
+    fi
+  fi
+  if [ "$branch_created" = 1 ] && [ "$pr_cleanup_failed" = 0 ]; then
+    if gh api -X DELETE "repos/$repo/git/refs/heads/$branch" >/dev/null 2>&1; then
+      echo "Cleanup deleted test-run branch $branch." >> "$log"
+    else
+      echo "Cleanup failed to delete test-run branch $branch." >> "$log"
+      failed=1
+    fi
+  elif [ "$branch_created" = 1 ]; then
+    echo "Cleanup retained branch $branch because pull-request ownership or closure was uncertain." >> "$log"
+  fi
+  return "$failed"
+}
 
 # Scratch git repo for one session. $2 = "repo": the conformance hooks as repository hooks.
 # $2 = "plugin": no repository hooks; the hooks come from the probe plugins (make_probes.py).
 make_workspace() {
   local ws=$1 session=$2
-  mkdir -p "$ws/hc-out"
+  mkdir -p "$ws/hc-out" || return 1
   if [ "$session" = repo ]; then
-    mkdir -p "$ws/.github/hooks"
-    cp "$SUITE_DIR"/kit/* "$ws/.github/hooks/"
+    mkdir -p "$ws/.github/hooks" || return 1
+    cp "$SUITE_DIR"/kit/* "$ws/.github/hooks/" || return 1
   fi
-  touch "$ws/hc-out/.gitkeep"
-  printf 'Scratch repository for actions-migrator surface tests.\n' > "$ws/README.md"
+  touch "$ws/hc-out/.gitkeep" || return 1
+  printf 'Scratch repository for actions-migrator surface tests.\n' > "$ws/README.md" || return 1
   git_commit_all "$ws" "Surface test workspace"
 }
 
@@ -28,7 +101,7 @@ git_commit_all() {
 
 # Local marketplace "hc-probes" with the probe plugins, in $1.
 make_probe_marketplace() {
-  python3 "$SUITE_DIR/make_probes.py" "$1"
+  python3 "$SUITE_DIR/make_probes.py" "$1" || return 1
   git_commit_all "$1" "Probe plugins"
 }
 
@@ -38,14 +111,14 @@ install_session_plugins() {
   local session=$1 log=$2
   {
     if [ "$session" = repo ]; then
-      "$COPILOT" plugin marketplace add "$TOOL_ROOT"
-      "$COPILOT" plugin install actions-migrator@actions-migrations-via-copilot
+      "$COPILOT" plugin marketplace add "$TOOL_ROOT" || return 1
+      "$COPILOT" plugin install actions-migrator@actions-migrations-via-copilot || return 1
     else
-      make_probe_marketplace "$COPILOT_HOME/../probes"
-      "$COPILOT" plugin marketplace add "$COPILOT_HOME/../probes"
-      for p in hc-probe-a hc-probe-b hc-probe-ns; do "$COPILOT" plugin install "$p@hc-probes"; done
+      make_probe_marketplace "$COPILOT_HOME/../probes" || return 1
+      "$COPILOT" plugin marketplace add "$COPILOT_HOME/../probes" || return 1
+      for p in hc-probe-a hc-probe-b hc-probe-ns; do "$COPILOT" plugin install "$p@hc-probes" || return 1; done
     fi
-    "$COPILOT" plugin list
+    "$COPILOT" plugin list || return 1
   } > "$log" 2>&1
 }
 

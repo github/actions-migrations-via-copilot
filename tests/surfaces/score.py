@@ -231,20 +231,34 @@ else:
 
     if not ns_loaded:
         add("N1", "no sign the new-format plugin loaded", "NOT RUN" if not ran else "DEVIATION")
-        add("N2", "no sign the new-format plugin loaded", "NOT RUN")
     else:
         add("N1", f"namespace hook calls={len(ns_rows)}", verdict(bool(ns_rows)))
-        add("N2", f"root hooks.json calls={len(ns_root_rows)}", verdict(not ns_root_rows))
+
+    def challenge_calls(hook_rows, path):
+        return [r for r in hook_rows if path in json.dumps(r.get("raw", {}))]
+
+    n2_calls = challenge_calls(ns_rows, "hc-out/n2-root-hook.txt")
+    n2_root_calls = challenge_calls(ns_root_rows, "hc-out/n2-root-hook.txt")
+    n2_file = file_has("n2-root-hook.txt", "N2_CHALLENGE")
+    if not n2_calls and not n2_root_calls:
+        add("N2", "no hook evidence for the root-hook challenge", "NOT RUN")
+    else:
+        add("N2", f"challenge_calls={len(n2_calls)} root_hook_calls={len(n2_root_calls)} challenge_file={n2_file}",
+            verdict(n2_file and not n2_root_calls))
 
     for case, fname, code in (("S1", "skill-legacy.txt", "SKILL_LEGACY"), ("S2", "skill-ns.txt", "SKILL_NS"),
                               ("R1", "rule-legacy.txt", "RULE_LEGACY"), ("R2", "rule-ns.txt", "RULE_NS")):
         ok = file_has(fname, code)
         add(case, f"{fname} has the code: {ok}", "NOT RUN" if not ran else verdict(ok))
-    if ns_loaded:
-        root_rule = file_has("rule-nsroot.txt", "RULE_NSROOT")
-        add("R3", f"root rule applied: {root_rule}", verdict(not root_rule))
+    r3_calls = challenge_calls(ns_rows, "hc-out/r3-rule-challenge.txt")
+    r3_file = file_has("r3-rule-challenge.txt", "R3_CHALLENGE")
+    r2_control = file_has("rule-ns.txt", "RULE_NS")
+    if not r3_calls or not r2_control:
+        add("R3", f"challenge_calls={len(r3_calls)} new-format-rule-control={r2_control}", "NOT RUN")
     else:
-        add("R3", "no sign the new-format plugin loaded", "NOT RUN")
+        root_rule = file_has("rule-nsroot.txt", "RULE_NSROOT")
+        add("R3", f"challenge_file={r3_file} root_rule_applied={root_rule}",
+            verdict(r3_file and not root_rule))
 
     for case, fname, code in (("A1", "agent-legacy.txt", "AGENT_LEGACY"), ("A2", "agent-ns.txt", "AGENT_NS")):
         agent_results = a.log.parent / "agents"
