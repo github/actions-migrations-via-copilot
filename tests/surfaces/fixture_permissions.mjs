@@ -11,6 +11,22 @@ export function hcApproveFixtureTool(toolCall, workspace) {
   }
   if (!input || typeof input !== "object" || Array.isArray(input)) return false;
   const tool = toolCall.toolName;
+  if (["view", "grep", "glob"].includes(tool)) {
+    const additionalPaths = [];
+    for (const key of ["cwd", "rootDir", "root", "directory", "file", "filePath", "file_path", "uri"]) {
+      if (Object.hasOwn(input, key)) additionalPaths.push(input[key]);
+    }
+    if (Object.hasOwn(input, "paths")) {
+      if (!Array.isArray(input.paths)) return false;
+      additionalPaths.push(...input.paths);
+    }
+    if (additionalPaths.some(path => typeof path !== "string" ||
+        !hcApproveFixtureTool({ toolName: "view", toolInput: { path } }, workspace))) return false;
+    for (const pattern of [input.pattern, input.glob]) {
+      if (pattern !== undefined && (typeof pattern !== "string" || hcPolicyPath.isAbsolute(pattern) ||
+          pattern.split(/[\\/]/).includes(".."))) return false;
+    }
+  }
   if (tool === "skill") {
     return ["hc-probe-skill", "hc-probe-ns-skill", "hc-probe-a:hc-probe-skill", "hc-probe-ns:hc-probe-ns-skill"]
       .includes(input.skill ?? input.name);
@@ -55,7 +71,6 @@ export function hcApproveFixtureTool(toolCall, workspace) {
     return relative === "hook-results.md" || relative.startsWith(`hc-out${hcPolicyPath.sep}`);
   }
   if (["view", "grep", "glob"].includes(tool)) {
-    if (input.pattern && (hcPolicyPath.isAbsolute(input.pattern) || input.pattern.split(/[\\/]/).includes(".."))) return false;
     return !relative || relative === "README.md" || relative === "hook-results.md" ||
       relative === "hc-out" || relative.startsWith(`hc-out${hcPolicyPath.sep}`);
   }

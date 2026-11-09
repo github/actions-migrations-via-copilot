@@ -61,6 +61,8 @@ class EvidenceTests(unittest.TestCase):
             (worktree / "hc-out").mkdir(parents=True)
             script = "const assert=require('node:assert/strict'); (async()=>{const {hcApproveFixtureTool:approve}=await import(process.argv[1]);const ws=process.argv[2];const worktree=process.argv[3];assert.equal(approve({toolName:'view',toolInput:JSON.stringify({path:worktree})},ws),true);assert.equal(approve({toolName:'create',toolInput:JSON.stringify({path:worktree+'/hc-out/c0.txt'})},ws),true);})();"
             subprocess.run(["node", "-e", script, (SUITE / "fixture_permissions.mjs").as_uri(), str(workspace), str(worktree)], check=True, capture_output=True)
+            script = "const assert=require('node:assert/strict'); (async()=>{const {hcApproveFixtureTool:approve}=await import(process.argv[1]);const ws=process.argv[2];for(const input of [{paths:['/etc/passwd']},{rootDir:'/etc'},{path:'README.md',cwd:'/etc'},{paths:[42]},{paths:'/etc'},{pattern:42},{glob:'../*'}])assert.equal(approve({toolName:'grep',toolInput:JSON.stringify(input)},ws),false);assert.equal(approve({toolName:'grep',toolInput:JSON.stringify({paths:['README.md','hc-out'],rootDir:ws,pattern:'test'})},ws),true);})();"
+            subprocess.run(["node", "-e", script, (SUITE / "fixture_permissions.mjs").as_uri(), str(workspace)], check=True, capture_output=True)
 
     def fake_copilot(self, directory):
         executable = directory / "copilot"
