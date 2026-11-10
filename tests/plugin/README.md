@@ -38,4 +38,4 @@ VS Code needs the standalone VS Code CLI (`code`). The VS Code runner installs t
 
 ## Not here
 
-Cloud agent smoke tests come in a follow-up once credential ownership is agreed. Broader conformance testing of the Copilot surfaces lives in the testing repository.
+The cloud agent isn't tested separately: its hook and skill behavior is covered by the CLI tests. Add a focused cloud test only if a cloud-only issue appears. Broader conformance testing of the Copilot surfaces lives in the testing repository.
