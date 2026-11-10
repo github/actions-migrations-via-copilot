@@ -1,0 +1,169 @@
+name: Plugin Tests
+
+# Runs the real plugin on the Copilot CLI and VS Code (headless Agent Host) and checks behavior we own:
+# install, guards, scorecard, a skill and an agent. See tests/plugin/README.md.
+# PRs and main use pinned CLI and VS Code versions, so a new upstream release can't fail an unrelated PR.
+# The weekly run uses the latest versions to catch upstream changes that break the plugin.
+# Fork code runs only the offline tests, never with Copilot credentials.
+
+on:
+  pull_request:
+    paths: ['plugin/**', 'tests/plugin/**', '.github/workflows/plugin-tests.yml']
+  push:
+    branches: [main]
+    paths: ['plugin/**', 'tests/plugin/**', '.github/workflows/plugin-tests.yml']
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      vscode_version:
+        description: VS Code version, e.g. 1.139.1, or "latest" (empty = pinned)
+        required: false
+      copilot_cli_version:
+        description: Copilot CLI version, or "latest" (empty = pinned)
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  PINNED_VSCODE: 1.145.2
+  PINNED_COPILOT_CLI: 1.0.107
+
+concurrency:
+  group: plugin-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline:
+    if: github.repository == 'github/actions-migrations-via-copilot'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: python3 -m unittest discover -s tests/plugin -p 'test_*.py' -v
+
+  versions:
+    needs: offline
+    # Same-repository code only: fork PRs stop after the offline job.
+    if: >-
+      github.repository == 'github/actions-migrations-via-copilot' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    outputs:
+      vscode: ${{ steps.v.outputs.vscode }}
+      cli: ${{ steps.v.outputs.cli }}
+    steps:
+      - id: v
+        env:
+          LATEST: ${{ github.event_name == 'schedule' }}
+          VSCODE: ${{ inputs.vscode_version }}
+          CLI: ${{ inputs.copilot_cli_version }}
+        run: |
+          [ "$LATEST" = true ] && { VSCODE=latest; CLI=latest; }
+          VSCODE=${VSCODE:-$PINNED_VSCODE}
+          CLI=${CLI:-$PINNED_COPILOT_CLI}
+          [[ $VSCODE =~ ^(latest|[0-9]+\.[0-9]+\.[0-9]+)$ ]] || { echo "::error::Not a VS Code version: $VSCODE"; exit 1; }
+          [[ $CLI =~ ^(latest|[0-9]+\.[0-9]+\.[0-9]+)$ ]] || { echo "::error::Not a Copilot CLI version: $CLI"; exit 1; }
+          { echo "vscode=$VSCODE"; echo "cli=$CLI"; } >> "$GITHUB_OUTPUT"
+
+  cli:
+    needs: versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      copilot-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Run the Copilot CLI tests
+        env:
+          # The org pays for these requests; no personal token needed.
+          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+          COPILOT_CLI_VERSION: ${{ needs.versions.outputs.cli }}
+          OUT_DIR: ${{ runner.temp }}/out
+        run: bash tests/plugin/run-cli.sh
+      # Only the scorer-written result is published; raw session logs stay on the runner.
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: plugin-tests-cli
+          path: ${{ runner.temp }}/out/cli/result.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  vscode:
+    needs: versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Install the VS Code CLI
+        env:
+          VSCODE_VERSION: ${{ needs.versions.outputs.vscode }}
+        run: |
+          if [ "$VSCODE_VERSION" = latest ]; then
+            url="https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64"
+          else
+            url="https://update.code.visualstudio.com/$VSCODE_VERSION/cli-alpine-x64/stable"
+          fi
+          curl -fsSL -o "$RUNNER_TEMP/vscode-cli.tar.gz" "$url"
+          tar -xzf "$RUNNER_TEMP/vscode-cli.tar.gz" -C "$RUNNER_TEMP"
+      - name: Run the VS Code Agent Host tests
+        env:
+          CODE_BIN: ${{ runner.temp }}/code
+          # VS Code doesn't accept the workflow token yet (microsoft/vscode#346628): a Copilot-only user token.
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          OUT_DIR: ${{ runner.temp }}/out
+        run: |
+          if [ -z "$COPILOT_GITHUB_TOKEN" ]; then
+            echo "::error::COPILOT_GITHUB_TOKEN secret is not set."
+            exit 1
+          fi
+          bash tests/plugin/run-vscode.sh
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: plugin-tests-vscode
+          path: ${{ runner.temp }}/out/vscode/result.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  results:
+    needs: [offline, versions, cli, vscode]
+    if: always() && needs.versions.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: plugin-tests-*
+          path: ${{ runner.temp }}/results
+      - name: Summarize
+        run: |
+          for surface in cli vscode; do
+            [ -d "$RUNNER_TEMP/results/plugin-tests-$surface" ] && mv "$RUNNER_TEMP/results/plugin-tests-$surface" "$RUNNER_TEMP/results/$surface"
+          done
+          python3 tests/plugin/score.py summary "$RUNNER_TEMP/results" --expect cli,vscode --sha "$GITHUB_SHA" \
+            > "$RUNNER_TEMP/summary.md" || failed=1
+          cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          [ -z "${failed:-}" ] || { echo "::error::Plugin tests failed or did not run. See the summary."; exit 1; }
