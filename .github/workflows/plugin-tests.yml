@@ -106,9 +106,6 @@ jobs:
     needs: versions
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    permissions:
-      contents: read
-      copilot-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -131,10 +128,15 @@ jobs:
       - name: Run the VS Code Agent Host tests
         env:
           CODE_BIN: ${{ runner.temp }}/code
-          # The org pays for these requests; no personal token needed.
-          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+          # VS Code doesn't accept the workflow token yet (microsoft/vscode#346628): a Copilot-only user token.
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
           OUT_DIR: ${{ runner.temp }}/out
-        run: bash tests/plugin/run-vscode.sh
+        run: |
+          if [ -z "$COPILOT_GITHUB_TOKEN" ]; then
+            echo "::error::COPILOT_GITHUB_TOKEN secret is not set."
+            exit 1
+          fi
+          bash tests/plugin/run-vscode.sh
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

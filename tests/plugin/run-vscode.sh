@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # VS Code surface: the headless VS Code Agent Host (`code agent host`) with the real plugin offered the
 # way the VS Code editor offers it, so VS Code's own plugin and hook loader runs it.
-# Needs: CODE_BIN (VS Code CLI), COPILOT_GITHUB_TOKEN (a Copilot user's token, or the workflow token with
-# copilot-requests: write), node, npm, python3, git, jq, openssl.
+# Needs: CODE_BIN (VS Code CLI), COPILOT_GITHUB_TOKEN (a Copilot user's token; the workflow token is
+# rejected, see microsoft/vscode#346628), node, npm, python3, git, jq, openssl.
 # Writes $OUT_DIR/vscode/result.json.
 set -uo pipefail
 # shellcheck source=common.sh
